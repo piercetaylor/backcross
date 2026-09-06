@@ -123,7 +123,7 @@ Static files only. `npm run build` with `VITE_BASE_PATH=/isoline-browser/` produ
 
 M0 scaffold (complete): repository layout, parsers for all input formats, manifest and marker-map validation, classification, RPP with three estimators, per-line summary CSV, CLI summarize, synthetic fixture and smoke tests, lint/typecheck/CI, this plan and ADRs. Acceptance: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass; the CLI reproduces expected.json on the fixture.
 
-M1 vertical slice: implement segments.ts, targets.ts, qc.ts and the worker handlers; Upload, Summary and Lines screens functional; canvas renderer draws all lines with binning. Acceptance: a 50K-marker VCF with 24 lines loads in under 10 s on a 2020 laptop [speculation, to be measured]; planted segments in the fixture are called with exact start/end/flank positions; QC flags on NIL_03, NIL_05 and NIL_06 match their planted design.
+M1 vertical slice (complete, 2026-09-06): segments.ts, targets.ts, qc.ts and the worker handlers implemented; Upload, Summary and Lines screens functional; canvas renderer draws all lines with binning. Acceptance as measured: a 50K-marker VCF with 24 lines runs parse, classification, RPP, segment calling for every line and QC in 1.2 s in Node on the development laptop (parsing is 0.75 s of that; the worker runs the same code and was not timed separately, so the under-10 s target holds with an order of magnitude to spare); planted segments in the fixture are called with exact start, end and flank positions under both gap criteria of docs/adr/0008 (tests/fixture-segments.test.ts, against expectations from a second implementation in the generator); QC flags on NIL_03, NIL_05 and NIL_06 match their planted design (tests/qc.test.ts). The segment-gap rule was corrected before implementation: see docs/adr/0008.
 
 M2 usable: Genotype view zoom and hover, Compare screen, Export screen with HTML report and all CSVs; keyboard navigation across screens; parameter editing after load without re-parsing. Acceptance: a breeder can go from files to an archived report without leaving the browser; exported CSVs open in R with `readr::read_csv` and the documented column names.
 
@@ -201,3 +201,40 @@ $ du -sh --exclude=node_modules .
 Largest file is package-lock.json (87 KB); the fixture directory is 143,376 bytes across seven data files and a README. dist/ and node_modules/ were removed after verification and are ignored by git. Every URL cited in PLAN.md, README.md, CONTRIBUTING.md, CHANGELOG.md and docs/ was fetched on 2026-09-04 and resolved; the two exceptions are recorded inline (the Wiley page for the Wm82.a6 paper returned 403, so the bioRxiv preprint is cited; the SoyBase SoySNP50K tool page returned 403, so the PLOS ONE paper is cited for platform facts).
 
 Before the first run, `npm run typecheck` reported six errors (two possibly-undefined index accesses in src/core/rpp.ts and four constructor parameter properties disallowed by `erasableSyntaxOnly` in src/io/builder.ts and src/ui/canvas/GraphicalGenotypeRenderer.ts) and `npm run lint` failed because `@eslint/js` was imported by eslint.config.js but not declared; these were fixed (explicit field assignments, `@eslint/js` added to devDependencies, one unused variable and a BOM regex literal cleaned up, Prettier applied). Not verified: the React screens in a browser (placeholders only), the Web Worker path (handlers are stubs), and GitHub Pages deployment (requires a repository with Pages enabled). File count and size, excluding node_modules and dist: recorded in the final report.
+
+### M1 run, 2026-09-06
+
+Development laptop, Windows 11, Node v24.13.1, npm 11.8.0 (CI runs Node 22). Commands from the repository root after commit `refactor(core): name the donor-run gap fields`.
+
+```
+$ npm run lint
+> eslint . && prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+
+$ npm run typecheck
+> tsc --noEmit
+(exit 0)
+
+$ npm test
+ Test Files  8 passed (8)
+      Tests  139 passed (139)
+
+$ npm run build
+dist/assets/analysis.worker-*.js   30.24 kB
+dist/assets/index-*.js            213.38 kB │ gzip: 67.39 kB
+✓ built
+
+$ npm run fixture; md5sum -c before.md5     # all files OK: the generator is deterministic
+
+$ node src/cli.ts segments --genotypes tests/fixtures/synthetic/genotypes.vcf     --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv | head -2
+segment gap criterion: cm (10 cM)
+sample_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion
+NIL_01,Gm13,21000000,27000000,17000000,29000000,4,4,0,donor,50.400000,64.800000,6000000,14.400000,cm
+```
+
+Timing on a generated 50,000-marker VCF with 2 parents and 24 lines (7.1 MB; a throwaway script, not committed): parse 753 ms, assemble 87 ms, classify 40 ms, RPP 189 ms, segments for 24 lines 91 ms, QC 59 ms; 1.22 s in total, 66 MB heap.
+
+Verified in a Chromium-based browser against the synthetic fixture through the real load path (the three files handed to the file inputs as File objects): the worker parsed and classified, the app moved to Summary with focus on its heading, the Summary values equalled the test expectations (500 markers, 460 informative, parent polymorphism 0.939, NIL_03 nonparental_alleles, NIL_05 closer_to_donor, NIL_06 high_missing), the Lines table sorted with aria-sort and showed one status column per target region including two regions with the same name, a bad region spec appeared verbatim in the alert without disturbing the table, and the canvas drew six rows by twenty tracks in the Okabe-Ito class colours with no console errors. Not verified: a real SoySNP50K or 6K file; Firefox; the renderer under browser-mode tests (M3); GitHub Pages deployment.
+
+Two adversarial reviews preceded the two M1 commits; what they found and what changed is recorded in the commit messages (`git log`). Findings deferred to M2: a child_process smoke test for the CLI, a minimum-n note for identical_to_rp in the report, and a warning when a typed region names a chromosome absent from the dataset.
