@@ -111,6 +111,11 @@ function main(argv: string[]): number {
 ${USAGE}`);
     return 2;
   }
+  if (command === 'targets' && (values.target ?? []).length === 0) {
+    console.error(`targets: at least one --target is required
+${USAGE}`);
+    return 2;
+  }
   const dataset = load(values.genotypes, values.samples, values.markers);
   const cls = classifyDataset(dataset);
 
@@ -142,12 +147,7 @@ ${USAGE}`);
     if (command === 'segments') {
       csv = segmentsCsv(segments.flat(), criterion);
     } else {
-      const specs = values.target ?? [];
-      if (specs.length === 0) {
-        console.error('targets: at least one --target is required\n' + USAGE);
-        return 2;
-      }
-      const regions = specs.map((s) => parseTargetSpec(s, dataset));
+      const regions = (values.target ?? []).map((s) => parseTargetSpec(s, dataset));
       csv = targetsCsv(checkTargets(dataset, cls, segments, regions));
     }
   }

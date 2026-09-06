@@ -123,7 +123,7 @@ Static files only. `npm run build` with `VITE_BASE_PATH=/isoline-browser/` produ
 
 M0 scaffold (complete): repository layout, parsers for all input formats, manifest and marker-map validation, classification, RPP with three estimators, per-line summary CSV, CLI summarize, synthetic fixture and smoke tests, lint/typecheck/CI, this plan and ADRs. Acceptance: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass; the CLI reproduces expected.json on the fixture.
 
-M1 vertical slice (complete, 2026-09-06): segments.ts, targets.ts, qc.ts and the worker handlers implemented; Upload, Summary and Lines screens functional; canvas renderer draws all lines with binning. Acceptance as measured: a 50K-marker VCF with 24 lines runs parse, classification, RPP, segment calling for every line and QC in 1.2 s in Node on the development laptop (parsing is 0.75 s of that; the worker runs the same code and was not timed separately, so the under-10 s target holds with an order of magnitude to spare); planted segments in the fixture are called with exact start, end and flank positions under both gap criteria of docs/adr/0008 (tests/fixture-segments.test.ts, against expectations from a second implementation in the generator); QC flags on NIL_03, NIL_05 and NIL_06 match their planted design (tests/qc.test.ts). The segment-gap rule was corrected before implementation: see docs/adr/0008.
+M1 vertical slice (complete, 2026-09-06): segments.ts, targets.ts, qc.ts and the worker handlers implemented; Upload, Summary and Lines screens functional; canvas renderer draws all lines with binning. Acceptance as measured: a 50K-marker VCF with 24 lines runs parse, classification, RPP, segment calling for every line and QC in 1.2 s in Node on the development laptop named in the verification block (parsing is 0.75 s of that); the browser load path, which adds the File read, the structured clone of results and the React render around the same worker code, was not timed, so the under-10 s criterion is supported by an eight-fold margin on the compute part and remains unverified end to end; planted segments in the fixture are called with exact start, end and flank positions under both gap criteria of docs/adr/0008 (tests/fixture-segments.test.ts, against expectations from a second implementation in the generator); QC flags on NIL_03, NIL_05 and NIL_06 match their planted design (tests/qc.test.ts). The segment-gap rule was corrected before implementation: see docs/adr/0008.
 
 M2 usable: Genotype view zoom and hover, Compare screen, Export screen with HTML report and all CSVs; keyboard navigation across screens; parameter editing after load without re-parsing. Acceptance: a breeder can go from files to an archived report without leaving the browser; exported CSVs open in R with `readr::read_csv` and the documented column names.
 
@@ -204,7 +204,7 @@ Before the first run, `npm run typecheck` reported six errors (two possibly-unde
 
 ### M1 run, 2026-09-06
 
-Development laptop, Windows 11, Node v24.13.1, npm 11.8.0 (CI runs Node 22). Commands from the repository root after commit `refactor(core): name the donor-run gap fields`.
+Development laptop (Intel(R) Core(TM) Ultra 5 125U, 15 GB RAM, Windows 11), Node v24.13.1, npm 11.8.0 (CI runs Node 22). Commands from the repository root after commit `refactor(core): name the donor-run gap fields`.
 
 ```
 $ npm run lint
@@ -221,8 +221,8 @@ $ npm test
       Tests  139 passed (139)
 
 $ npm run build
-dist/assets/analysis.worker-*.js   30.24 kB
-dist/assets/index-*.js            213.38 kB │ gzip: 67.39 kB
+dist/assets/analysis.worker-*.js   30.27 kB
+dist/assets/index-*.js            213.47 kB │ gzip: 67.41 kB
 ✓ built
 
 $ npm run fixture; md5sum -c before.md5     # all files OK: the generator is deterministic
