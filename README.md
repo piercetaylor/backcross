@@ -6,7 +6,7 @@ Isoline Browser characterises finished soybean near-isogenic lines against their
 
 ## What exists now
 
-Parsers for VCF 4.2+ (plain or bgzip), HapMap and wide CSV (nucleotide or A/B/H), the samples.csv and markers.csv contracts, parent-of-origin classification, RPP with three estimators, donor segment calling with breakpoint bounds (docs/adr/0008), target-region status with linkage-drag bounds, per-line, per-marker and dataset QC flags, the per-line summary, segments and target check CSVs, CLI `summarize`, `segments` and `targets` commands, a synthetic fixture with independently derived expectations, and passing tests. Pairwise comparison, the canvas renderer, the worker handlers beyond load and RPP, and the React screens are stubs whose interfaces are fixed in their header comments; see PLAN.md, "Milestones".
+Parsers for VCF 4.2+ (plain or bgzip), HapMap and wide CSV (nucleotide or A/B/H), the samples.csv and markers.csv contracts, parent-of-origin classification, RPP with three estimators, donor segment calling with breakpoint bounds (docs/adr/0008), target-region status with linkage-drag bounds, per-line, per-marker and dataset QC flags, the per-line summary, segments and target check CSVs, CLI `summarize`, `segments` and `targets` commands, a synthetic fixture with independently derived expectations, and passing tests. The Upload, Summary and QC, Lines and Graphical genotype screens run over a Web Worker and draw every line on one canvas with per-pixel binning. Pairwise comparison, the Compare and Export screens, zoom and hover in the genotype view, and the HTML report are M2; see PLAN.md, "Milestones".
 
 ## Quickstart
 
@@ -17,7 +17,7 @@ npm ci
 npm test                      # vitest: fixture smoke tests and contract tests
 npm run lint                  # eslint + prettier --check
 npm run typecheck             # tsc --noEmit
-npm run dev                   # Vite dev server with the screen shell
+npm run dev                   # Vite dev server; open http://localhost:5173 and load the fixture files
 node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf \
   --samples tests/fixtures/synthetic/samples.csv \
   --markers tests/fixtures/synthetic/markers.csv --out summary.csv

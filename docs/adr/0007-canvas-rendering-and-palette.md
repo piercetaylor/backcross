@@ -19,4 +19,4 @@ Option 3 (src/ui/canvas/GraphicalGenotypeRenderer.ts). Colours come from src/cor
 
 ### Consequences
 
-Good: one draw pass for any marker count; export to PNG via `toDataUrl` for the HTML report; no React re-render per frame. Bad: binning hides isolated single-marker calls at coarse zoom (the majority rule); the UI marks bins containing a minority class with a hatch (M2). Neutral: WebGL is unnecessary at this scale and would complicate the report export.
+Good: one draw pass for any marker count; export to PNG via `toDataUrl` for the HTML report; no React re-render per frame. Bad: binning hides isolated single-marker calls at coarse zoom (the majority rule); the UI marks bins containing a minority class with a hatch (M2). Missing calls do not compete in the majority: a column is drawn as missing only when it holds no called marker, and among called classes ties go to the recurrent parent. Neutral: WebGL is unnecessary at this scale and would complicate the report export.

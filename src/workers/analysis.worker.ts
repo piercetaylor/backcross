@@ -1,29 +1,88 @@
 /**
- * Analysis Web Worker. STUB: message protocol fixed, handlers partially wired (M1).
+ * Analysis Web Worker.
  *
  * Responsibility: keep parsing and computation off the main thread. The UI
  * posts raw file bytes (ArrayBuffers, transferred, not copied) and analysis
  * parameters; the worker parses, assembles the Dataset, classifies, computes
- * RPP, and posts typed-array results back (transferred). The Dataset stays
- * resident in the worker for follow-up requests (segments for one line,
- * pairwise comparison, target checks) so the main thread never holds the
- * genotype matrix.
+ * RPP/QC/segments/targets, and posts results back. Typed-array results are
+ * transferred: arrays that alias resident state (the dataset, the
+ * classification matrix) are copied first with `.slice()` so the copy's
+ * buffer can be handed over without disturbing what the worker still needs;
+ * arrays allocated fresh for one response (informativeGapsBp, the QC marker
+ * arrays, chromLengthsBp) are transferred directly. `dataset`, `classification`
+ * and the last computed `LineRpp[]` stay resident in the worker for
+ * follow-up requests so the main thread never holds the genotype matrix.
  *
  * Protocol (src/workers/protocol.ts): request {id, type, payload} ->
  * response {id, ok: true, result} | {id, ok: false, error}.
  */
-import { classifyDataset } from '../core/classify.ts';
-import { computeRpp } from '../core/rpp.ts';
-import type { Classification, Dataset } from '../core/types.ts';
+import {
+  DEFAULT_RPP_PARAMS,
+  callSegments,
+  checkTargets,
+  classifyDataset,
+  computeQc,
+  computeRpp,
+  countInformative,
+  parseTargetSpec,
+  segmentGapCriterion,
+} from '../core/index.ts';
+import type { Classification, Dataset, LineRpp } from '../core/types.ts';
 import { assembleDataset, parseGenotypesBytes } from '../io/loaders.ts';
 import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
-import type { WorkerRequest, WorkerResponse } from './protocol.ts';
+import type { WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
 
 let dataset: Dataset | null = null;
 let classification: Classification | null = null;
+let lastRpp: LineRpp[] | null = null;
 
 const decoder = new TextDecoder();
+
+/** Sorted ascending gaps (bp) between consecutive informative markers on the same chromosome. */
+function computeInformativeGaps(ds: Dataset, cls: Classification): Float64Array {
+  const { chromIndex, sortedMarkerOrder, markers } = ds;
+  const gaps: number[] = [];
+  let prevChrom = -1;
+  let prevPos = NaN;
+  for (let k = 0; k < sortedMarkerOrder.length; k++) {
+    const m = sortedMarkerOrder[k] as number;
+    if (cls.informative[m] === 0) continue;
+    const c = chromIndex[m] as number;
+    const pos = markers.posBp[m] as number;
+    if (c === prevChrom) gaps.push(pos - prevPos);
+    prevChrom = c;
+    prevPos = pos;
+  }
+  gaps.sort((a, b) => a - b);
+  return Float64Array.from(gaps);
+}
+
+/** Max marker position per chromosome, in chromosomeOrder, bp. */
+function computeChromLengthsBp(ds: Dataset): Float64Array {
+  const lengths = new Float64Array(ds.chromosomeOrder.length);
+  const { chromIndex, markers } = ds;
+  for (let m = 0; m < markers.posBp.length; m++) {
+    const c = chromIndex[m] as number;
+    const pos = markers.posBp[m] as number;
+    if (pos > (lengths[c] as number)) lengths[c] = pos;
+  }
+  return lengths;
+}
+
+/** Row index into a candidate-major matrix (classes, segments) for a sample id. */
+function candidateRowForSample(ds: Dataset, cls: Classification, sampleId: string): number {
+  const col = ds.genotypes.sampleIds.indexOf(sampleId);
+  if (col < 0) throw new Error(`unknown sample: ${sampleId}`);
+  const row = Array.from(cls.candidateCols).indexOf(col);
+  if (row < 0) throw new Error(`sample is not a candidate: ${sampleId}`);
+  return row;
+}
+
+function requireLoaded(): { dataset: Dataset; classification: Classification } {
+  if (dataset === null || classification === null) throw new Error('no dataset loaded');
+  return { dataset, classification };
+}
 
 function handle(req: WorkerRequest): WorkerResponse {
   switch (req.type) {
@@ -35,6 +94,7 @@ function handle(req: WorkerRequest): WorkerResponse {
       const out = assembleDataset(parsed, samples, map);
       dataset = out.dataset;
       classification = classifyDataset(dataset);
+      lastRpp = null;
       return {
         id: req.id,
         ok: true,
@@ -44,28 +104,124 @@ function handle(req: WorkerRequest): WorkerResponse {
           nSamples: dataset.genotypes.nSamples,
           chromosomeOrder: dataset.chromosomeOrder,
           warnings: out.warnings,
+          samples: dataset.samples,
+          nInformative: countInformative(classification),
+          hasCm: dataset.markers.cm !== undefined,
+          gapCriterion: segmentGapCriterion(dataset),
+          coded: dataset.coded,
+          informativeGapsBp: computeInformativeGaps(dataset, classification),
         },
       };
     }
     case 'rpp': {
-      if (dataset === null || classification === null) throw new Error('no dataset loaded');
+      const { dataset: ds, classification: cls } = requireLoaded();
+      lastRpp = computeRpp(ds, cls, req.payload);
+      return { id: req.id, ok: true, result: { type: 'rpp', lines: lastRpp } };
+    }
+    case 'qc': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      if (lastRpp === null) lastRpp = computeRpp(ds, cls, DEFAULT_RPP_PARAMS);
+      const report = computeQc(ds, cls, lastRpp, req.payload);
+      return { id: req.id, ok: true, result: { type: 'qc', report } };
+    }
+    case 'segments': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const row = candidateRowForSample(ds, cls, req.payload.sampleId);
+      const segments = callSegments(ds, cls, row, req.payload.params, req.payload.includeShort);
       return {
         id: req.id,
         ok: true,
-        result: { type: 'rpp', lines: computeRpp(dataset, classification, req.payload) },
+        result: {
+          type: 'segments',
+          sampleId: req.payload.sampleId,
+          segments,
+          gapCriterion: segmentGapCriterion(ds),
+        },
       };
     }
-    case 'segments':
+    case 'segmentsAll': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const byCandidate = Array.from(cls.candidateCols, (_col, row) =>
+        callSegments(ds, cls, row, req.payload.params, false),
+      );
+      return {
+        id: req.id,
+        ok: true,
+        result: { type: 'segmentsAll', byCandidate, gapCriterion: segmentGapCriterion(ds) },
+      };
+    }
+    case 'targets': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const regions = req.payload.specs.map((spec) => parseTargetSpec(spec, ds));
+      const byCandidate = Array.from(cls.candidateCols, (_col, row) =>
+        callSegments(ds, cls, row, req.payload.params, false),
+      );
+      const checks = checkTargets(ds, cls, byCandidate, regions);
+      return { id: req.id, ok: true, result: { type: 'targets', regions, checks } };
+    }
+    case 'classes': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const nMarkers = cls.nMarkers;
+      const rowByCol = new Map(Array.from(cls.candidateCols).map((col, row) => [col, row]));
+      const lines = req.payload.sampleIds.map((sampleId) => {
+        const col = ds.genotypes.sampleIds.indexOf(sampleId);
+        const row = col >= 0 ? rowByCol.get(col) : undefined;
+        if (row === undefined) throw new Error(`sample is not a candidate: ${sampleId}`);
+        const base = row * nMarkers;
+        return { sampleId, classes: cls.classes.slice(base, base + nMarkers) };
+      });
+      return {
+        id: req.id,
+        ok: true,
+        result: {
+          type: 'classes',
+          chromosomeOrder: ds.chromosomeOrder,
+          chromLengthsBp: computeChromLengthsBp(ds),
+          markerChromIndex: ds.chromIndex.slice(),
+          markerPosBp: ds.markers.posBp.slice(),
+          sortedMarkerOrder: ds.sortedMarkerOrder.slice(),
+          informative: cls.informative.slice(),
+          lines,
+        },
+      };
+    }
     case 'compare':
-    case 'targets':
+      throw new Error('compare: not implemented (M2)');
+  }
+}
+
+/** Buffers to transfer for a given result; every array here is either a fresh allocation or a `.slice()` copy. */
+function transferablesFor(result: WorkerResult): Transferable[] {
+  switch (result.type) {
+    case 'loaded':
+      return [result.informativeGapsBp.buffer as ArrayBuffer];
     case 'qc':
-      throw new Error(`${req.type}: not implemented (planned for milestone M1/M2)`);
+      return [
+        result.report.markers.callRate.buffer as ArrayBuffer,
+        result.report.markers.informative.buffer as ArrayBuffer,
+        result.report.markers.lowCallRate.buffer as ArrayBuffer,
+      ];
+    case 'classes':
+      return [
+        result.chromLengthsBp.buffer as ArrayBuffer,
+        result.markerChromIndex.buffer as ArrayBuffer,
+        result.markerPosBp.buffer as ArrayBuffer,
+        result.sortedMarkerOrder.buffer as ArrayBuffer,
+        result.informative.buffer as ArrayBuffer,
+        ...result.lines.map((l) => l.classes.buffer as ArrayBuffer),
+      ];
+    case 'rpp':
+    case 'segments':
+    case 'segmentsAll':
+    case 'targets':
+      return [];
   }
 }
 
 self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
   try {
-    self.postMessage(handle(ev.data));
+    const response = handle(ev.data);
+    self.postMessage(response, response.ok ? transferablesFor(response.result) : []);
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     self.postMessage({ id: ev.data.id, ok: false, error } satisfies WorkerResponse);
