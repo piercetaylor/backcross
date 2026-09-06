@@ -10,6 +10,7 @@
  * Interface: lineSummaryCsv(lineRpp, chromosomeOrder) -> string.
  */
 import type { LineRpp } from '../core/types.ts';
+import { csvField } from './csv-field.ts';
 
 function num(x: number, digits = 6): string {
   return Number.isNaN(x) ? 'NA' : x.toFixed(digits);
@@ -37,7 +38,7 @@ export function lineSummaryCsv(lines: LineRpp[], chromosomeOrder: string[]): str
       return row === undefined ? 'NA' : num(row.rppCount);
     });
     return [
-      l.sampleId,
+      csvField(l.sampleId),
       o.nInformative,
       o.nCalled,
       o.nRpHom,

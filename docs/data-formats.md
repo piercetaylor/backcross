@@ -84,20 +84,22 @@ Map positions override genotype-file positions when they differ (the count of ov
 
 ## Target regions
 
-Typed in the UI or passed to the CLI as `name=Gm13:28,500,000-29,100,000` (thousands separators optional) or `name=<marker_id>` for a single marker. A region is `{name, chrom, startBp, endBp}`; markers inside `[startBp, endBp]` determine status.
+Typed in the UI or passed to the CLI as `name=Gm13:28,500,000-29,100,000` or `name=<marker_id>` for a single marker; without `name=` the whole text is the name. The locus is `CHROM:START-END` or `CHROM:POS`, where CHROM is any accepted chromosome spelling (it need not exist in the dataset; a region with no markers reports `no_data`), the separator is `-`, `–` or `..`, a reversed range is swapped, and each number takes optional thousands separators (`,`, `_`, space) and an optional unit `bp`, `kb` or `Mb` (default bp). In a range a unit on the end number also applies to a unit-less start number (`28.5-29.1Mb`); a decimal number with no unit anywhere is rejected rather than guessed. A region is `{name, chrom, startBp, endBp}`; informative markers inside `[startBp, endBp]` determine status.
 
 ## Analysis parameters
 
-| parameter         | default   | source                                                                  |
-| ----------------- | --------- | ----------------------------------------------------------------------- |
-| maxGapBp          | 2,000,000 | VITE_DEFAULT_MAX_GAP_BP; cap on the interval one marker represents (bp) |
-| maxGapCm          | 10        | VITE_DEFAULT_MAX_GAP_CM                                                 |
-| minSegmentMarkers | 2         | VITE_DEFAULT_MIN_SEGMENT_MARKERS                                        |
-| maxMissingSpan    | 3         | VITE_DEFAULT_MAX_MISSING_SPAN                                           |
-| lineMissingMax    | 0.10      | VITE_QC_LINE_MISSING_MAX                                                |
-| lineHetMax        | 0.05      | VITE_QC_LINE_HET_MAX                                                    |
-| markerCallRateMin | 0.80      | VITE_QC_MARKER_CALLRATE_MIN                                             |
-| parentHetMax      | 0.02      | VITE_QC_PARENT_HET_MAX                                                  |
+| parameter         | default    | source                                                                                                                                  |
+| ----------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| maxGapBp          | 2,000,000  | VITE_DEFAULT_MAX_GAP_BP; RPP coverage cap, the interval one marker represents (bp); used for bp-weighted RPP only                       |
+| maxGapCm          | 10         | VITE_DEFAULT_MAX_GAP_CM; the RPP coverage cap in cM                                                                                     |
+| maxSegmentGapBp   | 10,000,000 | VITE_DEFAULT_MAX_SEGMENT_GAP_BP; break a donor run when consecutive informative markers are farther apart than this; used without a map |
+| maxSegmentGapCm   | 10         | VITE_DEFAULT_MAX_SEGMENT_GAP_CM; the same test in cM, used whenever markers.csv supplies cM (docs/adr/0008)                             |
+| minSegmentMarkers | 2          | VITE_DEFAULT_MIN_SEGMENT_MARKERS                                                                                                        |
+| maxMissingSpan    | 3          | VITE_DEFAULT_MAX_MISSING_SPAN; skipped (missing or nonparental) informative markers allowed between two non-RP calls of one run         |
+| lineMissingMax    | 0.10       | VITE_QC_LINE_MISSING_MAX                                                                                                                |
+| lineHetMax        | 0.05       | VITE_QC_LINE_HET_MAX                                                                                                                    |
+| markerCallRateMin | 0.80       | VITE_QC_MARKER_CALLRATE_MIN                                                                                                             |
+| parentHetMax      | 0.02       | VITE_QC_PARENT_HET_MAX                                                                                                                  |
 
 ## Outputs
 
@@ -105,13 +107,13 @@ Typed in the UI or passed to the CLI as `name=Gm13:28,500,000-29,100,000` (thous
 
 One row per candidate. Columns: `sample_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20` (one wide column per chromosome in display order). Numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
 
-### Segments CSV (M1)
+### Segments CSV (implemented)
 
-`sample_id, chrom, start_bp, end_bp, left_flank_bp, right_flank_bp, n_markers, n_donor_hom, n_het, class, start_cm, end_cm, length_bp, length_cm`; class is `donor`, `het` or `mixed`; flank columns are `NA` at chromosome ends.
+`sample_id, chrom, start_bp, end_bp, left_flank_bp, right_flank_bp, n_markers, n_donor_hom, n_het, class, start_cm, end_cm, length_bp, length_cm, gap_criterion`; class is `donor`, `het` or `mixed`; flank columns are `NA` at chromosome ends; cM columns are `NA` without a map; `gap_criterion` is `cm` or `bp`, the dataset-level test (docs/adr/0008): `cm` when markers.csv supplied cM, in which case any step where either marker lacks a cM value was tested in bp instead (the loader warns how many markers that affects).
 
-### Target check CSV (M1)
+### Target check CSV (implemented)
 
-`sample_id, target, chrom, start_bp, end_bp, status, n_informative_in_region, segment_start_bp, segment_end_bp, drag_min_bp, drag_max_bp`; status is `donor`, `het`, `rp`, `recombinant` or `no_data`.
+`sample_id, target, chrom, start_bp, end_bp, status, n_informative_in_region, segment_start_bp, segment_end_bp, drag_min_bp, drag_max_bp`; status is `donor`, `het`, `rp`, `recombinant` (any mixture of classes, including donor with het) or `no_data`. `drag_min_bp` and `drag_max_bp` sum, over the two sides of the region, the donor DNA outside it: at least to the outermost non-RP marker of the overlapping segment, at most to its flanking RP marker; a side where the region extends past the segment contributes 0. Both are `NA` when no segment overlaps the region; `drag_max_bp` is `NA` when a flank is missing.
 
 ### Pairwise comparison CSV (M2)
 

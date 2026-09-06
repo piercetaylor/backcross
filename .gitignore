@@ -20,3 +20,6 @@ data/
 *.vcf.gz
 *.hmp.txt
 !tests/fixtures/**
+
+# Claude desktop launch config (local tooling)
+.claude/

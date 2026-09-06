@@ -146,8 +146,15 @@ export interface LineRpp {
 export interface SegmentParams {
   /** Minimum non-RP markers for a run to be reported as a segment. */
   minMarkers: number;
-  /** Split a run when consecutive non-RP markers are farther apart than this (bp). */
+  /**
+   * Split a run when two consecutive informative markers are farther apart
+   * than this (bp). Applied to every step when the dataset has no genetic
+   * map, and to any step where either marker lacks a cM value when it has
+   * one. Distinct from RppParams.maxGapBp, the coverage cap (docs/adr/0008).
+   */
   maxGapBp: number;
+  /** Same test in cM (absolute difference), for steps where both markers have cM. */
+  maxGapCm: number;
   /** Split a run when more than this many informative markers between two non-RP calls are missing or nonparental. */
   maxMissingSpan: number;
 }
@@ -183,6 +190,8 @@ export type TargetStatus = 'donor' | 'het' | 'rp' | 'recombinant' | 'no_data';
 export interface TargetCheck {
   sampleId: string;
   target: string;
+  /** The region that was checked, so exports need no separate lookup. */
+  region: TargetRegion;
   status: TargetStatus;
   nInformativeInRegion: number;
   /** Extent of the donor/het segment overlapping the region, if any. */

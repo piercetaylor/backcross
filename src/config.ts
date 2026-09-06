@@ -33,7 +33,8 @@ export const config: Readonly<AppConfig> = Object.freeze({
   },
   segments: {
     minMarkers: num('VITE_DEFAULT_MIN_SEGMENT_MARKERS', DEFAULT_SEGMENT_PARAMS.minMarkers),
-    maxGapBp: num('VITE_DEFAULT_MAX_GAP_BP', DEFAULT_SEGMENT_PARAMS.maxGapBp),
+    maxGapBp: num('VITE_DEFAULT_MAX_SEGMENT_GAP_BP', DEFAULT_SEGMENT_PARAMS.maxGapBp),
+    maxGapCm: num('VITE_DEFAULT_MAX_SEGMENT_GAP_CM', DEFAULT_SEGMENT_PARAMS.maxGapCm),
     maxMissingSpan: num('VITE_DEFAULT_MAX_MISSING_SPAN', DEFAULT_SEGMENT_PARAMS.maxMissingSpan),
   },
   qc: {

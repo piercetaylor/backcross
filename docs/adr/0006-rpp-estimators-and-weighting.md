@@ -14,7 +14,7 @@ Recurrent-parent proportion can be computed by counting markers or by weighting 
 
 ## Decision Outcome
 
-Option 3 (src/core/rpp.ts). Contribution is 1 for RP_HOM, 0.5 for HET, 0 for DONOR_HOM. Weighted estimators use, per side, min(half the distance to the adjacent called marker, half the maximum coverage), with chromosome ends using the distance to the end when a length is known, matching the Flapjack documentation [web] https://flapjack.hutton.ac.uk/en/latest/mabc.html. MISSING, NONPARENTAL and UNINFORMATIVE markers are excluded from numerator and denominator (equivalent to imputing the line's own mean [inference]). Defaults: 2 Mb and 10 cM coverage. The bp-weighted value is the display default; all three are exported.
+Option 3 (src/core/rpp.ts). Contribution is 1 for RP_HOM, 0.5 for HET, 0 for DONOR_HOM. Weighted estimators use, per side, min(half the distance to the adjacent called marker, half the maximum coverage), with chromosome ends using the distance to the end when a length is known, matching the Flapjack documentation [web] https://flapjack.hutton.ac.uk/en/latest/mabc.html. MISSING, NONPARENTAL and UNINFORMATIVE markers are excluded from numerator and denominator (equivalent to imputing the line's own mean [inference]). Defaults: 2 Mb and 10 cM coverage. Flapjack specifies the cap in cM only (its tutorial uses 10 cM); 2 Mb is this project's translation for map-less data at the euchromatic rate of about 1 cM per 197 kb reported by Schmutz et al. 2010 [web] https://www.nature.com/articles/nature08670, and it enters no computation other than the bp-weighted RPP (donor-run breaking has its own parameters, docs/adr/0008). The bp-weighted value is the display default; all three are exported.
 
 ### Consequences
 

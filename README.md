@@ -6,7 +6,7 @@ Isoline Browser characterises finished soybean near-isogenic lines against their
 
 ## What exists now
 
-Parsers for VCF 4.2+ (plain or bgzip), HapMap and wide CSV (nucleotide or A/B/H), the samples.csv and markers.csv contracts, parent-of-origin classification, RPP with three estimators, the per-line summary CSV, a CLI `summarize` command, a synthetic fixture and passing smoke tests. Segment calling, target checks, QC, the canvas renderer and the React screens are stubs whose interfaces are fixed in their header comments; see PLAN.md, "Milestones".
+Parsers for VCF 4.2+ (plain or bgzip), HapMap and wide CSV (nucleotide or A/B/H), the samples.csv and markers.csv contracts, parent-of-origin classification, RPP with three estimators, donor segment calling with breakpoint bounds (docs/adr/0008), target-region status with linkage-drag bounds, per-line, per-marker and dataset QC flags, the per-line summary, segments and target check CSVs, CLI `summarize`, `segments` and `targets` commands, a synthetic fixture with independently derived expectations, and passing tests. Pairwise comparison, the canvas renderer, the worker handlers beyond load and RPP, and the React screens are stubs whose interfaces are fixed in their header comments; see PLAN.md, "Milestones".
 
 ## Quickstart
 
@@ -21,6 +21,8 @@ npm run dev                   # Vite dev server with the screen shell
 node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf \
   --samples tests/fixtures/synthetic/samples.csv \
   --markers tests/fixtures/synthetic/markers.csv --out summary.csv
+node src/cli.ts segments  ... --out segments.csv        # same inputs; donor segments per line
+node src/cli.ts targets   ... --target rhg1=Gm18:1.6Mb-1.7Mb --out targets.csv
 ```
 
 `npm run build` writes a static site to dist/ (base path from `VITE_BASE_PATH`, see .env.example) that can be served from GitHub Pages or any static server.

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { Dataset } from '../src/core/types.ts';
+import type { Dataset, SegmentParams } from '../src/core/types.ts';
 import { assembleDataset, parseGenotypesText } from '../src/io/loaders.ts';
 import type { GenotypeFormat } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
@@ -21,12 +21,30 @@ export interface ExpectedLine {
   byChromosome: Record<string, { nCalled: number; rppCount: number | null; rppBp: number | null }>;
 }
 
+/** A DonorSegment as the generator writes it: no sampleId, NaN as null. */
+export interface ExpectedSegment {
+  chrom: string;
+  startBp: number;
+  endBp: number;
+  leftFlankBp: number | null;
+  rightFlankBp: number | null;
+  nMarkers: number;
+  nDonorHom: number;
+  nHet: number;
+  class: 'donor' | 'het' | 'mixed';
+  startCm: number | null;
+  endCm: number | null;
+}
+
 export interface Expected {
   nMarkers: number;
   nInformative: number;
   lines: Record<string, ExpectedLine>;
   params: { maxGapBp: number; maxGapCm: number };
   markerReasons: Record<string, string>;
+  segmentParams: SegmentParams;
+  /** Keyed by gap criterion, then sample id. */
+  segments: { cm: Record<string, ExpectedSegment[]>; bp: Record<string, ExpectedSegment[]> };
 }
 
 export function readFixture(name: string): string {

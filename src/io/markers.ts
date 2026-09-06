@@ -71,7 +71,15 @@ export function applyMarkerMap(markers: MarkerTable, map: MarkerMap): string[] {
       cm[m] = e.cm;
     }
   }
-  if (anyCm) markers.cm = cm;
+  if (anyCm) {
+    markers.cm = cm;
+    let noCm = 0;
+    for (let m = 0; m < cm.length; m++) if (Number.isNaN(cm[m])) noCm++;
+    if (noCm > 0)
+      warnings.push(
+        `markers.csv: ${noCm} marker(s) have no cM; donor-run breaking uses the bp gap for steps touching them (docs/adr/0008)`,
+      );
+  }
   if (moved > 0)
     warnings.push(
       `markers.csv: ${moved} marker position(s) differ from the genotype file; markers.csv used`,

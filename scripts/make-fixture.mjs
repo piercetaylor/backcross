@@ -14,7 +14,12 @@
  *     nonparental allele, one het segment, and one sample-swap-like line.
  *
  * Expected values are derived from the planted classes with the formulas in
- * PLAN.md (algorithm 2), written to expected.json. Outputs: genotypes.vcf,
+ * PLAN.md (algorithms 2 and 3) and written to expected.json: class counts, RPP
+ * by all three estimators, and donor segments under both gap criteria of
+ * docs/adr/0008 (cM when markers.csv is loaded, bp when it is not). The
+ * segment caller here is a second, deliberately plain implementation of the
+ * rule so that src/core/segments.ts is checked against something it does not
+ * share code with. Outputs: genotypes.vcf,
  * genotypes.hmp.txt, genotypes_wide.csv (nucleotide), genotypes_coded.csv
  * (A/B/H, informative markers only), samples.csv, markers.csv, expected.json.
  *
@@ -198,6 +203,110 @@ for (const s of candidates) {
   };
 }
 expected.params = { maxGapBp: MAX_GAP_BP, maxGapCm: MAX_GAP_CM };
+
+// ---- expected donor segments (algorithm 3, docs/adr/0008) -------------------
+// Independent implementation: walk informative markers per chromosome, break a
+// run when consecutive informative markers are farther apart than the gap
+// (cM when a map is present, else bp), when more than MAX_MISSING_SPAN skipped
+// markers separate two non-RP calls, or at an RP call. Missing (0) and
+// nonparental (5) calls are skipped; runs shorter than MIN_MARKERS are dropped.
+const SEG_MAX_GAP_BP = 10_000_000;
+const SEG_MAX_GAP_CM = 10;
+const MIN_MARKERS = 2;
+const MAX_MISSING_SPAN = 3;
+const nz = (x) => (Number.isNaN(x) ? null : x); // JSON has no NaN
+
+function callSegmentsPlain(cls, criterion) {
+  const segments = [];
+  for (let c = 1; c <= N_CHROM; c++) {
+    const chrom = `Gm${String(c).padStart(2, '0')}`;
+    const inf = markers
+      .map((mk, m) => ({ mk, m }))
+      .filter(({ mk }) => mk.chrom === chrom && mk.informative)
+      .sort((a, b) => a.mk.pos - b.mk.pos);
+    const runs = [];
+    let run = null;
+    let skipped = 0;
+    for (let i = 0; i < inf.length; i++) {
+      const { mk, m } = inf[i];
+      if (run !== null && i > 0) {
+        const prev = inf[i - 1].mk;
+        const tooFar =
+          criterion === 'cm'
+            ? Math.abs(mk.cm - prev.cm) > SEG_MAX_GAP_CM
+            : mk.pos - prev.pos > SEG_MAX_GAP_BP;
+        if (tooFar) {
+          runs.push(run);
+          run = null;
+          skipped = 0;
+        }
+      }
+      const k = cls[m];
+      if (k === 0 || k === 5) {
+        if (run !== null && ++skipped > MAX_MISSING_SPAN) {
+          runs.push(run);
+          run = null;
+          skipped = 0;
+        }
+        continue;
+      }
+      if (k === 1) {
+        if (run !== null) runs.push(run);
+        run = null;
+        skipped = 0;
+        continue;
+      }
+      if (run === null) run = [];
+      run.push(i);
+      skipped = 0;
+    }
+    if (run !== null) runs.push(run);
+    for (const r of runs) {
+      if (r.length < MIN_MARKERS) continue;
+      const first = inf[r[0]];
+      const last = inf[r[r.length - 1]];
+      let leftFlankBp = NaN;
+      for (let i = r[0] - 1; i >= 0; i--)
+        if (cls[inf[i].m] === 1) {
+          leftFlankBp = inf[i].mk.pos;
+          break;
+        }
+      let rightFlankBp = NaN;
+      for (let i = r[r.length - 1] + 1; i < inf.length; i++)
+        if (cls[inf[i].m] === 1) {
+          rightFlankBp = inf[i].mk.pos;
+          break;
+        }
+      const nDonorHom = r.filter((i) => cls[inf[i].m] === 2).length;
+      const nHet = r.length - nDonorHom;
+      segments.push({
+        chrom,
+        startBp: first.mk.pos,
+        endBp: last.mk.pos,
+        leftFlankBp: nz(leftFlankBp),
+        rightFlankBp: nz(rightFlankBp),
+        nMarkers: r.length,
+        nDonorHom,
+        nHet,
+        class: nHet === 0 ? 'donor' : nDonorHom === 0 ? 'het' : 'mixed',
+        startCm: criterion === 'cm' ? first.mk.cm : null,
+        endCm: criterion === 'cm' ? last.mk.cm : null,
+      });
+    }
+  }
+  return segments;
+}
+expected.segmentParams = {
+  minMarkers: MIN_MARKERS,
+  maxGapBp: SEG_MAX_GAP_BP,
+  maxGapCm: SEG_MAX_GAP_CM,
+  maxMissingSpan: MAX_MISSING_SPAN,
+};
+expected.segments = { cm: {}, bp: {} };
+for (const s of candidates) {
+  expected.segments.cm[s] = callSegmentsPlain(planted[s], 'cm');
+  expected.segments.bp[s] = callSegmentsPlain(planted[s], 'bp');
+}
 
 // ---- genotype cells ---------------------------------------------------------
 const samples = ['RP_Williams', 'DONOR_PI', ...candidates];
