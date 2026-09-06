@@ -699,8 +699,8 @@
  },
  "segmentParams": {
   "minMarkers": 2,
-  "maxGapBp": 10000000,
-  "maxGapCm": 10,
+  "maxSegmentGapBp": 10000000,
+  "maxSegmentGapCm": 10,
   "maxMissingSpan": 3
  },
  "segments": {

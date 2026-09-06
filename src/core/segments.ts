@@ -12,7 +12,7 @@
  *     marker's call class, and is checked before that class is examined. The
  *     step is the cM distance when the dataset carries a genetic map and both
  *     markers have a finite cM value; otherwise it is the bp distance. A step
- *     exceeding `maxGapCm` (cM) or `maxGapBp` (bp) closes an open run.
+ *     exceeding `maxSegmentGapCm` (cM) or `maxSegmentGapBp` (bp) closes an open run.
  *   - MISSING and NONPARENTAL calls neither extend nor break a run by
  *     themselves, but count toward `maxMissingSpan`: once more than that many
  *     have accumulated since the run's last member, the run closes.
@@ -42,8 +42,8 @@ import type {
 
 export const DEFAULT_SEGMENT_PARAMS: SegmentParams = {
   minMarkers: 2,
-  maxGapBp: 10_000_000,
-  maxGapCm: 10,
+  maxSegmentGapBp: 10_000_000,
+  maxSegmentGapCm: 10,
   maxMissingSpan: 3,
 };
 
@@ -88,9 +88,9 @@ export function callSegments(
       const a = cm[prev] as number;
       const b = cm[m] as number;
       // Absolute difference: a map need not be monotone in bp order.
-      if (Number.isFinite(a) && Number.isFinite(b)) return Math.abs(b - a) > params.maxGapCm;
+      if (Number.isFinite(a) && Number.isFinite(b)) return Math.abs(b - a) > params.maxSegmentGapCm;
     }
-    return (markers.posBp[m] as number) - (markers.posBp[prev] as number) > params.maxGapBp;
+    return (markers.posBp[m] as number) - (markers.posBp[prev] as number) > params.maxSegmentGapBp;
   }
 
   function segCm(m: number): number {

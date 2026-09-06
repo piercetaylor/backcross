@@ -92,6 +92,25 @@ function main(argv: string[]): number {
     console.error(USAGE);
     return 2;
   }
+  // An option that belongs to another subcommand is a mistake, not a no-op:
+  // --max-gap-bp on `segments` would otherwise be silently ignored.
+  const RPP_ONLY = ['max-gap-bp', 'max-gap-cm'] as const;
+  const SEGMENT_ONLY = [
+    'max-segment-gap-bp',
+    'max-segment-gap-cm',
+    'min-markers',
+    'max-missing-span',
+    'include-short',
+    'target',
+  ] as const;
+  const foreign = (command === 'summarize' ? SEGMENT_ONLY : RPP_ONLY).filter(
+    (k) => values[k] !== undefined,
+  );
+  if (foreign.length > 0) {
+    console.error(`${command}: option(s) not accepted here: ${foreign.map((k) => `--${k}`).join(', ')}
+${USAGE}`);
+    return 2;
+  }
   const dataset = load(values.genotypes, values.samples, values.markers);
   const cls = classifyDataset(dataset);
 
@@ -105,13 +124,19 @@ function main(argv: string[]): number {
   } else {
     const params: SegmentParams = {
       minMarkers: numberOr(values['min-markers'], DEFAULT_SEGMENT_PARAMS.minMarkers),
-      maxGapBp: numberOr(values['max-segment-gap-bp'], DEFAULT_SEGMENT_PARAMS.maxGapBp),
-      maxGapCm: numberOr(values['max-segment-gap-cm'], DEFAULT_SEGMENT_PARAMS.maxGapCm),
+      maxSegmentGapBp: numberOr(
+        values['max-segment-gap-bp'],
+        DEFAULT_SEGMENT_PARAMS.maxSegmentGapBp,
+      ),
+      maxSegmentGapCm: numberOr(
+        values['max-segment-gap-cm'],
+        DEFAULT_SEGMENT_PARAMS.maxSegmentGapCm,
+      ),
       maxMissingSpan: numberOr(values['max-missing-span'], DEFAULT_SEGMENT_PARAMS.maxMissingSpan),
     };
     const criterion = segmentGapCriterion(dataset);
     console.error(
-      `segment gap criterion: ${criterion} (${criterion === 'cm' ? `${params.maxGapCm} cM` : `${params.maxGapBp} bp`})`,
+      `segment gap criterion: ${criterion} (${criterion === 'cm' ? `${params.maxSegmentGapCm} cM` : `${params.maxSegmentGapBp} bp`})`,
     );
     const segments = allSegments(dataset, cls, params, values['include-short'] === true);
     if (command === 'segments') {

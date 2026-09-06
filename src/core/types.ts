@@ -152,9 +152,9 @@ export interface SegmentParams {
    * map, and to any step where either marker lacks a cM value when it has
    * one. Distinct from RppParams.maxGapBp, the coverage cap (docs/adr/0008).
    */
-  maxGapBp: number;
+  maxSegmentGapBp: number;
   /** Same test in cM (absolute difference), for steps where both markers have cM. */
-  maxGapCm: number;
+  maxSegmentGapCm: number;
   /** Split a run when more than this many informative markers between two non-RP calls are missing or nonparental. */
   maxMissingSpan: number;
 }

@@ -298,8 +298,8 @@ function callSegmentsPlain(cls, criterion) {
 }
 expected.segmentParams = {
   minMarkers: MIN_MARKERS,
-  maxGapBp: SEG_MAX_GAP_BP,
-  maxGapCm: SEG_MAX_GAP_CM,
+  maxSegmentGapBp: SEG_MAX_GAP_BP,
+  maxSegmentGapCm: SEG_MAX_GAP_CM,
   maxMissingSpan: MAX_MISSING_SPAN,
 };
 expected.segments = { cm: {}, bp: {} };

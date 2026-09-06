@@ -81,8 +81,8 @@ export function SummaryScreen({
   const activeCriterion = gapCriterion ?? loaded.gapCriterion;
   const activeGapDefault =
     activeCriterion === 'cm'
-      ? `${segmentParams.maxGapCm} cM (cM criterion active; bp default is ${mb(segmentParams.maxGapBp)} Mb)`
-      : `${mb(segmentParams.maxGapBp)} Mb`;
+      ? `${segmentParams.maxSegmentGapCm} cM (cM criterion active; bp default is ${mb(segmentParams.maxSegmentGapBp)} Mb)`
+      : `${mb(segmentParams.maxSegmentGapBp)} Mb`;
 
   // Ten equal call-rate bins over [0, 1].
   const histCounts = new Array<number>(10).fill(0);

@@ -183,18 +183,18 @@ export function UploadScreen({
         />
         <NumberField
           label="Maximum marker gap (bp)"
-          value={params.segments.maxGapBp}
+          value={params.segments.maxSegmentGapBp}
           disabled={busy}
           onChange={(v) =>
-            onParamsChange({ ...params, segments: { ...params.segments, maxGapBp: v } })
+            onParamsChange({ ...params, segments: { ...params.segments, maxSegmentGapBp: v } })
           }
         />
         <NumberField
           label="Maximum marker gap (cM)"
-          value={params.segments.maxGapCm}
+          value={params.segments.maxSegmentGapCm}
           disabled={busy}
           onChange={(v) =>
-            onParamsChange({ ...params, segments: { ...params.segments, maxGapCm: v } })
+            onParamsChange({ ...params, segments: { ...params.segments, maxSegmentGapCm: v } })
           }
         />
         <NumberField

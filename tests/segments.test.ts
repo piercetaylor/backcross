@@ -183,7 +183,7 @@ describe('callSegments: missing-span bridging (the case the old consecutive-non-
     // The D-to-D span across the two M calls is 6 Mb (4 Mb to 10 Mb), which
     // would have failed the old rule (gap measured between consecutive
     // non-RP calls). The gap test here only looks at consecutive informative
-    // markers (each step is 2 Mb, under maxGapBp), and 2 skipped markers is
+    // markers (each step is 2 Mb, under maxSegmentGapBp), and 2 skipped markers is
     // within maxMissingSpan (3), so the run bridges the missing pair.
     expect(segs).toHaveLength(1);
     expect(segs[0]).toMatchObject({ startBp: 2 * MB, endBp: 12 * MB, nMarkers: 4 });
@@ -275,8 +275,8 @@ describe('callSegments: genetic-map gap criterion', () => {
     ]);
     const segs = callSegments(dataset, cls, 0);
     // The physical step between the two D pairs is only 2 Mb (2 Mb to 4 Mb),
-    // well under maxGapBp, but the criterion is cm here and the cm step (2
-    // to 14) is 12, over maxGapCm (10), so it splits anyway.
+    // well under maxSegmentGapBp, but the criterion is cm here and the cm step (2
+    // to 14) is 12, over maxSegmentGapCm (10), so it splits anyway.
     expect(segs).toHaveLength(2);
     expect(segs[0]).toMatchObject({ startBp: 1 * MB, endBp: 2 * MB, nMarkers: 2 });
     expect(segs[1]).toMatchObject({ startBp: 4 * MB, endBp: 5 * MB, nMarkers: 2 });
@@ -295,8 +295,8 @@ describe('callSegments: NaN cM falls back to bp for that step', () => {
     ]);
     const segs = callSegments(dataset, cls, 0);
     // The step into the NaN-cm marker falls back to bp (44 - 4 = 40 Mb, over
-    // maxGapBp) and splits; the step out of it also falls back to bp (46 -
-    // 44 = 2 Mb, under maxGapBp) and does not.
+    // maxSegmentGapBp) and splits; the step out of it also falls back to bp (46 -
+    // 44 = 2 Mb, under maxSegmentGapBp) and does not.
     expect(segs).toHaveLength(2);
     expect(segs[0]).toMatchObject({ startBp: 2 * MB, endBp: 4 * MB, nMarkers: 2 });
     expect(segs[1]).toMatchObject({ startBp: 44 * MB, endBp: 46 * MB, nMarkers: 2 });
@@ -367,7 +367,7 @@ describe('callSegments: nonparental and uninformative markers', () => {
     expect(segs[0]).toMatchObject({ startBp: 1 * MB, endBp: 3 * MB, nMarkers: 2 });
   });
 
-  it('case 11a: UNINFORMATIVE markers between two D calls are invisible to the walk, within maxGapBp', () => {
+  it('case 11a: UNINFORMATIVE markers between two D calls are invisible to the walk, within maxSegmentGapBp', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0 * MB, cls: R },
       { pos: 1 * MB, cls: D },
@@ -381,12 +381,12 @@ describe('callSegments: nonparental and uninformative markers', () => {
     ]);
     const segs = callSegments(dataset, cls, 0);
     // The U markers are not in the informative walk, so the gap test compares
-    // the two D calls directly: 7 Mb - 1 Mb = 6 Mb, under maxGapBp (10 Mb).
+    // the two D calls directly: 7 Mb - 1 Mb = 6 Mb, under maxSegmentGapBp (10 Mb).
     expect(segs).toHaveLength(1);
     expect(segs[0]).toMatchObject({ startBp: 1 * MB, endBp: 7 * MB, nMarkers: 2 });
   });
 
-  it('case 11b: the same layout splits once the D-to-D distance across the U stretch exceeds maxGapBp', () => {
+  it('case 11b: the same layout splits once the D-to-D distance across the U stretch exceeds maxSegmentGapBp', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0 * MB, cls: R },
       { pos: 1 * MB, cls: D },
@@ -402,7 +402,7 @@ describe('callSegments: nonparental and uninformative markers', () => {
     ]);
     const segs = callSegments(dataset, cls, 0);
     // Consecutive informative markers: D@2Mb then D@18Mb, a 16 Mb step, over
-    // maxGapBp (10 Mb), even though every marker in between is invisible.
+    // maxSegmentGapBp (10 Mb), even though every marker in between is invisible.
     expect(segs).toHaveLength(2);
     expect(segs[0]).toMatchObject({ startBp: 1 * MB, endBp: 2 * MB });
     expect(segs[1]).toMatchObject({ startBp: 18 * MB, endBp: 19 * MB });
@@ -572,12 +572,12 @@ describe('callSegments: edge cases from review', () => {
     });
   });
 
-  it('review 5a: a bp step of exactly maxGapBp (10 Mb) does not split', () => {
+  it('review 5a: a bp step of exactly maxSegmentGapBp (10 Mb) does not split', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0, cls: R },
       { pos: 1 * MB, cls: D },
       { pos: 2 * MB, cls: D },
-      { pos: 12 * MB, cls: D }, // 10,000,000 bp step from 2 Mb: exactly maxGapBp
+      { pos: 12 * MB, cls: D }, // 10,000,000 bp step from 2 Mb: exactly maxSegmentGapBp
       { pos: 13 * MB, cls: D },
       { pos: 14 * MB, cls: R },
     ]);
@@ -586,12 +586,12 @@ describe('callSegments: edge cases from review', () => {
     expect(segs[0]).toMatchObject({ nMarkers: 4 });
   });
 
-  it('review 5b: one bp above maxGapBp splits', () => {
+  it('review 5b: one bp above maxSegmentGapBp splits', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0, cls: R },
       { pos: 1_000_000, cls: D },
       { pos: 2_000_000, cls: D },
-      { pos: 12_000_001, cls: D }, // 10,000,001 bp step: one over maxGapBp
+      { pos: 12_000_001, cls: D }, // 10,000,001 bp step: one over maxSegmentGapBp
       { pos: 13_000_001, cls: D },
       { pos: 14_000_001, cls: R },
     ]);
@@ -601,12 +601,12 @@ describe('callSegments: edge cases from review', () => {
     expect(segs[1]).toMatchObject({ nMarkers: 2 });
   });
 
-  it('review 5c: a cM step of exactly maxGapCm (10) does not split', () => {
+  it('review 5c: a cM step of exactly maxSegmentGapCm (10) does not split', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0, cm: 0, cls: R },
       { pos: 1 * MB, cm: 1, cls: D },
       { pos: 2 * MB, cm: 2, cls: D },
-      { pos: 3 * MB, cm: 12, cls: D }, // 10 cM step from cm 2: exactly maxGapCm
+      { pos: 3 * MB, cm: 12, cls: D }, // 10 cM step from cm 2: exactly maxSegmentGapCm
       { pos: 4 * MB, cm: 13, cls: D },
       { pos: 5 * MB, cm: 14, cls: R },
     ]);
@@ -615,12 +615,12 @@ describe('callSegments: edge cases from review', () => {
     expect(segs[0]).toMatchObject({ nMarkers: 4 });
   });
 
-  it('review 5d: one cM above maxGapCm splits', () => {
+  it('review 5d: one cM above maxSegmentGapCm splits', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0, cm: 0, cls: R },
       { pos: 1 * MB, cm: 1, cls: D },
       { pos: 2 * MB, cm: 2, cls: D },
-      { pos: 3 * MB, cm: 13, cls: D }, // 11 cM step from cm 2: over maxGapCm
+      { pos: 3 * MB, cm: 13, cls: D }, // 11 cM step from cm 2: over maxSegmentGapCm
       { pos: 4 * MB, cm: 14, cls: D },
       { pos: 5 * MB, cm: 15, cls: R },
     ]);
@@ -630,7 +630,7 @@ describe('callSegments: edge cases from review', () => {
     expect(segs[1]).toMatchObject({ nMarkers: 2 });
   });
 
-  it('review 6: a negative cM step splits via Math.abs, since |cm(-20) - cm(2)| = 22 > maxGapCm', () => {
+  it('review 6: a negative cM step splits via Math.abs, since |cm(-20) - cm(2)| = 22 > maxSegmentGapCm', () => {
     const { dataset, cls } = makeSingleChrom([
       { pos: 0 * MB, cm: 0, cls: D },
       { pos: 2 * MB, cm: 1, cls: D },
@@ -641,7 +641,7 @@ describe('callSegments: edge cases from review', () => {
     ]);
     const segs = callSegments(dataset, cls, 0);
     // The raw difference (-20 - 2 = -22) is negative; the gap test uses
-    // Math.abs, so |-22| = 22 > maxGapCm (10) and the run splits.
+    // Math.abs, so |-22| = 22 > maxSegmentGapCm (10) and the run splits.
     expect(segs).toHaveLength(2);
     expect(segs[0]).toMatchObject({ nMarkers: 3, startBp: 0, endBp: 4 * MB });
     expect(segs[1]).toMatchObject({ nMarkers: 3, startBp: 6 * MB, endBp: 10 * MB });
@@ -683,7 +683,7 @@ describe('callSegments: edge cases from review', () => {
     expect(gm01).toHaveLength(2);
     expect(gm01[0]).toMatchObject({ startBp: 2 * MB, endBp: 4 * MB, nMarkers: 2 });
     expect(gm01[1]).toMatchObject({ startBp: 44 * MB, endBp: 46 * MB, nMarkers: 2 });
-    // Gm02: the same 40 Mb step is only 3 cM, under maxGapCm, so it does not split.
+    // Gm02: the same 40 Mb step is only 3 cM, under maxSegmentGapCm, so it does not split.
     expect(gm02).toHaveLength(1);
     expect(gm02[0]).toMatchObject({ startBp: 2 * MB, endBp: 46 * MB, nMarkers: 4 });
   });
