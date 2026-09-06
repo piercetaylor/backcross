@@ -1,0 +1,9 @@
+sample_id,line_name,role,generation,family_id,notes
+RP_Williams,Williams 82,recurrent_parent,,,"synthetic recurrent parent"
+DONOR_PI,PI 000000,donor_parent,,,"synthetic donor"
+NIL_01,NIL-01,candidate,BC5F3,FAM1,"one donor segment Gm13"
+NIL_02,NIL-02,candidate,BC5F3,FAM1,"donor segment Gm13 plus het segment Gm02"
+NIL_03,NIL-03,candidate,BC5F3,FAM1,"one nonparental call Gm07, isolated donor call Gm18"
+NIL_04,NIL-04,candidate,BC5F3,FAM1,"donor segment Gm13 with missing calls inside; Gm05 start segment"
+NIL_05,NIL-05,candidate,BC5F3,FAM1,"mostly donor genome (sample swap pattern)"
+NIL_06,NIL-06,candidate,BC5F3,FAM1,"15% missing; het segment Gm12"

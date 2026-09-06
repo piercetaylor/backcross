@@ -1,0 +1,4 @@
+# Normalise line endings: the repository is LF everywhere, so a regenerated
+# fixture on Windows matches the committed files (CI runs `npm run fixture`
+# followed by `git diff --exit-code`).
+* text=auto eol=lf

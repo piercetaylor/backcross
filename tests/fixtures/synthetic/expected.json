@@ -1,0 +1,742 @@
+{
+ "nMarkers": 500,
+ "nInformative": 460,
+ "lines": {
+  "NIL_01": {
+   "counts": {
+    "rp_hom": 453,
+    "donor_hom": 4,
+    "het": 0,
+    "missing": 3,
+    "nonparental": 0,
+    "uninformative": 40
+   },
+   "rppCount": 0.9912472647702407,
+   "rppBp": 0.9911697630558458,
+   "rppCm": 0.9912028834992975,
+   "byChromosome": {
+    "Gm01": {
+     "nCalled": 18,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm02": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm03": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm04": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm05": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm06": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm07": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm08": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm09": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm10": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm11": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm12": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm13": {
+     "nCalled": 23,
+     "rppCount": 0.8260869565217391,
+     "rppBp": 0.8260869565217391
+    },
+    "Gm14": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm15": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm16": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm17": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm18": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm19": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm20": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    }
+   }
+  },
+  "NIL_02": {
+   "counts": {
+    "rp_hom": 453,
+    "donor_hom": 5,
+    "het": 2,
+    "missing": 0,
+    "nonparental": 0,
+    "uninformative": 40
+   },
+   "rppCount": 0.9869565217391304,
+   "rppBp": 0.9868265387531191,
+   "rppCm": 0.9877817826379132,
+   "byChromosome": {
+    "Gm01": {
+     "nCalled": 18,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm02": {
+     "nCalled": 23,
+     "rppCount": 0.9565217391304348,
+     "rppBp": 0.9565217391304348
+    },
+    "Gm03": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm04": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm05": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm06": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm07": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm08": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm09": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm10": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm11": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm12": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm13": {
+     "nCalled": 24,
+     "rppCount": 0.7916666666666666,
+     "rppBp": 0.7916666666666666
+    },
+    "Gm14": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm15": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm16": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm17": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm18": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm19": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm20": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    }
+   }
+  },
+  "NIL_03": {
+   "counts": {
+    "rp_hom": 458,
+    "donor_hom": 1,
+    "het": 0,
+    "missing": 0,
+    "nonparental": 1,
+    "uninformative": 40
+   },
+   "rppCount": 0.9978213507625272,
+   "rppBp": 0.9977995919605139,
+   "rppCm": 0.9980450852220663,
+   "byChromosome": {
+    "Gm01": {
+     "nCalled": 18,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm02": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm03": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm04": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm05": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm06": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm07": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm08": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm09": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm10": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm11": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm12": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm13": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm14": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm15": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm16": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm17": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm18": {
+     "nCalled": 24,
+     "rppCount": 0.9583333333333334,
+     "rppBp": 0.9583333333333334
+    },
+    "Gm19": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm20": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    }
+   }
+  },
+  "NIL_04": {
+   "counts": {
+    "rp_hom": 449,
+    "donor_hom": 9,
+    "het": 0,
+    "missing": 2,
+    "nonparental": 0,
+    "uninformative": 40
+   },
+   "rppCount": 0.980349344978166,
+   "rppBp": 0.9801526553879787,
+   "rppCm": 0.9776882433342173,
+   "byChromosome": {
+    "Gm01": {
+     "nCalled": 18,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm02": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm03": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm04": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm05": {
+     "nCalled": 20,
+     "rppCount": 0.8,
+     "rppBp": 0.7895505813204833
+    },
+    "Gm06": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm07": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm08": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm09": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm10": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm11": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm12": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm13": {
+     "nCalled": 22,
+     "rppCount": 0.7727272727272727,
+     "rppBp": 0.7727272727272727
+    },
+    "Gm14": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm15": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm16": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm17": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm18": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm19": {
+     "nCalled": 24,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm20": {
+     "nCalled": 25,
+     "rppCount": 1,
+     "rppBp": 1
+    }
+   }
+  },
+  "NIL_05": {
+   "counts": {
+    "rp_hom": 9,
+    "donor_hom": 451,
+    "het": 0,
+    "missing": 0,
+    "nonparental": 0,
+    "uninformative": 40
+   },
+   "rppCount": 0.01956521739130435,
+   "rppBp": 0.01976019187032136,
+   "rppCm": 0.019549147779339,
+   "byChromosome": {
+    "Gm01": {
+     "nCalled": 18,
+     "rppCount": 0.5,
+     "rppBp": 0.5
+    },
+    "Gm02": {
+     "nCalled": 23,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm03": {
+     "nCalled": 22,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm04": {
+     "nCalled": 22,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm05": {
+     "nCalled": 20,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm06": {
+     "nCalled": 20,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm07": {
+     "nCalled": 22,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm08": {
+     "nCalled": 23,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm09": {
+     "nCalled": 22,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm10": {
+     "nCalled": 21,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm11": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm12": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm13": {
+     "nCalled": 24,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm14": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm15": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm16": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm17": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm18": {
+     "nCalled": 24,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm19": {
+     "nCalled": 24,
+     "rppCount": 0,
+     "rppBp": 0
+    },
+    "Gm20": {
+     "nCalled": 25,
+     "rppCount": 0,
+     "rppBp": 0
+    }
+   }
+  },
+  "NIL_06": {
+   "counts": {
+    "rp_hom": 389,
+    "donor_hom": 0,
+    "het": 14,
+    "missing": 57,
+    "nonparental": 0,
+    "uninformative": 40
+   },
+   "rppCount": 0.9826302729528535,
+   "rppBp": 0.9852196579341487,
+   "rppCm": 0.9828958809972056,
+   "byChromosome": {
+    "Gm01": {
+     "nCalled": 14,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm02": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm03": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm04": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm05": {
+     "nCalled": 16,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm06": {
+     "nCalled": 15,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm07": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm08": {
+     "nCalled": 21,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm09": {
+     "nCalled": 17,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm10": {
+     "nCalled": 18,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm11": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm12": {
+     "nCalled": 24,
+     "rppCount": 0.7083333333333334,
+     "rppBp": 0.7134148107636064
+    },
+    "Gm13": {
+     "nCalled": 19,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm14": {
+     "nCalled": 20,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm15": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm16": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm17": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm18": {
+     "nCalled": 22,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm19": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    },
+    "Gm20": {
+     "nCalled": 23,
+     "rppCount": 1,
+     "rppBp": 1
+    }
+   }
+  }
+ },
+ "params": {
+  "maxGapBp": 2000000,
+  "maxGapCm": 10
+ },
+ "markerReasons": {
+  "syn_Gm01_06": "monomorphic",
+  "syn_Gm01_12": "monomorphic",
+  "syn_Gm01_13": "monomorphic",
+  "syn_Gm01_16": "rp_het",
+  "syn_Gm01_17": "monomorphic",
+  "syn_Gm01_20": "monomorphic",
+  "syn_Gm01_24": "monomorphic",
+  "syn_Gm02_01": "monomorphic",
+  "syn_Gm02_03": "rp_het",
+  "syn_Gm03_01": "monomorphic",
+  "syn_Gm03_20": "rp_het",
+  "syn_Gm03_25": "monomorphic",
+  "syn_Gm04_13": "monomorphic",
+  "syn_Gm04_17": "monomorphic",
+  "syn_Gm04_20": "monomorphic",
+  "syn_Gm05_04": "monomorphic",
+  "syn_Gm05_06": "monomorphic",
+  "syn_Gm05_09": "monomorphic",
+  "syn_Gm05_15": "monomorphic",
+  "syn_Gm05_23": "monomorphic",
+  "syn_Gm06_01": "rp_het",
+  "syn_Gm06_06": "monomorphic",
+  "syn_Gm06_11": "monomorphic",
+  "syn_Gm06_12": "donor_missing",
+  "syn_Gm06_18": "monomorphic",
+  "syn_Gm07_12": "monomorphic",
+  "syn_Gm07_15": "monomorphic",
+  "syn_Gm07_25": "monomorphic",
+  "syn_Gm08_03": "donor_missing",
+  "syn_Gm08_13": "monomorphic",
+  "syn_Gm09_04": "rp_het",
+  "syn_Gm09_16": "monomorphic",
+  "syn_Gm09_21": "monomorphic",
+  "syn_Gm10_08": "monomorphic",
+  "syn_Gm10_09": "monomorphic",
+  "syn_Gm10_18": "monomorphic",
+  "syn_Gm10_23": "donor_missing",
+  "syn_Gm13_07": "monomorphic",
+  "syn_Gm18_10": "donor_missing",
+  "syn_Gm19_03": "donor_missing"
+ }
+}

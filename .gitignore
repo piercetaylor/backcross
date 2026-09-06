@@ -1,0 +1,22 @@
+# dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# local environment
+.env
+.env.local
+.env.*.local
+
+# editor and OS
+.vscode/
+.idea/
+.DS_Store
+
+# genotype data is never committed; keep user data out of the repo
+data/
+*.vcf
+*.vcf.gz
+*.hmp.txt
+!tests/fixtures/**
