@@ -125,7 +125,7 @@ M0 scaffold (complete): repository layout, parsers for all input formats, manife
 
 M1 vertical slice (complete, 2026-09-06): segments.ts, targets.ts, qc.ts and the worker handlers implemented; Upload, Summary and Lines screens functional; canvas renderer draws all lines with binning. Acceptance as measured: a 50K-marker VCF with 24 lines runs parse, classification, RPP, segment calling for every line and QC in 1.2 s in Node on the development laptop named in the verification block (parsing is 0.75 s of that); the browser load path, which adds the File read, the structured clone of results and the React render around the same worker code, was not timed, so the under-10 s criterion is supported by an eight-fold margin on the compute part and remains unverified end to end; planted segments in the fixture are called with exact start, end and flank positions under both gap criteria of docs/adr/0008 (tests/fixture-segments.test.ts, against expectations from a second implementation in the generator); QC flags on NIL_03, NIL_05 and NIL_06 match their planted design (tests/qc.test.ts). The segment-gap rule was corrected before implementation: see docs/adr/0008.
 
-M2 usable: Genotype view zoom and hover, Compare screen, Export screen with HTML report and all CSVs; keyboard navigation across screens; parameter editing after load without re-parsing. Acceptance: a breeder can go from files to an archived report without leaving the browser; exported CSVs open in R with `readr::read_csv` and the documented column names.
+M2 usable (complete, 2026-09-09): genotype view zoom and hover, Compare screen, Export screen with the HTML report and all CSVs, keyboard navigation across screens, parameter editing after load without re-parsing. Acceptance as measured: the path from three files to a downloaded, self-contained report was run end to end in Chromium against the synthetic fixture, so a breeder can reach an archived report without leaving the tab; exported CSVs carry the column names of docs/data-formats.md character for character and write NaN as `NA`, which is `readr::read_csv`'s default missing value, but no R is installed in this environment so the parse itself is unverified.
 
 M3 hardened: streaming parse of bgzipped VCF in the worker to keep memory under twice the file size; BrAPI allele-matrix loader; browser-mode tests for the renderer; accessibility review (focus order, contrast, non-colour cues); versioned data-contract document shared with progeny-selector. Acceptance: 50K × 200 lines under 30 s; Lighthouse accessibility score above 90; contract tests shared with the sibling repository pass on both.
 
@@ -238,3 +238,28 @@ Timing on a generated 50,000-marker VCF with 2 parents and 24 lines (7.1 MB; a t
 Verified in a Chromium-based browser against the synthetic fixture through the real load path (the three files handed to the file inputs as File objects): the worker parsed and classified, the app moved to Summary with focus on its heading, the Summary values equalled the test expectations (500 markers, 460 informative, parent polymorphism 0.939, NIL_03 nonparental_alleles, NIL_05 closer_to_donor, NIL_06 high_missing), the Lines table sorted with aria-sort and showed one status column per target region including two regions with the same name, a bad region spec appeared verbatim in the alert without disturbing the table, and the canvas drew six rows by twenty tracks in the Okabe-Ito class colours with no console errors. Not verified: a real SoySNP50K or 6K file; Firefox; the renderer under browser-mode tests (M3); GitHub Pages deployment.
 
 Two adversarial reviews preceded the two M1 commits; what they found and what changed is recorded in the commit messages (`git log`). Findings deferred to M2: a child_process smoke test for the CLI, a minimum-n note for identical_to_rp in the report, and a warning when a typed region names a chromosome absent from the dataset.
+
+### M2 run, 2026-09-09
+
+Same laptop and toolchain as the M1 run above.
+
+```
+$ npm run lint && npm run typecheck
+(exit 0; "All matched files use Prettier code style!")
+
+$ npm test
+ Test Files  12 passed (12)
+      Tests  186 passed (186)
+
+$ npm run build
+dist/assets/analysis.worker-*.js   34.18 kB
+dist/assets/index-*.js            243.77 kB
+
+$ npm run fixture; md5sum -c before.md5     # all files OK
+```
+
+Run in Chromium against the synthetic fixture through the real file inputs: the dataset loaded, Compare of NIL_03 against the recurrent parent reported 459 markers compared, 1 discordant and 1 skipped as nonparental (the planted contamination call, which earlier showed only as a smaller denominator), the per-chromosome table matched `expected.compare` from the generator's independent implementation, and all five CSV downloads plus the 21 kB HTML report were produced in the tab with no console errors. Zooming to `Gm13:19Mb-29Mb` draws the planted donor segments as contiguous blocks, and hovering names the marker, its position, cM, class and alleles.
+
+Not verified: any real SoySNP50K or BARCSoySNP6K file; Firefox; `readr::read_csv` actually parsing the exports (no R here); the renderer under browser-mode tests; GitHub Pages deployment.
+
+The adversarial review before the M2 commit ran on Opus rather than Fable, whose quota was exhausted. Findings deferred past M2, in rough order of value: the minority-class hatch ADR 0007 still records as outstanding; `binMajorityClasses` costs about 124 ms for a whole-genome draw at 50,000 markers by 200 lines, which is the M3 streaming and virtualisation problem, not a regression; a `child_process` smoke test for the CLI; and a warning when a typed target region names a chromosome absent from the dataset.
