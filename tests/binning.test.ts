@@ -12,7 +12,10 @@ describe('binMajorityClasses', () => {
     const classes = Uint8Array.from([CallClass.DONOR_HOM, CallClass.DONOR_HOM, CallClass.RP_HOM]);
     const markerIndices = [0, 1, 2];
     const out = binMajorityClasses(positions, classes, markerIndices, 0, 100, 2);
-    expect(out).toEqual(Uint8Array.from([CallClass.DONOR_HOM, 255]));
+    // Column 1 holds no marker, so it takes the class of the only occupied
+    // column (docs/adr/0007: a marker is drawn across the interval it
+    // represents rather than as a hairline).
+    expect(out).toEqual(Uint8Array.from([CallClass.DONOR_HOM, CallClass.DONOR_HOM]));
   });
 
   it('resolves a tie to the lower class code (RP_HOM beats DONOR_HOM)', () => {
@@ -53,7 +56,32 @@ describe('binMajorityClasses', () => {
     const markerIndices = [0];
     const out = binMajorityClasses(positions, classes, markerIndices, 0, 100, 10);
     expect(out[9]).toBe(CallClass.DONOR_HOM);
-    for (let i = 0; i < 9; i++) expect(out[i]).toBe(255);
+    // The single marker is the nearest one everywhere, so it fills the track.
+    for (let i = 0; i < 9; i++) expect(out[i]).toBe(CallClass.DONOR_HOM);
+  });
+
+  it('splits an empty span between the two markers that bound it', () => {
+    // Markers at 0 bp and 100 bp over a 10 px track: columns 0-4 are nearer
+    // the first, columns 5-9 nearer the second.
+    const positions = [0, 100];
+    const classes = Uint8Array.from([CallClass.RP_HOM, CallClass.DONOR_HOM]);
+    const out = binMajorityClasses(positions, classes, [0, 1], 0, 100, 10);
+    expect(Array.from(out)).toEqual([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
+  });
+
+  it('leaves a track with no marker entirely empty', () => {
+    const positions = [500];
+    const classes = Uint8Array.from([CallClass.DONOR_HOM]);
+    // The only marker lies outside the window, so nothing is drawn.
+    const out = binMajorityClasses(positions, classes, [0], 0, 100, 8);
+    expect(Array.from(out)).toEqual(Array(8).fill(255));
+  });
+
+  it('leaves a track whose only markers are uninformative empty', () => {
+    const positions = [10, 60];
+    const classes = Uint8Array.from([CallClass.UNINFORMATIVE, CallClass.UNINFORMATIVE]);
+    const out = binMajorityClasses(positions, classes, [0, 1], 0, 100, 6);
+    expect(Array.from(out)).toEqual(Array(6).fill(255));
   });
 
   it('a called marker wins over a missing one in the same column', () => {

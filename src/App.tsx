@@ -27,12 +27,48 @@
  * the latest committed value, rather than the closure captured when the
  * Load button was clicked. Parameter inputs are disabled (via `busy`) while
  * any chain is in flight.
+ *
+ * Keyboard navigation (M2): the screen nav is a roving-tabindex toolbar
+ * (role="toolbar") -- only the active screen's button is in the Tab order,
+ * and Left/Right/Home/End move focus between buttons and activate (navigate
+ * to) the one focus lands on, the standard toolbar/tab pattern. A "Skip to
+ * main content" link is the first focusable element on the page, targeting
+ * the focusable <main>. A global :focus-visible outline replaces the
+ * browser default, which is not reliably visible against this app's white
+ * background.
+ *
+ * Compare (M2): `compare` holds the latest 'compare' worker result;
+ * `runCompare` issues that request. Like `handleApplyTargets`, it is
+ * deliberately not on the shared sequence counter (the Compare screen is
+ * reachable at any time and a failure must not disturb an in-flight param
+ * chain or clobber the previous result), and it is cleared on every new
+ * load.
+ *
+ * Export (M2): the 'classes' fetch effect below (keyed on `screen`,
+ * `genotypeSampleIds`) also runs on the Export screen, not only Graphical
+ * genotypes, since the HTML report's per-line figures are rendered from the
+ * same worker-fetched, selection-keyed `classesData` rather than a second
+ * request. Everything else ExportScreen needs (rpp, qc,
+ * segmentsByCandidate, targets, params, gapCriterion, compare, busy) is
+ * already tracked here and passed straight through; `busy` lets it disable
+ * the one export that issues its own worker request (discordant-markers
+ * CSV) while a load or parameter chain could still replace the dataset that
+ * request would run against.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { config } from './config.ts';
 import type { GapCriterion } from './core/segments.ts';
-import type { DonorSegment, LineRpp, QcReport, TargetCheck, TargetRegion } from './core/types.ts';
+import type {
+  DonorSegment,
+  LineRpp,
+  PairwiseDiff,
+  QcReport,
+  SampleRecord,
+  TargetCheck,
+  TargetRegion,
+} from './core/types.ts';
 import { CompareScreen } from './ui/screens/CompareScreen.tsx';
 import { ExportScreen } from './ui/screens/ExportScreen.tsx';
 import { GenotypeViewScreen } from './ui/screens/GenotypeViewScreen.tsx';
@@ -58,6 +94,12 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+// Stable empty fallbacks for CompareScreen's `samples`/`chromosomeOrder`
+// props while nothing is loaded, so its effect (keyed on the `samples`
+// array's identity) does not re-fire on every unrelated App render.
+const NO_SAMPLES: SampleRecord[] = [];
+const NO_CHROMOSOMES: string[] = [];
+
 export function App() {
   const [screen, setScreen] = useState<Screen>('upload');
   const [params, setParams] = useState<AnalysisParams>({
@@ -75,12 +117,16 @@ export function App() {
     null,
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [compare, setCompare] = useState<PairwiseDiff | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [classesData, setClassesData] = useState<GenotypeClassesData | null>(null);
   const [classesKey, setClassesKey] = useState<string | null>(null);
   const [classesLoading, setClassesLoading] = useState(false);
+
+  const mainRef = useRef<HTMLElement | null>(null);
+  const navButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const clientRef = useRef<AnalysisClient | null>(null);
   // Always holds the latest committed `params`, so runLoad reads the
@@ -131,6 +177,7 @@ export function App() {
       setTargets(null);
       setTargetSpecs([]);
       setSelected(new Set());
+      setCompare(null);
       setClassesData(null);
       setClassesKey(null);
 
@@ -220,6 +267,25 @@ export function App() {
     }
   }
 
+  // Deliberately not on the shared sequence counter, for the same reason as
+  // handleApplyTargets above: the Compare screen is reachable at any time,
+  // including while a param chain is in flight, and a compare request must
+  // not race that chain's own state updates. A failure leaves the previous
+  // `compare` result on screen and only reports the error.
+  async function runCompare(sampleA: string, sampleB: string, mode: 'informative' | 'all') {
+    if (loaded === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await getClient().request('compare', { sampleA, sampleB, mode });
+      setCompare(res.diff);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // Full candidate list in rpp order (== classification.candidateCols order,
   // the order the worker uses for segmentsByCandidate and 'classes' rows);
   // the genotype view draws the selection, or every candidate when nothing
@@ -230,8 +296,12 @@ export function App() {
     [candidateIds, selected],
   );
 
+  // Also runs on the Export screen: the HTML report's per-line figures reuse
+  // this same worker-fetched, selection-keyed class data (see
+  // ui/screens/ExportScreen.tsx) rather than issuing a second 'classes'
+  // request, so the report shows the same lines the genotype view would.
   useEffect(() => {
-    if (screen !== 'genotypes' || loaded === null) return;
+    if ((screen !== 'genotypes' && screen !== 'export') || loaded === null) return;
     const ids = genotypeSampleIds;
     const key = ids.join(',');
     if (key === classesKey) return;
@@ -260,6 +330,26 @@ export function App() {
     };
   }, [screen, loaded, genotypeSampleIds, classesKey]);
 
+  // Roving-tabindex toolbar: Left/Right/Home/End move focus between screen
+  // buttons and activate (navigate to) the one focus lands on. Only the
+  // active screen's button is in the Tab order (see the button's tabIndex
+  // below); this handler moves both the React `screen` state and the DOM
+  // focus together so the two never disagree about which button is current.
+  function handleNavKeyDown(e: ReactKeyboardEvent<HTMLElement>) {
+    const idx = SCREENS.findIndex((s) => s.id === screen);
+    let nextIdx: number;
+    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % SCREENS.length;
+    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + SCREENS.length) % SCREENS.length;
+    else if (e.key === 'Home') nextIdx = 0;
+    else if (e.key === 'End') nextIdx = SCREENS.length - 1;
+    else return;
+    e.preventDefault();
+    const next = SCREENS[nextIdx];
+    if (next === undefined) return;
+    setScreen(next.id);
+    navButtonRefs.current[nextIdx]?.focus();
+  }
+
   return (
     <div
       style={{
@@ -275,18 +365,56 @@ export function App() {
         color: '#111111',
       }}
     >
+      {/* Global focus style (the browser default is not reliably visible on
+          this app's white background) and the skip-link's hidden-until-focus
+          styling; a plain <style> tag rather than a separate stylesheet, since
+          this file is the only one this change may touch. */}
+      <style>{`
+        *:focus-visible {
+          outline: 3px solid #005fcc;
+          outline-offset: 2px;
+        }
+        .skip-link {
+          position: absolute;
+          left: -9999px;
+          top: 0;
+          background: #ffffff;
+          color: #111111;
+          padding: 8px 12px;
+          border: 2px solid #005fcc;
+          z-index: 1000;
+        }
+        .skip-link:focus {
+          left: 8px;
+          top: 8px;
+        }
+      `}</style>
+      <a
+        href="#main-content"
+        className="skip-link"
+        onClick={(e) => {
+          e.preventDefault();
+          mainRef.current?.focus();
+        }}
+      >
+        Skip to main content
+      </a>
       <header>
         <h1 style={{ fontSize: 20, margin: 0 }}>Isoline Browser</h1>
         <p style={{ margin: '4px 0 12px', color: '#555' }}>
           Files are processed in this browser tab and never uploaded.
         </p>
-        <nav aria-label="Screens">
-          {SCREENS.map((s) => (
+        <nav role="toolbar" aria-label="Screens" onKeyDown={handleNavKeyDown}>
+          {SCREENS.map((s, i) => (
             <button
               key={s.id}
+              ref={(el) => {
+                navButtonRefs.current[i] = el;
+              }}
               type="button"
               onClick={() => setScreen(s.id)}
               aria-current={screen === s.id ? 'page' : undefined}
+              tabIndex={screen === s.id ? 0 : -1}
               style={{ marginRight: 8, fontWeight: screen === s.id ? 700 : 400 }}
             >
               {s.label}
@@ -295,7 +423,7 @@ export function App() {
         </nav>
       </header>
       {error !== null && <p role="alert">{error}</p>}
-      <main style={{ marginTop: 16 }}>
+      <main id="main-content" ref={mainRef} tabIndex={-1} style={{ marginTop: 16 }}>
         {screen === 'upload' && (
           <UploadScreen
             params={params}
@@ -327,10 +455,44 @@ export function App() {
           />
         )}
         {screen === 'genotypes' && (
-          <GenotypeViewScreen loaded={loaded} classesData={classesData} loading={classesLoading} />
+          <GenotypeViewScreen
+            loaded={loaded}
+            classesData={classesData}
+            loading={classesLoading}
+            onRequestMarkerDetail={(markerIndex, sampleIds) =>
+              getClient().request('markerDetail', { markerIndex, sampleIds })
+            }
+          />
         )}
-        {screen === 'compare' && <CompareScreen />}
-        {screen === 'export' && <ExportScreen />}
+        {screen === 'compare' && (
+          <CompareScreen
+            samples={loaded?.samples ?? NO_SAMPLES}
+            compare={compare}
+            runCompare={(a, b, mode) => void runCompare(a, b, mode)}
+            busy={busy}
+            chromosomeOrder={loaded?.chromosomeOrder ?? NO_CHROMOSOMES}
+          />
+        )}
+        {screen === 'export' && (
+          <ExportScreen
+            loaded={loaded}
+            rpp={rpp}
+            qc={qc}
+            segmentsByCandidate={segmentsByCandidate}
+            targets={targets}
+            params={params}
+            gapCriterion={gapCriterion}
+            compare={compare}
+            classesData={classesData}
+            classesLoading={classesLoading}
+            busy={busy}
+            onRequestDiscordantMarkersCsv={(sampleA, sampleB, mode) =>
+              getClient()
+                .request('discordantMarkersCsv', { sampleA, sampleB, mode })
+                .then((r) => r.csv)
+            }
+          />
+        )}
       </main>
     </div>
   );

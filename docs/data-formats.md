@@ -115,13 +115,13 @@ One row per candidate. Columns: `sample_id, n_informative, n_called, n_rp_hom, n
 
 `sample_id, target, chrom, start_bp, end_bp, status, n_informative_in_region, segment_start_bp, segment_end_bp, drag_min_bp, drag_max_bp`; status is `donor`, `het`, `rp`, `recombinant` (any mixture of classes, including donor with het) or `no_data`. `drag_min_bp` and `drag_max_bp` sum, over the two sides of the region, the donor DNA outside it: at least to the outermost non-RP marker of the overlapping segment, at most to its flanking RP marker; a side where the region extends past the segment contributes 0. Both are `NA` when no segment overlaps the region; `drag_max_bp` is `NA` when a flank is missing.
 
-### Pairwise comparison CSV (M2)
+### Pairwise comparison CSV (implemented)
 
-`sample_a, sample_b, mode, chrom, n_compared, n_discordant` per chromosome plus an overall row with chrom `ALL`, and a second file listing discordant markers `sample_a, sample_b, marker_id, chrom, pos_bp, class_a, class_b`.
+`sample_a, sample_b, mode, chrom, n_compared, n_discordant` per chromosome plus an overall row with chrom `ALL`, and a second file listing discordant markers `sample_a, sample_b, marker_id, chrom, pos_bp, class_a, class_b`. Every chromosome in the dataset gets a row, including those where nothing was compared. In mode `all` a difference can fall on an uninformative marker, where both class columns read `uninformative`; the class columns carry parent-of-origin, which is undefined there, and the marker id and position identify the site.
 
-### HTML report (M2)
+### HTML report (implemented)
 
-A single self-contained HTML file (no external resources) with the dataset summary, QC table, per-line table and one graphical genotype image per line; PDF via the browser print dialog.
+A single self-contained HTML file (no external resources, no scripts) with the dataset summary, loader warnings, the analysis parameters every number was computed with (docs/adr/0006 requires the coverage cap to be stated), the QC table, the per-line table, donor segments, target checks, and a graphical genotype image, as a PNG data URI with the class legend, for each line rendered into the report. The set of lines with a figure need not match the set in the tables (for example, only the lines selected in the genotype view at export time); the report itself states how many lines have a figure out of the total in the tables and lists the sample ids without one. PDF via the browser print dialog, using the report's own print stylesheet.
 
 ## Class codes in exports
 

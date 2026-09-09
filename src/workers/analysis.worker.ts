@@ -4,12 +4,13 @@
  * Responsibility: keep parsing and computation off the main thread. The UI
  * posts raw file bytes (ArrayBuffers, transferred, not copied) and analysis
  * parameters; the worker parses, assembles the Dataset, classifies, computes
- * RPP/QC/segments/targets, and posts results back. Typed-array results are
- * transferred: arrays that alias resident state (the dataset, the
- * classification matrix) are copied first with `.slice()` so the copy's
+ * RPP/QC/segments/targets/compare/markerDetail, and posts results back. Typed-array
+ * results are transferred: arrays that alias resident state (the dataset,
+ * the classification matrix) are copied first with `.slice()` so the copy's
  * buffer can be handed over without disturbing what the worker still needs;
  * arrays allocated fresh for one response (informativeGapsBp, the QC marker
- * arrays, chromLengthsBp) are transferred directly. `dataset`, `classification`
+ * arrays, chromLengthsBp, compare's discordantMarkers) are transferred
+ * directly. `dataset`, `classification`
  * and the last computed `LineRpp[]` stay resident in the worker for
  * follow-up requests so the main thread never holds the genotype matrix.
  *
@@ -17,20 +18,25 @@
  * response {id, ok: true, result} | {id, ok: false, error}.
  */
 import {
+  CALL_CLASS_LABEL,
   DEFAULT_RPP_PARAMS,
+  MISSING_ALLELE,
   callSegments,
   checkTargets,
   classifyDataset,
+  compareLines,
   computeQc,
   computeRpp,
   countInformative,
   parseTargetSpec,
   segmentGapCriterion,
 } from '../core/index.ts';
+import { classAt, resolveSample } from '../core/compare.ts';
 import type { Classification, Dataset, LineRpp } from '../core/types.ts';
 import { assembleDataset, parseGenotypesBytes } from '../io/loaders.ts';
 import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
+import { discordantMarkersCsv } from '../export/pairwise-csv.ts';
 import type { WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
 
 let dataset: Dataset | null = null;
@@ -185,8 +191,81 @@ function handle(req: WorkerRequest): WorkerResponse {
         },
       };
     }
-    case 'compare':
-      throw new Error('compare: not implemented (M2)');
+    case 'markerDetail': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const { markerIndex, sampleIds } = req.payload;
+      const nMarkersTotal = ds.markers.ids.length;
+      if (markerIndex < 0 || markerIndex >= nMarkersTotal) {
+        throw new Error(`markerDetail: marker index out of range: ${markerIndex}`);
+      }
+      const markerId = ds.markers.ids[markerIndex] as string;
+      const chrom = ds.chromosomeOrder[ds.chromIndex[markerIndex] as number] as string;
+      const posBp = ds.markers.posBp[markerIndex] as number;
+      const cm = ds.markers.cm === undefined ? NaN : (ds.markers.cm[markerIndex] as number);
+      const informative = cls.informative[markerIndex] === 1;
+      const alleles = ds.markers.alleles[markerIndex] as string[];
+      const { allele1, allele2, nSamples } = ds.genotypes;
+
+      const alleleSymbol = (idx: number): string =>
+        idx === MISSING_ALLELE ? 'N' : (alleles[idx] ?? 'N');
+
+      const calls = sampleIds.map((sampleId) => {
+        const resolved = resolveSample(ds, cls, sampleId);
+        const classLabel = CALL_CLASS_LABEL[classAt(ds, cls, resolved, markerIndex)];
+        if (resolved.col < 0) {
+          return { sampleId, allele1: 'N', allele2: 'N', classLabel };
+        }
+        const cell = markerIndex * nSamples + resolved.col;
+        return {
+          sampleId,
+          allele1: alleleSymbol(allele1[cell] as number),
+          allele2: alleleSymbol(allele2[cell] as number),
+          classLabel,
+        };
+      });
+
+      return {
+        id: req.id,
+        ok: true,
+        result: {
+          type: 'markerDetail',
+          markerIndex,
+          markerId,
+          chrom,
+          posBp,
+          cm,
+          informative,
+          alleles,
+          calls,
+        },
+      };
+    }
+    case 'compare': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const diff = compareLines(
+        ds,
+        cls,
+        req.payload.sampleA,
+        req.payload.sampleB,
+        req.payload.mode,
+      );
+      return { id: req.id, ok: true, result: { type: 'compare', diff } };
+    }
+    case 'discordantMarkersCsv': {
+      const { dataset: ds, classification: cls } = requireLoaded();
+      const diff = compareLines(
+        ds,
+        cls,
+        req.payload.sampleA,
+        req.payload.sampleB,
+        req.payload.mode,
+      );
+      return {
+        id: req.id,
+        ok: true,
+        result: { type: 'discordantMarkersCsv', csv: discordantMarkersCsv([diff], ds, cls) },
+      };
+    }
   }
 }
 
@@ -210,10 +289,14 @@ function transferablesFor(result: WorkerResult): Transferable[] {
         result.informative.buffer as ArrayBuffer,
         ...result.lines.map((l) => l.classes.buffer as ArrayBuffer),
       ];
+    case 'compare':
+      return [result.diff.discordantMarkers.buffer as ArrayBuffer];
     case 'rpp':
     case 'segments':
     case 'segmentsAll':
     case 'targets':
+    case 'markerDetail':
+    case 'discordantMarkersCsv':
       return [];
   }
 }

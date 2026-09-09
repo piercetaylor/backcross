@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Donor segment calling with breakpoint bounds (`callSegments`), target-region status and linkage-drag estimates (`checkTargets`, `parseTargetSpec`), and per-line, per-marker and dataset QC flags (`computeQc`); segments CSV and target check CSV exports; fixture expectations for segments under both gap criteria.
 - Upload, Summary and QC, Lines and Graphical genotype screens over a Web Worker that keeps the genotype matrix off the main thread: load with a parameter panel, per-line QC table and call-rate histogram, sortable line table with target-region status, and a canvas renderer with per-pixel majority binning (docs/adr/0007).
+- Genotype-view zoom and hover, reading a marker's position, id, class and sample at any zoom level; a Compare screen for pairwise line comparison; an Export screen producing the HTML report and all CSV exports; keyboard navigation across screens; and parameter editing after load without re-parsing the genotype file (M2 milestone, PLAN.md).
+- Pairwise line comparison in both modes, with per-chromosome counts, discordant markers in genome order and identity by state (the SNPRelate definition) in mode `all`; the two pairwise CSVs of docs/data-formats.md.
+- A self-contained HTML report: dataset summary, warnings, the parameters every number was computed with, QC, lines, donor segments, target checks and a graphical genotype image for each line rendered into the report, with a print stylesheet for PDF.
 - Parameters `maxSegmentGapBp` (10 Mb) and `maxSegmentGapCm` (10 cM) for donor-run breaking, distinct from the RPP coverage cap, with env vars `VITE_DEFAULT_MAX_SEGMENT_GAP_BP` and `VITE_DEFAULT_MAX_SEGMENT_GAP_CM` (docs/adr/0008).
 - Data-contract parsers for VCF 4.2 (plain and gzip/bgzip), HapMap, and wide CSV (nucleotide and coded A/B/H), with samples.csv and markers.csv validation at the boundary.
 - Parent-of-origin classification per marker per candidate (RP-homozygous, donor-homozygous, heterozygous, missing, nonparental, uninformative).
@@ -22,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The canvas renderer extends each marker across the pixel columns nearer to it than to any other marker when markers are sparser than pixels, which is what zooming into a region produces, so a track reads as contiguous blocks instead of one hairline per marker (docs/adr/0007). This changes how every existing view is drawn.
 - The donor-run gap is measured between consecutive informative markers (PLINK `--homozyg-gap` convention) rather than between consecutive non-RP calls, so `maxMissingSpan` is the only control on missing calls; the segments CSV gains a trailing `gap_criterion` column.
 - The CLI rejects an option that belongs to another subcommand (for example `--max-gap-bp` on `segments`) with exit code 2 instead of ignoring it.
 

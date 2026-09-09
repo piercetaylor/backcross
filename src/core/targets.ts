@@ -59,7 +59,9 @@
  *
  * Interface: checkTargets(dataset, classification, segmentsByCandidate, regions)
  * -> TargetCheck[], candidate-major (candidate outer loop, regions in input
- * order), and parseTargetSpec(text, dataset) -> TargetRegion.
+ * order), parseTargetSpec(text, dataset) -> TargetRegion, and parseLocus(text)
+ * -> {chrom, startBp, endBp} | null, the name-free locus grammar of step 2
+ * above, exposed for the genotype-view zoom field (src/ui/screens/GenotypeViewScreen.tsx).
  */
 import { CallClass } from './types.ts';
 import type {
@@ -190,8 +192,14 @@ function toBp({ digits, unit }: PositionToken): number {
 
 const RANGE_SEPARATOR = /\s*(?:\.\.|–|-)\s*/;
 
-/** Parses "CHROM:START-END" or "CHROM:POS"; null when locusText is not shaped like a locus. */
-function tryParseLocus(locusText: string): Omit<TargetRegion, 'name'> | null {
+/**
+ * Parses "CHROM:START-END" or "CHROM:POS" into a chromosome and a bp range
+ * (see the grammar in this file's header, step 2); null when locusText is not
+ * shaped like a locus at all (no colon, or unparseable numbers). Throws when
+ * a decimal token has no explicit unit, since guessing one could silently
+ * misplace a target or a zoom window.
+ */
+export function parseLocus(locusText: string): Omit<TargetRegion, 'name'> | null {
   const colonIdx = locusText.indexOf(':');
   if (colonIdx < 0) return null;
   const chromRaw = locusText.slice(0, colonIdx).trim();
@@ -232,7 +240,7 @@ export function parseTargetSpec(text: string, dataset: Dataset): TargetRegion {
   }
 
   try {
-    const locus = tryParseLocus(locusText);
+    const locus = parseLocus(locusText);
     if (locus !== null) return { name, ...locus };
   } catch (err) {
     if (err instanceof AmbiguousUnitError) {

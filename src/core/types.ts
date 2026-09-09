@@ -207,8 +207,28 @@ export interface PairwiseDiff {
   mode: 'informative' | 'all';
   nCompared: number;
   nDiscordant: number;
+  /**
+   * Informative markers mode 'informative' could not compare because a sample
+   * was uncalled there. Zero in mode 'all', which compares raw genotypes.
+   */
+  nSkippedMissing: number;
+  /**
+   * Informative markers skipped because a sample carried an allele from
+   * neither parent. Reported separately from missing calls because a
+   * nonparental call is a contamination or wrong-parent signal, not absence of
+   * data, and it would otherwise show only as a smaller denominator.
+   */
+  nSkippedNonparental: number;
+  /** Marker indices in genome order (chromosome order, then position). */
   discordantMarkers: Int32Array;
+  /** One row per chromosome in chromosomeOrder, including chromosomes with nCompared = 0. */
   byChromosome: { chrom: string; nCompared: number; nDiscordant: number }[];
+  /**
+   * Identity by state: mean over co-called markers of shared alleles / 2
+   * (the SNPRelate definition); computed from raw alleles, so NaN in mode
+   * 'informative' and for samples without a genotype column.
+   */
+  ibs: number;
 }
 
 export interface QcThresholds {

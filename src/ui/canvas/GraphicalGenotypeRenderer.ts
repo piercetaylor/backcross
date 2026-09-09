@@ -5,22 +5,35 @@
  * <canvas>, one row per line, chromosomes laid out left to right scaled by
  * each chromosome's length -- the last marker position observed on it, since
  * no assembly length is loaded, so a chromosome with markers only near its
- * start draws narrow -- (whole genome) or one chromosome filling the width.
- * Each pixel column is colored by the majority class over the markers that
- * land in it (src/ui/canvas/binning.ts), so 50K markers draw in one pass
- * regardless of zoom level. Rendering is retained-mode: the renderer holds
- * the data it was given (setData) and the current viewport (setViewport) and
- * redraws only on `draw()`. No React inside; the screen owns the <canvas>
- * element and calls draw() after any prop change.
+ * start draws narrow -- (whole genome), one chromosome, or a bp window of one
+ * chromosome (see Viewport). Each pixel column is colored by the majority
+ * class over the markers that land in it (src/ui/canvas/binning.ts), so 50K
+ * markers draw in one pass regardless of zoom level. Rendering is
+ * retained-mode: the renderer holds the data it was given (setData) and the
+ * current viewport (setViewport) and redraws only on `draw()`. No React
+ * inside; the screen owns the <canvas> element and calls draw() after any
+ * prop change.
+ *
+ * Hit testing (hitTest) reuses the same per-chromosome pixel layout the draw
+ * pass computes (chromLayouts), so a hover position and the pixels drawn for
+ * it cannot drift apart. The nearest-marker search is factored out as the
+ * standalone, DOM-free function nearestMarkerIndex so it is unit-testable
+ * without a canvas (tests/viewport.test.ts).
  *
  * Interface:
  *   new GraphicalGenotypeRenderer(canvas, layout?)
  *   setData(data: GenotypeClassesData | null) — null clears the retained data
- *   setViewport({ chrom? })
+ *   setViewport({ chrom?, startBp?, endBp? })
+ *   getViewport(): Viewport
  *   setSize(cssWidth) — called by the screen from a ResizeObserver
+ *   setSelection(range: { x0, x1 } | null) — drag-selection overlay, CSS px
  *   draw() — with no data, clears the canvas to a minimal empty frame
  *   toDataUrl() for the HTML report
- *   hitTest(x, y) — M2, throws
+ *   hitTest(x, y) — nearest marker under a CSS-pixel point, or null
+ *   chromosomeAt(x) — which chromosome track a CSS-pixel x falls in, or null
+ *   bpOnChrom(chrom, x) — bp position of a CSS-pixel x on one chromosome's
+ *     track, clamped to that track; the drag-to-zoom math
+ *   nearestMarkerIndex(positions, markerIndices, targetBp) — module-level export
  */
 import { CLASS_COLORS } from '../../core/index.ts';
 import { CallClass } from '../../core/types.ts';
@@ -45,6 +58,9 @@ export const DEFAULT_LAYOUT: RendererLayout = {
 export interface Viewport {
   /** A single chromosome name, or undefined for the whole genome. */
   chrom?: string;
+  /** With chrom set, a bp window on it; ignored (whole chromosome) unless both are a valid, non-empty range. */
+  startBp?: number;
+  endBp?: number;
 }
 
 interface ChromLayout {
@@ -56,7 +72,44 @@ interface ChromLayout {
   widthPx: number;
 }
 
+/** A hover point must land within this many CSS pixels of a marker's drawn position to count as a hit. */
+const HIT_TEST_TOLERANCE_PX = 4;
+
 const UNINFORMATIVE_COLOR = CLASS_COLORS[CallClass.UNINFORMATIVE];
+
+/**
+ * Binary-searches `markerIndices` (indices into `positions`, already in
+ * ascending position order -- one chromosome's slice of sortedMarkerOrder)
+ * for the marker closest to `targetBp`. Returns the marker's index into the
+ * marker arrays (an element of `markerIndices`, not a position within it), or
+ * -1 when `markerIndices` is empty. A tie between the marker immediately
+ * before and immediately after `targetBp` resolves to the one after.
+ */
+export function nearestMarkerIndex(
+  positions: Float64Array | number[],
+  markerIndices: number[],
+  targetBp: number,
+): number {
+  const n = markerIndices.length;
+  if (n === 0) return -1;
+  let lo = 0;
+  let hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const pos = positions[markerIndices[mid] as number] as number;
+    if (pos < targetBp) lo = mid + 1;
+    else hi = mid;
+  }
+  if (lo === 0) return markerIndices[0] as number;
+  const afterIdx = markerIndices[lo] as number;
+  const afterPos = positions[afterIdx] as number;
+  if (afterPos < targetBp) return afterIdx; // target is beyond the last marker
+  const beforeIdx = markerIndices[lo - 1] as number;
+  const beforePos = positions[beforeIdx] as number;
+  const distAfter = afterPos - targetBp;
+  const distBefore = targetBp - beforePos;
+  return distAfter <= distBefore ? afterIdx : beforeIdx;
+}
 
 export class GraphicalGenotypeRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -66,6 +119,7 @@ export class GraphicalGenotypeRenderer {
   private viewport: Viewport = {};
   private cssWidth = 800;
   private markersByChrom: number[][] = [];
+  private selection: { x0: number; x1: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement, layout: RendererLayout = DEFAULT_LAYOUT) {
     this.canvas = canvas;
@@ -94,11 +148,35 @@ export class GraphicalGenotypeRenderer {
     this.viewport = viewport;
   }
 
+  getViewport(): Viewport {
+    return this.viewport;
+  }
+
   /** Sets the canvas's CSS width; call from a ResizeObserver on the host element. */
   setSize(cssWidth: number): void {
     this.cssWidth = cssWidth;
   }
 
+  /** Sets or clears the drag-selection overlay, in CSS pixels relative to the canvas. */
+  setSelection(range: { x0: number; x1: number } | null): void {
+    this.selection = range;
+  }
+
+  /** Resolves the viewport's requested bp window against one chromosome's length; whole-chromosome on no window or an invalid one. */
+  private resolveWindow(lengthBp: number): { startBp: number; endBp: number } {
+    const { startBp, endBp } = this.viewport;
+    if (startBp === undefined || endBp === undefined) return { startBp: 0, endBp: lengthBp };
+    const clampedStart = Math.max(0, Math.min(startBp, lengthBp));
+    const clampedEnd = Math.max(0, Math.min(endBp, lengthBp));
+    if (clampedEnd <= clampedStart) return { startBp: 0, endBp: lengthBp };
+    return { startBp: clampedStart, endBp: clampedEnd };
+  }
+
+  /**
+   * Per-chromosome pixel layout for the current viewport and plot width.
+   * Shared by draw() and hitTest() so the two cannot disagree about where a
+   * chromosome or a bp position falls on screen.
+   */
   private chromLayouts(plotWidth: number): ChromLayout[] {
     const data = this.data;
     if (data === null) return [];
@@ -106,12 +184,14 @@ export class GraphicalGenotypeRenderer {
     if (this.viewport.chrom !== undefined) {
       const idx = data.chromosomeOrder.indexOf(this.viewport.chrom);
       if (idx < 0) return [];
+      const lengthBp = data.chromLengthsBp[idx] as number;
+      const window = this.resolveWindow(lengthBp);
       return [
         {
           chrom: this.viewport.chrom,
           chromIdx: idx,
-          startBp: 0,
-          endBp: data.chromLengthsBp[idx] as number,
+          startBp: window.startBp,
+          endBp: window.endBp,
           x: 0,
           widthPx: plotWidth,
         },
@@ -201,16 +281,111 @@ export class GraphicalGenotypeRenderer {
         }
       }
     });
+
+    if (this.selection !== null) {
+      const { x0, x1 } = this.selection;
+      const left = Math.min(x0, x1);
+      const width = Math.max(1, Math.abs(x1 - x0));
+      // A dark border plus a low-alpha fill stays visible both on the white
+      // background and over the saturated class colours.
+      ctx.fillStyle = 'rgba(17, 17, 17, 0.15)';
+      ctx.fillRect(left, 0, width, cssHeight);
+      ctx.strokeStyle = 'rgba(17, 17, 17, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left + 0.5, 0.5, Math.max(0, width - 1), Math.max(0, cssHeight - 1));
+    }
   }
 
   toDataUrl(): string {
     return this.canvas.toDataURL('image/png');
   }
 
-  /** Hover detail (marker id, position, alleles, class) is planned for M2. */
-  hitTest(_x: number, _y: number): { sampleId: string; markerIndex: number } | null {
-    throw new Error(
-      'GraphicalGenotypeRenderer.hitTest: not implemented (planned for milestone M2)',
+  /**
+   * Finds the chromosome track a CSS-pixel x (relative to the canvas) falls
+   * in, alongside its offset within the plot area. Shared by chromosomeAt,
+   * pixelToBp and hitTest so all three agree with draw() about where a
+   * chromosome sits on screen.
+   */
+  private findLayout(x: number): { layout: ChromLayout; plotX: number } | null {
+    const { labelWidth } = this.layout;
+    if (x < labelWidth) return null;
+    const plotWidth = Math.max(1, this.cssWidth - labelWidth);
+    const plotX = x - labelWidth;
+    if (plotX < 0 || plotX >= plotWidth) return null;
+    const layout = this.chromLayouts(plotWidth).find(
+      (c) => plotX >= c.x && plotX < c.x + c.widthPx,
     );
+    return layout === undefined ? null : { layout, plotX };
+  }
+
+  /** Which chromosome track a CSS-pixel x (relative to the canvas) falls in, or null outside every track. */
+  chromosomeAt(x: number): string | null {
+    if (this.data === null) return null;
+    return this.findLayout(x)?.layout.chrom ?? null;
+  }
+
+  /**
+   * Converts a CSS-pixel x (relative to the canvas) to a bp position on one
+   * named chromosome's track, clamping x to that track's own pixel bounds
+   * when it falls outside them (e.g. a drag that continued past the edge of
+   * its starting chromosome's track in the whole-genome view). Null when
+   * that chromosome has no track in the current viewport. Used to resolve a
+   * drag-to-zoom selection to a bp range on the chromosome under the drag
+   * start, regardless of where the drag ended.
+   */
+  bpOnChrom(chrom: string, x: number): number | null {
+    const data = this.data;
+    if (data === null) return null;
+    const { labelWidth } = this.layout;
+    const plotWidth = Math.max(1, this.cssWidth - labelWidth);
+    const layout = this.chromLayouts(plotWidth).find((c) => c.chrom === chrom);
+    if (layout === undefined) return null;
+    const span = layout.endBp - layout.startBp;
+    if (span <= 0) return null;
+    const plotX = x - labelWidth;
+    const relX = Math.min(Math.max(plotX - layout.x, 0), layout.widthPx);
+    return layout.startBp + (relX / layout.widthPx) * span;
+  }
+
+  /**
+   * Nearest marker under a CSS-pixel point (x, y relative to the canvas), or
+   * null when the point is outside the plot area, outside every row (label
+   * column, or the gap between rows), or more than a few pixels from the
+   * nearest marker. markerIndex is an index into the marker arrays
+   * (GenotypeClassesData.markerPosBp etc.), suitable for looking up position
+   * and class.
+   */
+  hitTest(x: number, y: number): { sampleId: string; markerIndex: number } | null {
+    const data = this.data;
+    if (data === null) return null;
+    const { rowHeight, rowGap } = this.layout;
+    if (y < 0) return null;
+    const rowPeriod = rowHeight + rowGap;
+    const row = Math.floor(y / rowPeriod);
+    if (row < 0 || row >= data.lines.length) return null;
+    const yInRow = y - row * rowPeriod;
+    if (yInRow >= rowHeight) return null; // the gap between rows
+
+    const found = this.findLayout(x);
+    if (found === null) return null;
+    const { layout, plotX } = found;
+
+    const span = layout.endBp - layout.startBp;
+    if (span <= 0) return null;
+    const relX = plotX - layout.x;
+    const targetBp = layout.startBp + (relX / layout.widthPx) * span;
+
+    const markerIndices = this.markersByChrom[layout.chromIdx] ?? [];
+    const m = nearestMarkerIndex(data.markerPosBp, markerIndices, targetBp);
+    if (m < 0) return null;
+
+    const markerPos = data.markerPosBp[m] as number;
+    const pxPerBp = layout.widthPx / span;
+    const distPx = Math.abs(markerPos - targetBp) * pxPerBp;
+    if (distPx > HIT_TEST_TOLERANCE_PX) return null;
+
+    const line = data.lines[row];
+    if (line === undefined) return null;
+    return { sampleId: line.sampleId, markerIndex: m };
   }
 }

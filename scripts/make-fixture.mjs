@@ -308,6 +308,109 @@ for (const s of candidates) {
   expected.segments.bp[s] = callSegmentsPlain(planted[s], 'bp');
 }
 
+// ---- expected pairwise comparisons (algorithm 5) ----------------------------
+// Independent implementation. Mode informative compares planted classes at
+// informative markers where both samples have a parental call (RP_HOM,
+// DONOR_HOM or HET; the RP is RP_HOM and the donor DONOR_HOM by definition).
+// Mode all compares unordered allele pairs at every marker where both are
+// called, and reports identity by state as the mean of shared alleles / 2.
+// The cell() function below is hoisted, so it can be used here.
+function classOfSample(sample, m) {
+  if (!markers[m].informative) return null;
+  if (sample === 'RP_Williams') return 1;
+  if (sample === 'DONOR_PI') return 2;
+  const k = planted[sample][m];
+  return k === 1 || k === 2 || k === 3 ? k : null;
+}
+function genomeOrder() {
+  return markers
+    .map((mk, m) => ({ mk, m }))
+    .sort((a, b) =>
+      a.mk.chrom === b.mk.chrom ? a.mk.pos - b.mk.pos : a.mk.chrom < b.mk.chrom ? -1 : 1,
+    )
+    .map(({ m }) => m);
+}
+function comparePlain(a, b, mode) {
+  const byChrom = {};
+  for (let c = 1; c <= N_CHROM; c++)
+    byChrom[`Gm${String(c).padStart(2, '0')}`] = { nCompared: 0, nDiscordant: 0 };
+  const discordant = [];
+  let shared = 0;
+  let coCalled = 0;
+  let nSkippedMissing = 0;
+  let nSkippedNonparental = 0;
+  for (const m of genomeOrder()) {
+    const chrom = markers[m].chrom;
+    let compared = false;
+    let differs = false;
+    if (mode === 'informative') {
+      const ka = classOfSample(a, m);
+      const kb = classOfSample(b, m);
+      if (ka !== null && kb !== null) {
+        compared = true;
+        differs = ka !== kb;
+      } else if (markers[m].informative) {
+        // Count why the marker was not compared: a nonparental call (planted
+        // class 5) is a contamination signal, a missing call is not.
+        const raw = (x) => (x === 'RP_Williams' || x === 'DONOR_PI' ? 1 : planted[x][m]);
+        if (raw(a) === 5 || raw(b) === 5) nSkippedNonparental++;
+        else nSkippedMissing++;
+      }
+    } else {
+      const ca = cell(m, a);
+      const cb = cell(m, b);
+      if (ca !== null && cb !== null) {
+        compared = true;
+        const pa = [...ca].sort().join('');
+        const pb = [...cb].sort().join('');
+        differs = pa !== pb;
+        // shared alleles between two unordered pairs: 0, 1 or 2
+        const sa = [...ca].sort();
+        const sb = [...cb].sort();
+        let n = 0;
+        const rest = [...sb];
+        for (const x of sa) {
+          const i = rest.indexOf(x);
+          if (i >= 0) {
+            n++;
+            rest.splice(i, 1);
+          }
+        }
+        shared += n;
+        coCalled++;
+      }
+    }
+    if (compared) {
+      byChrom[chrom].nCompared++;
+      if (differs) {
+        byChrom[chrom].nDiscordant++;
+        discordant.push(markers[m].id);
+      }
+    }
+  }
+  const nCompared = Object.values(byChrom).reduce((s, r) => s + r.nCompared, 0);
+  return {
+    sampleA: a,
+    sampleB: b,
+    mode,
+    nCompared,
+    nDiscordant: discordant.length,
+    nSkippedMissing: mode === 'informative' ? nSkippedMissing : 0,
+    nSkippedNonparental: mode === 'informative' ? nSkippedNonparental : 0,
+    discordantMarkers: discordant,
+    byChromosome: byChrom,
+    ibs: mode === 'all' && coCalled > 0 ? shared / 2 / coCalled : null,
+  };
+}
+expected.compare = [
+  ['NIL_01', 'NIL_02', 'informative'],
+  ['NIL_03', 'RP_Williams', 'informative'],
+  ['NIL_05', 'DONOR_PI', 'informative'],
+  ['NIL_01', 'NIL_04', 'all'],
+  ['NIL_06', 'RP_Williams', 'all'],
+  ['NIL_03', 'RP_Williams', 'all'],
+].map(([a, b, mode]) => comparePlain(a, b, mode));
+
 // ---- genotype cells ---------------------------------------------------------
 const samples = ['RP_Williams', 'DONOR_PI', ...candidates];
 function cell(m, s) {

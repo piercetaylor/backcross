@@ -6,6 +6,10 @@
  * column, so draw cost is proportional to pixels, not markers. Pure
  * function, no DOM, so it is unit-tested in Node.
  *
+ * Zoomed in, where markers are sparser than pixels, each marker is extended
+ * across the columns nearer to it than to any other marker, so a track reads
+ * as contiguous blocks rather than hairlines on an empty background.
+ *
  * Interface: binMajorityClasses(positions, classes, markerIndices, startBp, endBp, widthPx) -> Uint8Array.
  */
 import { CallClass } from '../../core/types.ts';
@@ -94,5 +98,48 @@ export function binMajorityClasses(
       result[col] = CallClass.MISSING;
     }
   }
-  return result;
+  return fillBetweenMarkers(result);
+}
+
+/**
+ * Extends each occupied column across the empty columns around it, up to the
+ * midpoint between it and the next occupied column.
+ *
+ * Zoomed out, markers are denser than pixels and every column is already
+ * occupied, so this changes nothing. Zoomed in they are sparser, and without
+ * this each marker would paint a single hairline on an otherwise empty track.
+ * Painting the interval a marker represents is the same convention the
+ * bp-weighted RPP uses (docs/adr/0006) and is what makes a graphical genotype
+ * readable at high zoom. It asserts nothing about the genome between markers:
+ * a column shows the class of the nearest marker, and the hover panel names
+ * that marker.
+ *
+ * A row with no marker at all is left untouched, so an empty track stays empty.
+ */
+function fillBetweenMarkers(bins: Uint8Array): Uint8Array {
+  const width = bins.length;
+  // Nearest occupied column to the left of, or at, each column.
+  const left = new Int32Array(width).fill(-1);
+  let last = -1;
+  for (let col = 0; col < width; col++) {
+    if (bins[col] !== 255) last = col;
+    left[col] = last;
+  }
+  if (last === -1) return bins; // nothing to extend
+  const right = new Int32Array(width).fill(-1);
+  let next = -1;
+  for (let col = width - 1; col >= 0; col--) {
+    if (bins[col] !== 255) next = col;
+    right[col] = next;
+  }
+  const out = new Uint8Array(bins);
+  for (let col = 0; col < width; col++) {
+    if (bins[col] !== 255) continue;
+    const l = left[col] as number;
+    const r = right[col] as number;
+    if (l === -1) out[col] = bins[r] as number;
+    else if (r === -1) out[col] = bins[l] as number;
+    else out[col] = (col - l <= r - col ? bins[l] : bins[r]) as number;
+  }
+  return out;
 }

@@ -1472,6 +1472,606 @@
    ]
   }
  },
+ "compare": [
+  {
+   "sampleA": "NIL_01",
+   "sampleB": "NIL_02",
+   "mode": "informative",
+   "nCompared": 457,
+   "nDiscordant": 2,
+   "nSkippedMissing": 3,
+   "nSkippedNonparental": 0,
+   "discordantMarkers": [
+    "syn_Gm02_04",
+    "syn_Gm02_05"
+   ],
+   "byChromosome": {
+    "Gm01": {
+     "nCompared": 18,
+     "nDiscordant": 0
+    },
+    "Gm02": {
+     "nCompared": 22,
+     "nDiscordant": 2
+    },
+    "Gm03": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm04": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm05": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm06": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm07": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm08": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm09": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm10": {
+     "nCompared": 21,
+     "nDiscordant": 0
+    },
+    "Gm11": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm12": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm13": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm14": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm15": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm16": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm17": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm18": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm19": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm20": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    }
+   },
+   "ibs": null
+  },
+  {
+   "sampleA": "NIL_03",
+   "sampleB": "RP_Williams",
+   "mode": "informative",
+   "nCompared": 459,
+   "nDiscordant": 1,
+   "nSkippedMissing": 0,
+   "nSkippedNonparental": 1,
+   "discordantMarkers": [
+    "syn_Gm18_20"
+   ],
+   "byChromosome": {
+    "Gm01": {
+     "nCompared": 18,
+     "nDiscordant": 0
+    },
+    "Gm02": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm03": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm04": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm05": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm06": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm07": {
+     "nCompared": 21,
+     "nDiscordant": 0
+    },
+    "Gm08": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm09": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm10": {
+     "nCompared": 21,
+     "nDiscordant": 0
+    },
+    "Gm11": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm12": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm13": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm14": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm15": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm16": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm17": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm18": {
+     "nCompared": 24,
+     "nDiscordant": 1
+    },
+    "Gm19": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm20": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    }
+   },
+   "ibs": null
+  },
+  {
+   "sampleA": "NIL_05",
+   "sampleB": "DONOR_PI",
+   "mode": "informative",
+   "nCompared": 460,
+   "nDiscordant": 9,
+   "nSkippedMissing": 0,
+   "nSkippedNonparental": 0,
+   "discordantMarkers": [
+    "syn_Gm01_01",
+    "syn_Gm01_02",
+    "syn_Gm01_03",
+    "syn_Gm01_04",
+    "syn_Gm01_05",
+    "syn_Gm01_07",
+    "syn_Gm01_08",
+    "syn_Gm01_09",
+    "syn_Gm01_10"
+   ],
+   "byChromosome": {
+    "Gm01": {
+     "nCompared": 18,
+     "nDiscordant": 9
+    },
+    "Gm02": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm03": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm04": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm05": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm06": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm07": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm08": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm09": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm10": {
+     "nCompared": 21,
+     "nDiscordant": 0
+    },
+    "Gm11": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm12": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm13": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm14": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm15": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm16": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm17": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm18": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm19": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm20": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    }
+   },
+   "ibs": null
+  },
+  {
+   "sampleA": "NIL_01",
+   "sampleB": "NIL_04",
+   "mode": "all",
+   "nCompared": 490,
+   "nDiscordant": 6,
+   "nSkippedMissing": 0,
+   "nSkippedNonparental": 0,
+   "discordantMarkers": [
+    "syn_Gm05_01",
+    "syn_Gm05_02",
+    "syn_Gm05_03",
+    "syn_Gm05_05",
+    "syn_Gm13_09",
+    "syn_Gm13_15"
+   ],
+   "byChromosome": {
+    "Gm01": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm02": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm03": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm04": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm05": {
+     "nCompared": 25,
+     "nDiscordant": 4
+    },
+    "Gm06": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm07": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm08": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm09": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm10": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm11": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm12": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm13": {
+     "nCompared": 22,
+     "nDiscordant": 2
+    },
+    "Gm14": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm15": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm16": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm17": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm18": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm19": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm20": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    }
+   },
+   "ibs": 0.9877551020408163
+  },
+  {
+   "sampleA": "NIL_06",
+   "sampleB": "RP_Williams",
+   "mode": "all",
+   "nCompared": 438,
+   "nDiscordant": 14,
+   "nSkippedMissing": 0,
+   "nSkippedNonparental": 0,
+   "discordantMarkers": [
+    "syn_Gm12_12",
+    "syn_Gm12_13",
+    "syn_Gm12_14",
+    "syn_Gm12_15",
+    "syn_Gm12_16",
+    "syn_Gm12_17",
+    "syn_Gm12_18",
+    "syn_Gm12_19",
+    "syn_Gm12_20",
+    "syn_Gm12_21",
+    "syn_Gm12_22",
+    "syn_Gm12_23",
+    "syn_Gm12_24",
+    "syn_Gm12_25"
+   ],
+   "byChromosome": {
+    "Gm01": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm02": {
+     "nCompared": 21,
+     "nDiscordant": 0
+    },
+    "Gm03": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm04": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm05": {
+     "nCompared": 21,
+     "nDiscordant": 0
+    },
+    "Gm06": {
+     "nCompared": 19,
+     "nDiscordant": 0
+    },
+    "Gm07": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm08": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm09": {
+     "nCompared": 19,
+     "nDiscordant": 0
+    },
+    "Gm10": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm11": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm12": {
+     "nCompared": 24,
+     "nDiscordant": 14
+    },
+    "Gm13": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm14": {
+     "nCompared": 20,
+     "nDiscordant": 0
+    },
+    "Gm15": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm16": {
+     "nCompared": 22,
+     "nDiscordant": 0
+    },
+    "Gm17": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm18": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    },
+    "Gm19": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm20": {
+     "nCompared": 23,
+     "nDiscordant": 0
+    }
+   },
+   "ibs": 0.9840182648401826
+  },
+  {
+   "sampleA": "NIL_03",
+   "sampleB": "RP_Williams",
+   "mode": "all",
+   "nCompared": 495,
+   "nDiscordant": 2,
+   "nSkippedMissing": 0,
+   "nSkippedNonparental": 0,
+   "discordantMarkers": [
+    "syn_Gm07_04",
+    "syn_Gm18_20"
+   ],
+   "byChromosome": {
+    "Gm01": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm02": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm03": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm04": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm05": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm06": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm07": {
+     "nCompared": 25,
+     "nDiscordant": 1
+    },
+    "Gm08": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm09": {
+     "nCompared": 24,
+     "nDiscordant": 0
+    },
+    "Gm10": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm11": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm12": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm13": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm14": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm15": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm16": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm17": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm18": {
+     "nCompared": 25,
+     "nDiscordant": 1
+    },
+    "Gm19": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    },
+    "Gm20": {
+     "nCompared": 25,
+     "nDiscordant": 0
+    }
+   },
+   "ibs": 0.9959595959595959
+  }
+ ],
  "markerReasons": {
   "syn_Gm01_06": "monomorphic",
   "syn_Gm01_12": "monomorphic",
