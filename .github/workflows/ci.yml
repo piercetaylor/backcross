@@ -34,13 +34,17 @@ jobs:
           npm run fixture
           git diff --exit-code -- tests/fixtures/synthetic
       - uses: actions/upload-pages-artifact@v5
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: vars.ENABLE_PAGES == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         with:
           path: dist
 
+  # Deploying needs Pages turned on for the repository first (docs/adr/0003).
+  # Until then this job is skipped rather than failing every push to main: set
+  # the repository variable ENABLE_PAGES to "true" once Pages is enabled with
+  # the GitHub Actions source.
   deploy:
     needs: check
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: vars.ENABLE_PAGES == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       pages: write
