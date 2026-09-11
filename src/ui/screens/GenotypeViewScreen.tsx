@@ -2,10 +2,14 @@
  * Screen 4: graphical genotypes.
  *
  * Responsibility: host the canvas renderer (ui/canvas/GraphicalGenotypeRenderer.ts)
- * for the selected lines (or all candidates, when App passes the full
- * candidate set because nothing is selected): one row per line, class
+ * for the visible lines, in display order: one row per line, class
  * colours from core/palette.ts with a text legend, and a whole-genome,
- * single-chromosome, or zoomed bp-window viewport. This screen owns the
+ * single-chromosome, or zoomed bp-window viewport. Which lines those are,
+ * and in what order, is the shared model in ui/lines/ that the Lines table
+ * also reads (docs/adr/0009, amended 2026-09-11) -- drawing only the
+ * selection is now the `selectedOnly` filter rather than a rule of its
+ * own. `LineActionBar` sits above the canvas so that sorting or filtering
+ * here moves the table too, the reverse direction of the same state. This screen owns the
  * <canvas> element and the renderer instance and feeds them the `classes`
  * data App already fetched from the worker; it does not request or compute
  * that data itself. The one exception is per-marker hover detail, requested
@@ -56,7 +60,9 @@
  * null (nothing selected, or the dataset unloads), the draw effect still
  * runs and clears the retained data so stale rows are not left on screen.
  *
- * Props: loaded, classesData, loading, onRequestMarkerDetail?.
+ * Props: loaded, classesData, loading, counts, sort, onSortChange, filter,
+ * onFilterChange, regions, onSelectAllVisible, onSelectNone,
+ * onRequestMarkerDetail?.
  */
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -70,7 +76,9 @@ import type { Viewport } from '../canvas/GraphicalGenotypeRenderer.ts';
 import { CLASS_COLORS } from '../../core/index.ts';
 import { parseLocus } from '../../core/targets.ts';
 import { CALL_CLASS_LABEL, CallClass } from '../../core/types.ts';
-import type { CallClassValue } from '../../core/types.ts';
+import type { CallClassValue, TargetRegion } from '../../core/types.ts';
+import { LineActionBar } from '../lines/LineActionBar.tsx';
+import type { LineFilter, LineSort } from '../lines/line-order.ts';
 import type { GenotypeClassesData, MarkerDetailResult } from '../../workers/protocol.ts';
 import type { LoadedState } from './UploadScreen.tsx';
 
@@ -153,11 +161,29 @@ export function GenotypeViewScreen({
   loaded,
   classesData,
   loading,
+  counts,
+  sort,
+  onSortChange,
+  filter,
+  onFilterChange,
+  regions,
+  onSelectAllVisible,
+  onSelectNone,
   onRequestMarkerDetail,
 }: {
   loaded: LoadedState | null;
+  /** The visible lines in display order (App applies the order; see ui/lines/classes-order.ts). */
   classesData: GenotypeClassesData | null;
   loading: boolean;
+  counts: { total: number; visible: number; selected: number };
+  sort: LineSort | null;
+  onSortChange: (s: LineSort | null) => void;
+  filter: LineFilter;
+  onFilterChange: (f: LineFilter) => void;
+  /** Target regions, for the action bar's sort column list. */
+  regions: TargetRegion[];
+  onSelectAllVisible: () => void;
+  onSelectNone: () => void;
   /** Fetches marker detail (id, cM, alleles, per-sample calls) for a hover. Omitted when the host has no wiring to the worker yet; the panel then shows only the cheap fields. */
   onRequestMarkerDetail?: (markerIndex: number, sampleIds: string[]) => Promise<MarkerDetailResult>;
 }) {
@@ -506,6 +532,20 @@ export function GenotypeViewScreen({
   return (
     <section>
       <h2>Graphical genotypes</h2>
+
+      {/* The same sort and filter the Lines table reads: changing either
+          here reorders or re-filters both screens. */}
+      <LineActionBar
+        counts={counts}
+        sort={sort}
+        onSortChange={onSortChange}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        regions={regions}
+        showSortControl
+        onSelectAllVisible={onSelectAllVisible}
+        onSelectNone={onSelectNone}
+      />
 
       {loaded === null ? (
         <p>Load a dataset first.</p>

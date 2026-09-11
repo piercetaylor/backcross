@@ -24,9 +24,14 @@
  * here.
  *
  * Graphical genotype figures for the report are rendered here, offscreen,
- * from `classesData` -- the same worker-fetched, selection-keyed class data
- * the genotype view screen uses -- through GraphicalGenotypeRenderer, one
- * canvas per sample, at a fixed 900 CSS px width.
+ * from `classesData` -- the same class data the genotype view screen draws,
+ * already reduced to the visible lines and put in display order by App
+ * (ui/lines/classes-order.ts), so the report's figures are the lines the
+ * genotype view is showing, in the order it shows them (docs/adr/0009,
+ * amended 2026-09-11). The CSV exports are unaffected: they are computed
+ * over the whole dataset by contract (docs/data-formats.md). Rendering is
+ * through GraphicalGenotypeRenderer, one canvas per sample, at a fixed 900
+ * CSS px width.
  *
  * The discordant-markers button is additionally disabled while `busy`: it is
  * the one export that issues a fresh worker request, and while a load or

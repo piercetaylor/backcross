@@ -1,64 +1,37 @@
 /**
  * Screen 3: line table.
  *
- * Responsibility: one row per candidate (order of `rpp`) with RPP (count,
- * bp, cM), donor segment count, largest segment, target-locus status per
- * region, and QC flags; sortable by any column; multi-select feeds the
- * genotype view and export. A textarea lets the user (re)type target
- * region specs, applied through `onApplyTargets`. Every displayed number
- * comes from `rpp`, `segmentsByCandidate`, `targets` and `qc`; sorting is
- * done on those already-computed values in the main thread, not a
- * re-derivation of them. Target columns are keyed by the region's position
- * in `targets.regions`, not by name, so a re-typed or duplicate spec text
- * can never collide with another column's key.
+ * Responsibility: render the shared line model -- one row per candidate
+ * with RPP (count, bp, cM), donor segment count, largest segment,
+ * target-locus status per region, and QC flags -- as a sortable,
+ * multi-selectable table, and let the user (re)type target region specs,
+ * applied through `onApplyTargets`. It builds nothing: the rows, their
+ * display order, the sort and the filter all live in App (ui/lines/), so
+ * the graphical genotype view shows the same lines in the same order.
+ * Column header buttons report to `onSortChange`; the toggle rule is a new
+ * column ascending, the same column flips.
  *
- * Props: loaded, rpp, segmentsByCandidate, targets, targetSpecs, qc,
- * selected, onSelectionChange, onApplyTargets.
+ * The table only ever speaks for visible rows: "Select all" adds the
+ * visible rows to the selection and leaves hidden selected rows alone,
+ * "Select none" removes the visible rows and leaves the hidden ones. That
+ * rule lives in App and is shared with the genotype screen; phase 4 keeps
+ * it.
+ *
+ * Target columns are keyed by the region's position in `regions`, not by
+ * name, so a re-typed or duplicate spec text can never collide with
+ * another column's key.
+ *
+ * Props: loaded, rows, visibleRows, regions, counts, sort, onSortChange,
+ * filter, onFilterChange, selected, onSelectionChange, targetSpecs,
+ * onApplyTargets, onSelectAllVisible, onSelectNone.
  */
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import type { LoadedState } from './UploadScreen.tsx';
-import type {
-  DonorSegment,
-  LineRpp,
-  QcReport,
-  TargetCheck,
-  TargetRegion,
-} from '../../core/types.ts';
-
-type SortDir = 1 | -1;
-interface SortState {
-  key: string;
-  dir: SortDir;
-}
-
-interface Row {
-  sampleId: string;
-  lineName: string;
-  generation: string;
-  rppCount: number;
-  rppBp: number;
-  rppCm: number;
-  nSegments: number;
-  largestSegmentMb: number;
-  /** Status per target region, indexed by position in `targets.regions` (not by name). */
-  targetStatus: string[];
-  flags: string;
-}
-
-const NUMERIC_ACCESSORS: Record<string, (r: Row) => number> = {
-  rppCount: (r) => r.rppCount,
-  rppBp: (r) => r.rppBp,
-  rppCm: (r) => r.rppCm,
-  nSegments: (r) => r.nSegments,
-  largestSegmentMb: (r) => r.largestSegmentMb,
-};
-const STRING_ACCESSORS: Record<string, (r: Row) => string> = {
-  sampleId: (r) => r.sampleId,
-  lineName: (r) => r.lineName,
-  generation: (r) => r.generation,
-  flags: (r) => r.flags,
-};
+import type { TargetRegion } from '../../core/types.ts';
+import { LineActionBar } from '../lines/LineActionBar.tsx';
+import type { LineFilter, LineSort, LineSortColumn } from '../lines/line-order.ts';
+import type { LineRow } from '../lines/line-rows.ts';
 
 function fmt4(v: number): string {
   return Number.isNaN(v) ? 'NA' : v.toFixed(4);
@@ -67,128 +40,54 @@ function fmt2(v: number): string {
   return Number.isNaN(v) ? 'NA' : v.toFixed(2);
 }
 
-function cmpNumeric(a: number, b: number, dir: SortDir): number {
-  const aNaN = Number.isNaN(a);
-  const bNaN = Number.isNaN(b);
-  if (aNaN && bNaN) return 0;
-  if (aNaN) return 1;
-  if (bNaN) return -1;
-  return dir * (a - b);
-}
-function cmpString(a: string, b: string, dir: SortDir): number {
-  return dir * a.localeCompare(b);
-}
-
 export function LineTableScreen({
   loaded,
-  rpp,
-  segmentsByCandidate,
-  targets,
-  targetSpecs,
-  qc,
+  rows,
+  visibleRows,
+  regions,
+  counts,
+  sort,
+  onSortChange,
+  filter,
+  onFilterChange,
   selected,
   onSelectionChange,
+  targetSpecs,
   onApplyTargets,
+  onSelectAllVisible,
+  onSelectNone,
 }: {
   loaded: LoadedState | null;
-  rpp: LineRpp[] | null;
-  segmentsByCandidate: DonorSegment[][] | null;
-  targets: { regions: TargetRegion[]; checks: TargetCheck[] } | null;
-  targetSpecs: string[];
-  qc: QcReport | null;
+  rows: LineRow[];
+  visibleRows: LineRow[];
+  regions: TargetRegion[];
+  counts: { total: number; visible: number; selected: number };
+  sort: LineSort | null;
+  onSortChange: (s: LineSort | null) => void;
+  filter: LineFilter;
+  onFilterChange: (f: LineFilter) => void;
   selected: Set<string>;
   onSelectionChange: (next: Set<string>) => void;
+  targetSpecs: string[];
   onApplyTargets: (specs: string[]) => void;
+  onSelectAllVisible: () => void;
+  onSelectNone: () => void;
 }) {
-  const [sort, setSort] = useState<SortState | null>(null);
   const [specsText, setSpecsText] = useState(targetSpecs.join('\n'));
 
-  const generationById = useMemo(
-    () => new Map((loaded?.samples ?? []).map((s) => [s.sampleId, s.generation])),
-    [loaded],
-  );
-  const lineNameById = useMemo(
-    () => new Map((loaded?.samples ?? []).map((s) => [s.sampleId, s.lineName])),
-    [loaded],
-  );
-  const flagsById = useMemo(
-    () => new Map((qc?.lines ?? []).map((l) => [l.sampleId, l.flags.join(' ')])),
-    [qc],
-  );
-  // checkTargets emits candidate-major rows with regions in input order, so
-  // each sample's checks, collected in arrival order, line up with `regions`
-  // by index; names are not unique and are never used as keys.
-  const checksBySample = useMemo(() => {
-    const m = new Map<string, TargetCheck[]>();
-    for (const c of targets?.checks ?? []) {
-      let inner = m.get(c.sampleId);
-      if (inner === undefined) {
-        inner = [];
-        m.set(c.sampleId, inner);
-      }
-      inner.push(c);
+  function toggleSort(column: LineSortColumn) {
+    if (sort === null || sort.column !== column) {
+      onSortChange({ column, direction: 'ascending' });
+      return;
     }
-    return m;
-  }, [targets]);
-  // Target regions in worker order; columns are keyed by position in this
-  // array (not by name) so a duplicate or renamed spec never collides with
-  // another column.
-  const regions = useMemo(() => targets?.regions ?? [], [targets]);
-
-  const rows: Row[] = useMemo(() => {
-    if (rpp === null) return [];
-    return rpp.map((r, i) => {
-      const segments = segmentsByCandidate?.[i] ?? [];
-      const largestSegmentMb =
-        segments.length === 0
-          ? NaN
-          : Math.max(...segments.map((s) => s.endBp - s.startBp)) / 1_000_000;
-      const targetStatus = regions.map(
-        (_region, ri) => checksBySample.get(r.sampleId)?.[ri]?.status ?? '',
-      );
-      return {
-        sampleId: r.sampleId,
-        lineName: lineNameById.get(r.sampleId) ?? r.sampleId,
-        generation: generationById.get(r.sampleId) ?? '',
-        rppCount: r.overall.rppCount,
-        rppBp: r.overall.rppBp,
-        rppCm: r.overall.rppCm,
-        nSegments: segments.length,
-        largestSegmentMb,
-        targetStatus,
-        flags: flagsById.get(r.sampleId) ?? '',
-      };
-    });
-  }, [rpp, segmentsByCandidate, regions, checksBySample, lineNameById, generationById, flagsById]);
-
-  const sortedRows = useMemo(() => {
-    if (sort === null) return rows;
-    const { key, dir } = sort;
-    const copy = [...rows];
-    const numAcc = NUMERIC_ACCESSORS[key];
-    const strAcc = STRING_ACCESSORS[key];
-    copy.sort((a, b) => {
-      if (numAcc !== undefined) return cmpNumeric(numAcc(a), numAcc(b), dir);
-      if (strAcc !== undefined) return cmpString(strAcc(a), strAcc(b), dir);
-      if (key.startsWith('target:')) {
-        const idx = Number(key.slice('target:'.length));
-        return cmpString(a.targetStatus[idx] ?? '', b.targetStatus[idx] ?? '', dir);
-      }
-      return 0;
-    });
-    return copy;
-  }, [rows, sort]);
-
-  function toggleSort(key: string) {
-    setSort((prev) => {
-      if (prev === null || prev.key !== key) return { key, dir: 1 };
-      return { key, dir: prev.dir === 1 ? -1 : 1 };
+    onSortChange({
+      column,
+      direction: sort.direction === 'ascending' ? 'descending' : 'ascending',
     });
   }
 
-  function ariaSort(key: string): 'ascending' | 'descending' | 'none' {
-    if (sort === null || sort.key !== key) return 'none';
-    return sort.dir === 1 ? 'ascending' : 'descending';
+  function ariaSort(column: LineSortColumn): 'ascending' | 'descending' | 'none' {
+    return sort === null || sort.column !== column ? 'none' : sort.direction;
   }
 
   function toggleRow(sampleId: string) {
@@ -207,12 +106,12 @@ export function LineTableScreen({
     );
   }
 
-  // `key` is also set as the React key, so this is safe to call directly
+  // `column` is also set as the React key, so this is safe to call directly
   // inside a .map() as well as inline.
-  function sortableHeader(key: string, label: string) {
+  function sortableHeader(column: LineSortColumn, label: string) {
     return (
-      <th key={key} scope="col" aria-sort={ariaSort(key)}>
-        <button type="button" onClick={() => toggleSort(key)}>
+      <th key={column} scope="col" aria-sort={ariaSort(column)}>
+        <button type="button" onClick={() => toggleSort(column)}>
           {label}
         </button>
       </th>
@@ -222,17 +121,17 @@ export function LineTableScreen({
   return (
     <section>
       <h2>Lines</h2>
-      <div>
-        <button
-          type="button"
-          onClick={() => onSelectionChange(new Set(rows.map((r) => r.sampleId)))}
-        >
-          Select all
-        </button>{' '}
-        <button type="button" onClick={() => onSelectionChange(new Set())}>
-          Select none
-        </button>
-      </div>
+      <LineActionBar
+        counts={counts}
+        sort={sort}
+        onSortChange={onSortChange}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        regions={regions}
+        showSortControl={false}
+        onSelectAllVisible={onSelectAllVisible}
+        onSelectNone={onSelectNone}
+      />
       <table>
         <thead>
           <tr>
@@ -240,17 +139,18 @@ export function LineTableScreen({
             {sortableHeader('sampleId', 'sample_id')}
             {sortableHeader('lineName', 'line_name')}
             {sortableHeader('generation', 'generation')}
+            {sortableHeader('familyId', 'family_id')}
             {sortableHeader('rppCount', 'rpp_count')}
             {sortableHeader('rppBp', 'rpp_bp')}
             {sortableHeader('rppCm', 'rpp_cm')}
             {sortableHeader('nSegments', 'n segments')}
             {sortableHeader('largestSegmentMb', 'largest segment (Mb)')}
             {regions.map((region, i) => sortableHeader(`target:${i}`, region.name))}
-            <th scope="col">QC flags</th>
+            {sortableHeader('flags', 'QC flags')}
           </tr>
         </thead>
         <tbody>
-          {sortedRows.map((row) => (
+          {visibleRows.map((row) => (
             <tr key={row.sampleId}>
               <td>
                 <input
@@ -263,6 +163,7 @@ export function LineTableScreen({
               <td>{row.sampleId}</td>
               <td>{row.lineName}</td>
               <td>{row.generation}</td>
+              <td>{row.familyId}</td>
               <td>{fmt4(row.rppCount)}</td>
               <td>{fmt4(row.rppBp)}</td>
               <td>{fmt4(row.rppCm)}</td>
@@ -271,11 +172,12 @@ export function LineTableScreen({
               {regions.map((_, i) => (
                 <td key={`target:${i}`}>{row.targetStatus[i]}</td>
               ))}
-              <td>{row.flags}</td>
+              <td>{row.flags.join(' ')}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {rows.length > 0 && visibleRows.length === 0 && <p>No line matches the filter.</p>}
 
       <h3>Target regions</h3>
       <label>

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- One selection model behind the Lines table and the graphical genotype view: a shared sort, a filter (free text over sample, line, generation, family and QC flags, plus flagged-only and selected-only) and one row model, so sorting or filtering from either screen reorders the other. An action bar on both screens reads `Lines: n, visible: n, selected: n`; "Select all" and "Select none" act on the visible rows and leave hidden selected lines alone. Reordering is done on the main thread, so a sort issues no worker request.
 - Donor segment calling with breakpoint bounds (`callSegments`), target-region status and linkage-drag estimates (`checkTargets`, `parseTargetSpec`), and per-line, per-marker and dataset QC flags (`computeQc`); segments CSV and target check CSV exports; fixture expectations for segments under both gap criteria.
 - Upload, Summary and QC, Lines and Graphical genotype screens over a Web Worker that keeps the genotype matrix off the main thread: load with a parameter panel, per-line QC table and call-rate histogram, sortable line table with target-region status, and a canvas renderer with per-pixel majority binning (docs/adr/0007).
 - Genotype-view zoom and hover, reading a marker's position, id, class and sample at any zoom level; a Compare screen for pairwise line comparison; an Export screen producing the HTML report and all CSV exports; keyboard navigation across screens; and parameter editing after load without re-parsing the genotype file (M2 milestone, PLAN.md).
@@ -25,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The graphical genotype view draws the visible rows in display order, and the HTML report's figures inherit that order. This replaces the rule that it drew the selection, or every candidate when nothing was selected; the selected-only filter is the equivalent of the old behaviour (docs/adr/0009, amended 2026-09-11). The CSV exports are unchanged: they are computed over the whole dataset by contract.
+- Line table columns sort naturally on embedded numbers, so `NIL_2` now sorts before `NIL_10` rather than after it. Numeric columns place NA last whichever way the column points, and ties keep the worker's candidate order. The table gains a sortable `family_id` column, and the QC flags column is now sortable.
 - The canvas renderer extends each marker across the pixel columns nearer to it than to any other marker when markers are sparser than pixels, which is what zooming into a region produces, so a track reads as contiguous blocks instead of one hairline per marker (docs/adr/0007). This changes how every existing view is drawn.
 - The donor-run gap is measured between consecutive informative markers (PLINK `--homozyg-gap` convention) rather than between consecutive non-RP calls, so `maxMissingSpan` is the only control on missing calls; the segments CSV gains a trailing `gap_criterion` column.
 - docs/design-brief.md and docs/adr/0009: the interface design language for milestone M2.5, with the prior art it follows and the contrast measurements behind the texture encoding.

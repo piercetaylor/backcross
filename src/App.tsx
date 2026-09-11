@@ -44,11 +44,24 @@
  * chain or clobber the previous result), and it is cleared on every new
  * load.
  *
- * Export (M2): the 'classes' fetch effect below (keyed on `screen`,
- * `genotypeSampleIds`) also runs on the Export screen, not only Graphical
+ * Shared line model (M2.5): `lineRows` is the one row-per-candidate model
+ * (ui/lines/line-rows.ts); `lineSort` and `lineFilter` are the one display
+ * order (ui/lines/line-order.ts) that the Lines table and the graphical
+ * genotype view both read, so sorting or filtering from either screen moves
+ * the other. The canvas draws the visible rows in display order and the
+ * HTML report inherits that (docs/adr/0009, amended 2026-09-11); the M2
+ * rule "the selection, else every candidate" is now `lineFilter.selectedOnly`.
+ * Selection changes from either screen speak only for the visible rows
+ * (`selectAllVisible`/`selectNone`), leaving hidden selected ids alone.
+ *
+ * Export (M2): the 'classes' fetch effect below (keyed on `screen` and
+ * `classesReqKey`) also runs on the Export screen, not only Graphical
  * genotypes, since the HTML report's per-line figures are rendered from the
- * same worker-fetched, selection-keyed `classesData` rather than a second
- * request. Everything else ExportScreen needs (rpp, qc,
+ * same worker-fetched `classesData` rather than a second request. That key
+ * is the *set* of visible ids, sorted (ui/lines/classes-order.ts), so
+ * changing only the sort order reuses the fetched data and the reorder
+ * happens on the main thread: a sort never issues a worker request
+ * (docs/adr/0001). Everything else ExportScreen needs (rpp, qc,
  * segmentsByCandidate, targets, params, gapCriterion, compare, busy) is
  * already tracked here and passed straight through; `busy` lets it disable
  * the one export that issues its own worker request (discordant-markers
@@ -69,6 +82,10 @@ import type {
   TargetCheck,
   TargetRegion,
 } from './core/types.ts';
+import { classesRequestKey, permuteClassesData } from './ui/lines/classes-order.ts';
+import { EMPTY_LINE_FILTER, lineCounts, orderLineRows } from './ui/lines/line-order.ts';
+import type { LineFilter, LineSort } from './ui/lines/line-order.ts';
+import { buildLineRows } from './ui/lines/line-rows.ts';
 import { CompareScreen } from './ui/screens/CompareScreen.tsx';
 import { ExportScreen } from './ui/screens/ExportScreen.tsx';
 import { GenotypeViewScreen } from './ui/screens/GenotypeViewScreen.tsx';
@@ -117,6 +134,8 @@ export function App() {
     null,
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [lineSort, setLineSort] = useState<LineSort | null>(null);
+  const [lineFilter, setLineFilter] = useState<LineFilter>(EMPTY_LINE_FILTER);
   const [compare, setCompare] = useState<PairwiseDiff | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -177,6 +196,8 @@ export function App() {
       setTargets(null);
       setTargetSpecs([]);
       setSelected(new Set());
+      setLineSort(null);
+      setLineFilter(EMPTY_LINE_FILTER);
       setCompare(null);
       setClassesData(null);
       setClassesKey(null);
@@ -286,30 +307,55 @@ export function App() {
     }
   }
 
-  // Full candidate list in rpp order (== classification.candidateCols order,
-  // the order the worker uses for segmentsByCandidate and 'classes' rows);
-  // the genotype view draws the selection, or every candidate when nothing
-  // is selected.
-  const candidateIds = useMemo(() => rpp?.map((r) => r.sampleId) ?? [], [rpp]);
-  const genotypeSampleIds = useMemo(
-    () => (selected.size > 0 ? candidateIds.filter((id) => selected.has(id)) : candidateIds),
-    [candidateIds, selected],
+  // The shared line model. Rows come out in rpp order (==
+  // classification.candidateCols order, the order the worker uses for
+  // segmentsByCandidate and 'classes' rows); the filter and sort then
+  // decide which lines are visible and in what order, for both the Lines
+  // table and the graphical genotype view.
+  const lineRows = useMemo(
+    () =>
+      rpp === null || loaded === null
+        ? []
+        : buildLineRows({ rpp, samples: loaded.samples, segmentsByCandidate, targets, qc }),
+    [rpp, loaded, segmentsByCandidate, targets, qc],
   );
+  const visibleLineRows = useMemo(
+    () => orderLineRows(lineRows, lineSort, lineFilter, selected),
+    [lineRows, lineSort, lineFilter, selected],
+  );
+  const visibleSampleIds = useMemo(() => visibleLineRows.map((r) => r.sampleId), [visibleLineRows]);
+  const counts = useMemo(
+    () => lineCounts(lineRows, visibleLineRows, selected),
+    [lineRows, visibleLineRows, selected],
+  );
+  const regions = useMemo(() => targets?.regions ?? [], [targets]);
+
+  // The fetch is keyed on the *set* of visible ids, not their order: a
+  // string, so its identity is stable across a reorder and the effect below
+  // neither re-runs nor cancels an in-flight request when only the sort
+  // changes.
+  const classesReqKey = useMemo(() => classesRequestKey(visibleSampleIds), [visibleSampleIds]);
 
   // Also runs on the Export screen: the HTML report's per-line figures reuse
-  // this same worker-fetched, selection-keyed class data (see
-  // ui/screens/ExportScreen.tsx) rather than issuing a second 'classes'
-  // request, so the report shows the same lines the genotype view would.
+  // this same worker-fetched class data (see ui/screens/ExportScreen.tsx)
+  // rather than issuing a second 'classes' request, so the report shows the
+  // same lines the genotype view is showing.
   useEffect(() => {
     if ((screen !== 'genotypes' && screen !== 'export') || loaded === null) return;
-    const ids = genotypeSampleIds;
-    const key = ids.join(',');
-    if (key === classesKey) return;
-    if (ids.length === 0) {
+    if (classesReqKey === classesKey) return;
+    if (classesReqKey === '') {
       setClassesData(null);
-      setClassesKey(key);
+      setClassesKey(classesReqKey);
+      // A filter that hides every line can land here while an earlier
+      // fetch is still in flight; that fetch's `finally` is suppressed by
+      // its own cleanup, so clear the flag here or the screen keeps
+      // claiming it is loading.
+      setClassesLoading(false);
       return;
     }
+    // Sorted, exactly as the key is: the request covers the key's set, and
+    // display order is applied on the main thread by permuteClassesData.
+    const ids = classesReqKey.split('\n');
     let cancelled = false;
     setClassesLoading(true);
     getClient()
@@ -317,7 +363,7 @@ export function App() {
       .then((res) => {
         if (cancelled) return;
         setClassesData(res);
-        setClassesKey(key);
+        setClassesKey(classesReqKey);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(errorMessage(e));
@@ -328,7 +374,28 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [screen, loaded, genotypeSampleIds, classesKey]);
+  }, [screen, loaded, classesReqKey, classesKey]);
+
+  // Display order, applied on the main thread; the typed arrays are shared
+  // with `classesData`, not copied.
+  const orderedClassesData = useMemo(
+    () => (classesData === null ? null : permuteClassesData(classesData, visibleSampleIds)),
+    [classesData, visibleSampleIds],
+  );
+
+  // Both screens' selection controls speak only for the visible rows:
+  // "Select all" adds them and leaves hidden selected ids alone, "Select
+  // none" removes them and leaves the hidden ones.
+  function selectAllVisible() {
+    setSelected((prev) => new Set([...prev, ...visibleSampleIds]));
+  }
+  function selectNone() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of visibleSampleIds) next.delete(id);
+      return next;
+    });
+  }
 
   // Roving-tabindex toolbar: Left/Right/Home/End move focus between screen
   // buttons and activate (navigate to) the one focus lands on. Only the
@@ -444,21 +511,35 @@ export function App() {
         {screen === 'lines' && (
           <LineTableScreen
             loaded={loaded}
-            rpp={rpp}
-            segmentsByCandidate={segmentsByCandidate}
-            targets={targets}
-            targetSpecs={targetSpecs}
-            qc={qc}
+            rows={lineRows}
+            visibleRows={visibleLineRows}
+            regions={regions}
+            counts={counts}
+            sort={lineSort}
+            onSortChange={setLineSort}
+            filter={lineFilter}
+            onFilterChange={setLineFilter}
             selected={selected}
             onSelectionChange={setSelected}
+            targetSpecs={targetSpecs}
             onApplyTargets={(specs) => void handleApplyTargets(specs)}
+            onSelectAllVisible={selectAllVisible}
+            onSelectNone={selectNone}
           />
         )}
         {screen === 'genotypes' && (
           <GenotypeViewScreen
             loaded={loaded}
-            classesData={classesData}
+            classesData={orderedClassesData}
             loading={classesLoading}
+            counts={counts}
+            sort={lineSort}
+            onSortChange={setLineSort}
+            filter={lineFilter}
+            onFilterChange={setLineFilter}
+            regions={regions}
+            onSelectAllVisible={selectAllVisible}
+            onSelectNone={selectNone}
             onRequestMarkerDetail={(markerIndex, sampleIds) =>
               getClient().request('markerDetail', { markerIndex, sampleIds })
             }
@@ -483,7 +564,7 @@ export function App() {
             params={params}
             gapCriterion={gapCriterion}
             compare={compare}
-            classesData={classesData}
+            classesData={orderedClassesData}
             classesLoading={classesLoading}
             busy={busy}
             onRequestDiscordantMarkersCsv={(sampleA, sampleB, mode) =>
