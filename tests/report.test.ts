@@ -177,6 +177,17 @@ describe('buildHtmlReport', () => {
     expect(html).toContain(missingIds[0]);
   });
 
+  it('textures the donor swatch in the legend but not the recurrent-parent one (docs/adr/0007)', () => {
+    const html = buildHtmlReport(baseInput);
+    const donorSwatch =
+      /<li><span class="swatch" style="background:[^"]*repeating-linear-gradient[^"]*"><\/span>donor_hom<\/li>/;
+    const rpSwatch = /<li><span class="swatch" style="background:[^"]*"><\/span>rp_hom<\/li>/;
+    expect(html).toMatch(donorSwatch);
+    const rpMatch = rpSwatch.exec(html);
+    expect(rpMatch).not.toBeNull();
+    expect(rpMatch?.[0]).not.toContain('repeating-linear-gradient');
+  });
+
   it('omits the optional sections when there is nothing to show', () => {
     const html = buildHtmlReport({
       ...baseInput,

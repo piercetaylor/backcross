@@ -20,6 +20,14 @@
  * standalone, DOM-free function nearestMarkerIndex so it is unit-testable
  * without a canvas (tests/viewport.test.ts).
  *
+ * Per M2.5 phase 3, a minority-class overlay is drawn over each run of the
+ * majority binning: where a bin's second-most-common called class has a
+ * texture (src/core/palette.ts, src/ui/canvas/textures.ts), that texture is
+ * painted over the run in the majority's fill colour, so a bin that hid a
+ * non-recurrent call under a recurrent majority (docs/adr/0007's outstanding
+ * hatch) now shows it. Patterns are built lazily from the renderer's own
+ * canvas context and cached per device pixel ratio.
+ *
  * Interface:
  *   new GraphicalGenotypeRenderer(canvas, layout?)
  *   setData(data: GenotypeClassesData | null) — null clears the retained data
@@ -39,7 +47,9 @@ import { CLASS_COLORS } from '../../core/index.ts';
 import { CallClass } from '../../core/types.ts';
 import type { CallClassValue } from '../../core/types.ts';
 import type { GenotypeClassesData } from '../../workers/protocol.ts';
-import { binMajorityClasses } from './binning.ts';
+import { binClassesWithMinority } from './binning.ts';
+import { buildClassPatterns } from './textures.ts';
+import type { ClassPatterns } from './textures.ts';
 
 export interface RendererLayout {
   rowHeight: number;
@@ -120,6 +130,8 @@ export class GraphicalGenotypeRenderer {
   private cssWidth = 800;
   private markersByChrom: number[][] = [];
   private selection: { x0: number; x1: number } | null = null;
+  private patterns: ClassPatterns | null = null;
+  private patternsDpr: number | null = null;
 
   constructor(canvas: HTMLCanvasElement, layout: RendererLayout = DEFAULT_LAYOUT) {
     this.canvas = canvas;
@@ -235,6 +247,12 @@ export class GraphicalGenotypeRenderer {
     ctx.clearRect(0, 0, this.cssWidth, cssHeight);
     if (data === null) return;
 
+    if (this.patterns === null || this.patternsDpr !== dpr) {
+      this.patterns = buildClassPatterns(ctx, dpr);
+      this.patternsDpr = dpr;
+    }
+    const patterns = this.patterns;
+
     const plotWidth = Math.max(1, this.cssWidth - labelWidth);
     const chroms = this.chromLayouts(plotWidth);
 
@@ -256,7 +274,7 @@ export class GraphicalGenotypeRenderer {
         ctx.fillRect(plotX, y, widthPx, rowHeight);
 
         const markerIndices = this.markersByChrom[chromIdx] ?? [];
-        const bins = binMajorityClasses(
+        const { majority, minority } = binClassesWithMinority(
           data.markerPosBp,
           line.classes,
           markerIndices,
@@ -267,15 +285,43 @@ export class GraphicalGenotypeRenderer {
 
         // Merge adjacent equal columns into one fillRect per run, to keep
         // draw calls proportional to the number of distinct runs rather than
-        // to pixel width.
+        // to pixel width. The majority run is filled solid, then (if that
+        // class carries a texture) the pattern is painted over the same
+        // rectangle.
         let runStart = 0;
         for (let col = 1; col <= widthPx; col++) {
-          const prev = bins[col - 1] as number;
-          const cur = col < widthPx ? (bins[col] as number) : -1;
+          const prev = majority[col - 1] as number;
+          const cur = col < widthPx ? (majority[col] as number) : -1;
           if (cur === prev) continue;
           if (prev !== 255) {
-            ctx.fillStyle = CLASS_COLORS[prev as CallClassValue];
+            const cls = prev as CallClassValue;
+            ctx.fillStyle = CLASS_COLORS[cls];
             ctx.fillRect(plotX + runStart, y, col - runStart, rowHeight);
+            const pattern = patterns[cls];
+            if (pattern !== null) {
+              ctx.fillStyle = pattern;
+              ctx.fillRect(plotX + runStart, y, col - runStart, rowHeight);
+            }
+          }
+          runStart = col;
+        }
+
+        // A second run-merging pass over the minority channel: where a bin's
+        // second-most-common called class has a texture, that texture alone
+        // (no separate fill) is painted over the already-drawn majority run,
+        // so a hidden non-majority call reads without changing the bin's
+        // fill colour.
+        runStart = 0;
+        for (let col = 1; col <= widthPx; col++) {
+          const prev = minority[col - 1] as number;
+          const cur = col < widthPx ? (minority[col] as number) : -1;
+          if (cur === prev) continue;
+          if (prev !== 255) {
+            const pattern = patterns[prev as CallClassValue];
+            if (pattern !== null) {
+              ctx.fillStyle = pattern;
+              ctx.fillRect(plotX + runStart, y, col - runStart, rowHeight);
+            }
           }
           runStart = col;
         }

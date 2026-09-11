@@ -1,0 +1,13 @@
+/*
+ * Class-legend swatch (docs/adr/0007, M2.5 phase 3). Token-only: the swatch's
+ * fill and texture come from classSwatchCss(cls) (src/core/palette.ts), set
+ * inline per class by the caller, since that value is per-class data rather
+ * than a design token; everything here -- size and border -- is a token, so
+ * this file stays outside the literal-value gate's concern.
+ */
+.class-swatch {
+  display: inline-block;
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  border: var(--border-1) solid var(--color-swatch-border);
+}

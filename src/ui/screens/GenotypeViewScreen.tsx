@@ -73,7 +73,8 @@ import type {
 
 import { GraphicalGenotypeRenderer } from '../canvas/GraphicalGenotypeRenderer.ts';
 import type { Viewport } from '../canvas/GraphicalGenotypeRenderer.ts';
-import { CLASS_COLORS } from '../../core/index.ts';
+import '../canvas/legend.css';
+import { classSwatchCss } from '../../core/index.ts';
 import { parseLocus } from '../../core/targets.ts';
 import { CALL_CLASS_LABEL, CallClass } from '../../core/types.ts';
 import type { CallClassValue, TargetRegion } from '../../core/types.ts';
@@ -647,6 +648,10 @@ export function GenotypeViewScreen({
         genome; Escape cancels a drag in progress, or otherwise resets to whole genome.
       </p>
 
+      <p style={{ fontSize: 12, color: '#555' }}>
+        A column drawn in one class and overlaid with another class&apos;s pattern holds calls of
+        both; the fill is the majority.
+      </p>
       <ul
         aria-label="Class legend"
         style={{ display: 'flex', gap: 16, listStyle: 'none', padding: 0 }}
@@ -655,13 +660,8 @@ export function GenotypeViewScreen({
           <li key={cls} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span
               aria-hidden="true"
-              style={{
-                display: 'inline-block',
-                width: 12,
-                height: 12,
-                background: CLASS_COLORS[cls],
-                border: '1px solid #999',
-              }}
+              className="class-swatch"
+              style={{ background: classSwatchCss(cls) }}
             />
             {CALL_CLASS_LABEL[cls]}
           </li>

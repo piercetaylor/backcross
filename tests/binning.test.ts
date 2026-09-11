@@ -1,7 +1,7 @@
 /** Per-pixel-column binning (docs/adr/0007): hand-built cases, no fixture files. */
 import { describe, expect, it } from 'vitest';
 
-import { binMajorityClasses } from '../src/ui/canvas/binning.ts';
+import { binClassesWithMinority, binMajorityClasses } from '../src/ui/canvas/binning.ts';
 import { CallClass } from '../src/core/types.ts';
 
 describe('binMajorityClasses', () => {
@@ -163,5 +163,73 @@ describe('binMajorityClasses', () => {
       255,
     ]);
     for (const v of out) expect(allowed.has(v)).toBe(true);
+  });
+});
+
+describe('binClassesWithMinority', () => {
+  it('two RP and one DONOR in a column give majority RP, minority DONOR', () => {
+    const positions = [10, 20, 30];
+    const classes = Uint8Array.from([CallClass.RP_HOM, CallClass.RP_HOM, CallClass.DONOR_HOM]);
+    const { majority, minority } = binClassesWithMinority(positions, classes, [0, 1, 2], 0, 100, 1);
+    expect(majority[0]).toBe(CallClass.RP_HOM);
+    expect(minority[0]).toBe(CallClass.DONOR_HOM);
+  });
+
+  it('a single called class in a column gives minority 255 (no second class to report)', () => {
+    const positions = [10, 20];
+    const classes = Uint8Array.from([CallClass.RP_HOM, CallClass.RP_HOM]);
+    const { majority, minority } = binClassesWithMinority(positions, classes, [0, 1], 0, 100, 1);
+    expect(majority[0]).toBe(CallClass.RP_HOM);
+    expect(minority[0]).toBe(255);
+  });
+
+  it('RP 3, DONOR 1, HET 1 gives minority DONOR (tie to the lower code)', () => {
+    const positions = [10, 20, 30, 40, 50];
+    const classes = Uint8Array.from([
+      CallClass.RP_HOM,
+      CallClass.RP_HOM,
+      CallClass.RP_HOM,
+      CallClass.DONOR_HOM,
+      CallClass.HET,
+    ]);
+    const { majority, minority } = binClassesWithMinority(
+      positions,
+      classes,
+      [0, 1, 2, 3, 4],
+      0,
+      100,
+      1,
+    );
+    expect(majority[0]).toBe(CallClass.RP_HOM);
+    expect(minority[0]).toBe(CallClass.DONOR_HOM);
+  });
+
+  it('an empty column adjacent to an occupied one takes the majority by extension and keeps minority 255', () => {
+    // One marker at 0bp over a 2px, 0..100bp track: column 0 is occupied,
+    // column 1 is empty and only reaches its class through fillBetweenMarkers.
+    const positions = [0];
+    const classes = Uint8Array.from([CallClass.RP_HOM]);
+    const { majority, minority } = binClassesWithMinority(positions, classes, [0], 0, 100, 2);
+    expect(Array.from(majority)).toEqual([CallClass.RP_HOM, CallClass.RP_HOM]);
+    expect(minority[1]).toBe(255);
+  });
+
+  it('a MISSING marker never appears as a minority', () => {
+    // RP_HOM majority, one MISSING marker in the same column: MISSING must
+    // not surface as the second class even though it is the only other call.
+    const positions = [10, 20, 30];
+    const classes = Uint8Array.from([CallClass.RP_HOM, CallClass.RP_HOM, CallClass.MISSING]);
+    const { majority, minority } = binClassesWithMinority(positions, classes, [0, 1, 2], 0, 100, 1);
+    expect(majority[0]).toBe(CallClass.RP_HOM);
+    expect(minority[0]).toBe(255);
+  });
+
+  it('binMajorityClasses is exactly binClassesWithMinority(...).majority', () => {
+    const positions = [0, 100];
+    const classes = Uint8Array.from([CallClass.RP_HOM, CallClass.DONOR_HOM]);
+    const markerIndices = [0, 1];
+    expect(binMajorityClasses(positions, classes, markerIndices, 0, 100, 10)).toEqual(
+      binClassesWithMinority(positions, classes, markerIndices, 0, 100, 10).majority,
+    );
   });
 });

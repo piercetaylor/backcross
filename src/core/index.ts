@@ -11,5 +11,13 @@ export type { GapCriterion } from './segments.ts';
 export { checkTargets, parseTargetSpec } from './targets.ts';
 export { compareLines } from './compare.ts';
 export { computeQc, DEFAULT_QC_THRESHOLDS } from './qc.ts';
-export { CLASS_COLORS, OKABE_ITO, classColor } from './palette.ts';
+export {
+  CLASS_COLORS,
+  OKABE_ITO,
+  classColor,
+  TEXTURE_INK,
+  CLASS_TEXTURES,
+  classSwatchCss,
+} from './palette.ts';
+export type { TextureKind, ClassTexture } from './palette.ts';
 export { relativeLuminance, contrastRatio } from './contrast.ts';

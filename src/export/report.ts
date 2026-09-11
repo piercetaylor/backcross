@@ -34,7 +34,7 @@ import type {
   TargetCheck,
 } from '../core/types.ts';
 import { CALL_CLASS_LABEL } from '../core/types.ts';
-import { CLASS_COLORS } from '../core/palette.ts';
+import { classSwatchCss } from '../core/palette.ts';
 
 /**
  * The dataset facts the report states. Deliberately not a `Dataset`: the
@@ -155,7 +155,7 @@ th { background: #f0f0f0; }
 ul { margin: 0.5rem 0; padding-left: 1.4rem; }
 .legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 0.75rem 0 1.5rem; padding: 0; list-style: none; }
 .legend li { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
-.swatch { display: inline-block; width: 0.9rem; height: 0.9rem; border: 1px solid #666; flex: none; }
+.swatch { display: inline-block; width: 0.9rem; height: 0.9rem; border: 1px solid #1C1C1C; flex: none; }
 .geno-figure { break-inside: avoid; margin: 0 0 1.5rem; }
 .geno-figure img { max-width: 100%; border: 1px solid #ccc; display: block; }
 .image-note { font-style: italic; color: #555; }
@@ -359,9 +359,8 @@ cap values above (docs/adr/0006); a different cap produces different rpp_bp and 
 
   // --- Graphical genotypes ---
   const legendHtml = `<ul class="legend">${CLASS_ORDER.map((cls) => {
-    const color = CLASS_COLORS[cls];
     const label = CALL_CLASS_LABEL[cls];
-    return `<li><span class="swatch" style="background:${color}"></span>${escapeHtml(label)}</li>`;
+    return `<li><span class="swatch" style="background:${classSwatchCss(cls)}"></span>${escapeHtml(label)}</li>`;
   }).join('')}</ul>`;
 
   // Lines whose table rows have no rendered figure below, either because no
