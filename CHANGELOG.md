@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The canvas renderer extends each marker across the pixel columns nearer to it than to any other marker when markers are sparser than pixels, which is what zooming into a region produces, so a track reads as contiguous blocks instead of one hairline per marker (docs/adr/0007). This changes how every existing view is drawn.
 - The donor-run gap is measured between consecutive informative markers (PLINK `--homozyg-gap` convention) rather than between consecutive non-RP calls, so `maxMissingSpan` is the only control on missing calls; the segments CSV gains a trailing `gap_criterion` column.
+- docs/design-brief.md and docs/adr/0009: the interface design language for milestone M2.5, with the prior art it follows and the contrast measurements behind the texture encoding.
 - The CLI rejects an option that belongs to another subcommand (for example `--max-gap-bp` on `segments`) with exit code 2 instead of ignoring it.
 
 ## [0.1.0] - Unreleased
