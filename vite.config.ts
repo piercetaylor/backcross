@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
   worker: { format: 'es' },
   build: { target: 'es2022', sourcemap: true },
   test: {
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
     environment: 'node',
   },
 }));

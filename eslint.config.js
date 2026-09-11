@@ -17,7 +17,6 @@ const UI_LITERAL_LEGACY = [
   'src/App.tsx',
   'src/ui/screens/UploadScreen.tsx',
   'src/ui/screens/SummaryScreen.tsx',
-  'src/ui/screens/LineTableScreen.tsx',
   'src/ui/screens/GenotypeViewScreen.tsx',
   'src/ui/screens/CompareScreen.tsx',
   'src/ui/screens/ExportScreen.tsx',

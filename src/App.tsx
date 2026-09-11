@@ -54,6 +54,11 @@
  * Selection changes from either screen speak only for the visible rows
  * (`selectAllVisible`/`selectNone`), leaving hidden selected ids alone.
  *
+ * Density (M2.5 phase 4): `density` is session state here and is rendered
+ * as `data-density` on the root <div>, where tokens.css re-points
+ * --row-height at the compact, default or comfortable height. It is never
+ * reset, including on a new load, and is not persisted across reloads.
+ *
  * Export (M2): the 'classes' fetch effect below (keyed on `screen` and
  * `classesReqKey`) also runs on the Export screen, not only Graphical
  * genotypes, since the HTML report's per-line figures are rendered from the
@@ -83,6 +88,7 @@ import type {
   TargetRegion,
 } from './core/types.ts';
 import { classesRequestKey, permuteClassesData } from './ui/lines/classes-order.ts';
+import type { Density } from './ui/lines/LineActionBar.tsx';
 import { EMPTY_LINE_FILTER, lineCounts, orderLineRows } from './ui/lines/line-order.ts';
 import type { LineFilter, LineSort } from './ui/lines/line-order.ts';
 import { buildLineRows } from './ui/lines/line-rows.ts';
@@ -139,6 +145,7 @@ export function App() {
   const [compare, setCompare] = useState<PairwiseDiff | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [density, setDensity] = useState<Density>('default');
 
   const [classesData, setClassesData] = useState<GenotypeClassesData | null>(null);
   const [classesKey, setClassesKey] = useState<string | null>(null);
@@ -419,6 +426,7 @@ export function App() {
 
   return (
     <div
+      data-density={density}
       style={{
         fontFamily: 'system-ui, sans-serif',
         maxWidth: 1200,
@@ -511,7 +519,6 @@ export function App() {
         {screen === 'lines' && (
           <LineTableScreen
             loaded={loaded}
-            rows={lineRows}
             visibleRows={visibleLineRows}
             regions={regions}
             counts={counts}
@@ -525,6 +532,8 @@ export function App() {
             onApplyTargets={(specs) => void handleApplyTargets(specs)}
             onSelectAllVisible={selectAllVisible}
             onSelectNone={selectNone}
+            density={density}
+            onDensityChange={setDensity}
           />
         )}
         {screen === 'genotypes' && (

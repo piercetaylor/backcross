@@ -1,0 +1,298 @@
+/*
+ * The Lines table and the action bar both screens act through.
+ *
+ * Token-only by rule: every colour and every dimension here is a custom
+ * property from src/ui/tokens.css, and tests/css-literals.test.ts fails the
+ * build if a hex literal or a bare length appears in any stylesheet under
+ * src/ui/ other than tokens.css and fonts.css. Density is not switched
+ * here: the row height is --row-height, which App's data-density attribute
+ * re-points at one of the three height tokens.
+ *
+ * React Aria owns the state attributes these rules select on
+ * (data-hovered, data-selected, data-focus-visible, data-indeterminate);
+ * nothing here toggles a class from JavaScript. The focus ring inside the
+ * grid is inset, because an outset ring on a row or a cell is clipped by
+ * its neighbours; controls in the action bar sit outside the grid and take
+ * the positive offset.
+ */
+
+/* ---- Action bar ---- */
+
+.line-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-subtle);
+  border-bottom: var(--border-1) solid var(--color-border-subtle);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--color-text);
+}
+
+.line-action-bar-readout {
+  margin: 0;
+  font-variant-numeric: var(--numeric);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.line-action-bar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.line-action-bar-density {
+  margin-left: auto;
+}
+
+.line-action-bar button,
+.line-action-bar input[type='search'],
+.line-action-bar .line-select-button {
+  height: var(--control-height);
+  padding: 0 var(--control-padding-x);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg-control);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.line-action-bar button[data-hovered],
+.line-action-bar .line-select-button[data-hovered] {
+  background: var(--color-bg-control-hover);
+}
+
+.line-action-bar button[data-pressed],
+.line-action-bar button[data-selected],
+.line-action-bar .line-select-button[data-pressed] {
+  background: var(--color-bg-control-active);
+}
+
+.line-action-bar button[data-disabled] {
+  color: var(--color-text-disabled);
+  border-color: var(--color-border-disabled);
+}
+
+.line-action-bar [data-focus-visible],
+.line-action-bar input[type='search']:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.line-filter-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.line-filter-field input {
+  width: var(--rail-width);
+}
+
+.line-density-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.line-density-radios {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---- Checkbox and radio indicators ---- */
+
+/*
+ * React Aria visually hides the native control, so the visible box is drawn
+ * here. The tick shows on [data-selected] and the dash on
+ * [data-indeterminate], which is the header checkbox's state when only some
+ * visible rows are selected.
+ */
+.line-checkbox,
+.line-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.checkbox-indicator {
+  display: inline-flex;
+  flex: none;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  background: var(--color-bg);
+  border: var(--border-1) solid var(--color-border-strong);
+  border-radius: var(--radius-1);
+}
+
+.line-radio .checkbox-indicator {
+  border-radius: 50%;
+}
+
+.checkbox-indicator svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--color-text-on-solid);
+  stroke-width: var(--border-2);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.checkbox-indicator .check-tick,
+.checkbox-indicator .check-dash {
+  visibility: hidden;
+}
+
+[data-selected] > .checkbox-indicator,
+[data-indeterminate] > .checkbox-indicator {
+  background: var(--color-bg-solid);
+  border-color: var(--color-bg-solid);
+}
+
+[data-selected] > .checkbox-indicator .check-tick,
+[data-indeterminate] > .checkbox-indicator .check-dash {
+  visibility: visible;
+}
+
+[data-disabled] > .checkbox-indicator {
+  border-color: var(--color-border-disabled);
+}
+
+/* ---- Table ---- */
+
+/*
+ * The scroll container, not the table, is what scrolls: the header is
+ * sticky against it and scroll-padding-top keeps a row arrowed to from
+ * landing underneath that header (WCAG 2.4.11).
+ */
+.lines-table-viewport {
+  overflow: auto;
+  max-height: calc(100vh - var(--space-7) * 5);
+  scroll-padding-top: var(--row-height);
+  border-bottom: var(--border-1) solid var(--color-border-subtle);
+}
+
+.lines-table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  font-variant-numeric: var(--numeric);
+  color: var(--color-text);
+}
+
+.lines-table th,
+.lines-table td {
+  height: var(--row-height);
+  padding: 0 var(--cell-padding-x);
+  line-height: var(--leading-ui);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.lines-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-bg);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  border-bottom: var(--border-2) solid var(--color-border);
+}
+
+.lines-table thead th[data-hovered] {
+  background: var(--color-bg-row-hover);
+}
+
+.lines-table tbody tr {
+  border-bottom: var(--border-1) solid var(--color-border-subtle);
+}
+
+.lines-table tbody tr[data-hovered] {
+  background: var(--color-bg-row-hover);
+}
+
+/*
+ * The selected row's left edge is an inset shadow rather than a border, so
+ * the weight change of ADR 0009 costs no layout shift.
+ */
+.lines-table tbody tr[data-selected] {
+  background: var(--color-bg-row-selected);
+  box-shadow: inset var(--border-3) 0 0 0 var(--color-selected-indicator);
+}
+
+.lines-table tbody tr[data-selected][data-hovered] {
+  background: var(--color-bg-row-selected-hover);
+}
+
+.lines-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lines-table .mono {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.lines-table .flags {
+  white-space: nowrap;
+}
+
+.lines-table [data-focus-visible] {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/* ---- Target region editor ---- */
+
+.line-targets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-top: var(--space-4);
+  font-size: var(--text-ui);
+}
+
+.line-targets textarea {
+  width: 100%;
+  max-width: calc(var(--rail-width) * 2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: var(--space-2);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.line-targets textarea:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.line-targets button {
+  height: var(--control-height);
+  padding: 0 var(--control-padding-x);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg-control);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.line-targets button[data-hovered] {
+  background: var(--color-bg-control-hover);
+}
+
+.line-targets button[data-focus-visible] {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
