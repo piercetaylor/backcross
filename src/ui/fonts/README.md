@@ -1,50 +1,38 @@
-# IBM Plex web fonts: not yet in the tree
+# IBM Plex, Latin-1 subsets
 
-This directory is empty on purpose. `../fonts.css` declares five `@font-face`
-rules that point at the files below, but the files themselves were not
-obtained in the commit that added phase 1, so the application does **not**
-self-host IBM Plex yet and must not be described as doing so.
+Five faces, self-hosted so that loading the application makes no third-party
+request. That is a privacy requirement rather than a performance one: this tool
+is handed unreleased line data, and ADR 0009 holds that nothing about a session
+should reach a third party, a font CDN included.
 
-Nothing is broken by their absence. No `font-family` in the app names
-`IBM Plex Sans` or `IBM Plex Mono`, so no browser attempts the download; the
-fallback stacks in `../tokens.css` (`--font-sans`, `--font-mono`) are what
-render. `vite build` prints one "didn't resolve at build time" warning per
-missing file and succeeds.
+| file                         | family        | weight | used for                          |
+| ---------------------------- | ------------- | ------ | --------------------------------- |
+| `IBMPlexSans-Regular.woff2`  | IBM Plex Sans | 400    | interface text                    |
+| `IBMPlexSans-Medium.woff2`   | IBM Plex Sans | 500    | column headers, current rail item |
+| `IBMPlexSans-SemiBold.woff2` | IBM Plex Sans | 600    | headings, flagged cells, counts   |
+| `IBMPlexMono-Regular.woff2`  | IBM Plex Mono | 400    | sample ids, marker ids, alleles   |
+| `IBMPlexMono-Medium.woff2`   | IBM Plex Mono | 500    | emphasised identifiers            |
 
-## What is missing
+## Provenance
 
-Five Latin-1 subsets plus the licence:
+Taken from the packages IBM publishes on npm, which is why the version numbers
+differ between the families: `@ibm/plex-sans@1.1.0` and `@ibm/plex-mono@2.5.0`,
+from `fonts/split/woff2/` in each. Neither package is a dependency of this
+project; the files were extracted and committed, so `package.json` is unchanged
+and nothing is fetched at install or at build time.
 
-| file in this directory       | weight | family        |
-| ---------------------------- | ------ | ------------- |
-| `IBMPlexSans-Regular.woff2`  | 400    | IBM Plex Sans |
-| `IBMPlexSans-Medium.woff2`   | 500    | IBM Plex Sans |
-| `IBMPlexSans-SemiBold.woff2` | 600    | IBM Plex Sans |
-| `IBMPlexMono-Regular.woff2`  | 400    | IBM Plex Mono |
-| `IBMPlexMono-Medium.woff2`   | 500    | IBM Plex Mono |
-| `LICENSE.txt`                | -      | SIL OFL 1.1   |
+The upstream names carry a `-Latin1` suffix, dropped on copy. Latin-1 is the
+only subset committed: sample identifiers, marker identifiers and the interface
+are ASCII, and the other subsets would multiply the payload for glyphs nothing
+renders. If the application ever displays user-supplied text outside Latin-1,
+add the matching subset files and a second `@font-face` block with the
+appropriate `unicode-range` rather than widening these.
 
-`LICENSE.txt` is the SIL Open Font License 1.1 text shipped with Plex,
-including its copyright line. OFL requires the licence to travel with the
-files, so it is not optional and its wording is not something to write from
-memory: copy the file that comes with the release.
+`@font-face` declarations are in `../fonts.css`. Filenames there and here must
+agree; Vite hashes these files into `dist/assets/` at build time.
 
-## Where they come from
+## Licence
 
-Upstream is <https://github.com/IBM/plex>. The design brief names the split
-Latin-1 subsets under `fonts/split/woff2/` in the release archive, where each
-file carries a `-Latin1` suffix (`IBMPlexSans-Regular-Latin1.woff2` and so
-on) and is renamed on copy to the names in the table above.
-
-That layout is the `@ibm/plex` 6.x line. As of this writing IBM has split the
-repository into per-family packages and the newest release is tagged
-`@ibm/plex-sans@1.1.0`, whose archive is arranged differently. Whoever adds
-the files should say in the commit message which release and which path they
-actually took them from, and then replace the "Plex release: not recorded"
-line in the header comment of `../fonts.css` with that version.
-
-## Checking the result
-
-Confirm the five files are non-empty and are real WOFF2 (the first four bytes
-are `wOF2`), then run `npm run build`: the five warnings should disappear and
-the files should appear hashed under `dist/assets/`.
+SIL Open Font License 1.1. `LICENSE.txt` is the licence text as shipped by IBM
+and must travel with the font files: the OFL requires it, and removing it while
+keeping the fonts would make the distribution non-compliant.

@@ -2,3 +2,8 @@
 # fixture on Windows matches the committed files (CI runs `npm run fixture`
 # followed by `git diff --exit-code`).
 * text=auto eol=lf
+
+# Fonts are binary. `text=auto` above would normally detect that, but an
+# explicit rule is cheaper than discovering a corrupted woff2 later: line-ending
+# normalisation applied to a font file silently destroys it.
+*.woff2 binary

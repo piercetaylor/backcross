@@ -1,7 +1,7 @@
 /*
  * Self-hosted IBM Plex, Latin-1 subsets.
  *
- * Plex release: not recorded; the woff2 files are not in the tree yet. See
+ * Plex release: @ibm/plex-sans@1.1.0 and @ibm/plex-mono@2.5.0 (npm).
  * src/ui/fonts/README.md for exactly which five files are missing, where
  * they come from, and what to write here once they are copied in. Until
  * then these rules name files that do not exist, which costs nothing at
