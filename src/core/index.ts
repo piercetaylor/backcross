@@ -12,3 +12,4 @@ export { checkTargets, parseTargetSpec } from './targets.ts';
 export { compareLines } from './compare.ts';
 export { computeQc, DEFAULT_QC_THRESHOLDS } from './qc.ts';
 export { CLASS_COLORS, OKABE_ITO, classColor } from './palette.ts';
+export { relativeLuminance, contrastRatio } from './contrast.ts';
