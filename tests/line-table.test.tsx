@@ -2,14 +2,13 @@
  * The Lines table's accessibility contract, asserted from server-rendered
  * markup.
  *
- * `react-dom/server`'s renderToString in the existing environment: 'node'
- * -- no DOM, no jsdom. React Aria server-renders its Table, so the grid
- * role, the sort state, the selection state and the row count are all
- * readable from the string. What is NOT testable this way is behaviour:
- * the APG grid keyboard pattern, the sticky header's interaction with
- * 2.4.11, and the density control's visible effect need a real browser and
- * are M3 browser-mode items (docs/m2.5-phases.md, phase 4 "Not verifiable
- * here").
+ * `react-dom/server`'s renderToString in the node project -- no DOM, no
+ * jsdom. React Aria server-renders its Table, so the grid role, the sort
+ * state, the selection state and the row count are all readable from the
+ * string. Behaviour is not asserted here: the APG grid keyboard pattern and
+ * the density control's visible effect are asserted in a real browser by
+ * tests/browser/lines-grid-keyboard.test.tsx and
+ * tests/browser/density.test.tsx (M3 phase 1).
  *
  * The rows are hand-built rather than derived from the fixture: the point
  * is the table's rendering of a known model, and tests/line-rows.test.ts

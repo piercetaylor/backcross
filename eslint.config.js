@@ -25,7 +25,8 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
   },
   {
-    files: ['scripts/**', 'src/cli.ts'],
+    // The bench prints its wall-clock and memory figures on every run.
+    files: ['scripts/**', 'src/cli.ts', 'tests/bench/**'],
     rules: { 'no-console': 'off' },
   },
   // Every colour and dimension lives in src/ui/tokens.css. From M2.5 phase 5

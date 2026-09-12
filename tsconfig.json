@@ -5,7 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "types": ["node", "vite/client"],
+    "types": ["node", "vite/client", "@vitest/browser-playwright"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,

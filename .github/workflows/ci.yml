@@ -1,4 +1,6 @@
-# Lint, typecheck, test and build on every push and pull request.
+# Lint, typecheck, test and build on every push and pull request; then run the
+# browser-mode tests and the 50K x 200 bench in Chromium and Firefox
+# (docs/adr/0011).
 # On pushes to main, additionally publish dist/ to GitHub Pages (docs/adr/0003).
 name: ci
 
@@ -27,16 +29,39 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - name: Install bgzip (htslib, via tabix)
+        run: sudo apt-get update && sudo apt-get install -y tabix
       - run: npm test
+        env:
+          BGZIP_BIN: bgzip
       - run: npm run build
       - name: Fixture is reproducible
         run: |
           npm run fixture
-          git diff --exit-code -- tests/fixtures/synthetic
+          git diff --exit-code -- tests/fixtures contract
       - uses: actions/upload-pages-artifact@v5
         if: vars.ENABLE_PAGES == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         with:
           path: dist
+
+  # Browser-mode tests and the bench. The bench's 30 s budget is the laptop
+  # figure; here it is only a hang guard, to be tightened to 3-5x the first
+  # recorded CI baseline (docs/m3-phases.md, Q5).
+  browser:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox
+      - run: npm run test:browser
+      - run: npm run test:bench
+        env:
+          VITE_BENCH_BUDGET_MS: '120000'
 
   # Deploying needs Pages turned on for the repository first (docs/adr/0003).
   # Until then this job is skipped rather than failing every push to main: set
