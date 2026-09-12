@@ -28,14 +28,21 @@
  * Load button was clicked. Parameter inputs are disabled (via `busy`) while
  * any chain is in flight.
  *
- * Keyboard navigation (M2): the screen nav is a roving-tabindex toolbar
- * (role="toolbar") -- only the active screen's button is in the Tab order,
- * and Left/Right/Home/End move focus between buttons and activate (navigate
- * to) the one focus lands on, the standard toolbar/tab pattern. A "Skip to
- * main content" link is the first focusable element on the page, targeting
- * the focusable <main>. A global :focus-visible outline replaces the
- * browser default, which is not reliably visible against this app's white
- * background.
+ * Keyboard navigation (M2, moved into the rail in M2.5 phase 5): the screen
+ * nav is a roving-tabindex toolbar (role="toolbar") -- see ui/shell/Rail.tsx,
+ * which owns SCREENS, the arrow-key handling and the blocked-step rule. A
+ * "Skip to main content" link is still the first focusable element on the
+ * page, targeting the focusable <main>. The global :focus-visible outline
+ * that replaces the browser default (not reliably visible against this app's
+ * background) is now a rule in ui/base.css rather than an inline <style>
+ * block here.
+ *
+ * Shell (M2.5 phase 5): a two-column grid, the rail and one content column
+ * (ui/shell/shell.css). `railCollapsed` is null while the rail follows the
+ * screen -- collapsed on the genotype view, where horizontal room is the
+ * scarce resource, expanded elsewhere -- and a user toggle pins a boolean
+ * that wins for the rest of the session. Nothing here carries a colour or a
+ * dimension: every one is a token named by a stylesheet.
  *
  * Compare (M2): `compare` holds the latest 'compare' worker result;
  * `runCompare` issues that request. Like `handleApplyTargets`, it is
@@ -74,7 +81,6 @@
  * request would run against.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { config } from './config.ts';
 import type { GapCriterion } from './core/segments.ts';
@@ -92,6 +98,9 @@ import type { Density } from './ui/lines/LineActionBar.tsx';
 import { EMPTY_LINE_FILTER, lineCounts, orderLineRows } from './ui/lines/line-order.ts';
 import type { LineFilter, LineSort } from './ui/lines/line-order.ts';
 import { buildLineRows } from './ui/lines/line-rows.ts';
+import { Rail } from './ui/shell/Rail.tsx';
+import type { Screen } from './ui/shell/Rail.tsx';
+import './ui/shell/shell.css';
 import { CompareScreen } from './ui/screens/CompareScreen.tsx';
 import { ExportScreen } from './ui/screens/ExportScreen.tsx';
 import { GenotypeViewScreen } from './ui/screens/GenotypeViewScreen.tsx';
@@ -101,17 +110,6 @@ import type { AnalysisParams, LoadedState, LoadPayload } from './ui/screens/Uplo
 import { UploadScreen } from './ui/screens/UploadScreen.tsx';
 import { AnalysisClient } from './workers/client.ts';
 import type { GenotypeClassesData } from './workers/protocol.ts';
-
-export type Screen = 'upload' | 'summary' | 'lines' | 'genotypes' | 'compare' | 'export';
-
-const SCREENS: { id: Screen; label: string }[] = [
-  { id: 'upload', label: '1. Upload' },
-  { id: 'summary', label: '2. Summary and QC' },
-  { id: 'lines', label: '3. Lines' },
-  { id: 'genotypes', label: '4. Graphical genotypes' },
-  { id: 'compare', label: '5. Compare' },
-  { id: 'export', label: '6. Export' },
-];
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -146,13 +144,15 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [density, setDensity] = useState<Density>('default');
+  // null = follow the screen (see the header comment); a boolean is a user
+  // choice and wins for the rest of the session.
+  const [railCollapsed, setRailCollapsed] = useState<boolean | null>(null);
 
   const [classesData, setClassesData] = useState<GenotypeClassesData | null>(null);
   const [classesKey, setClassesKey] = useState<string | null>(null);
   const [classesLoading, setClassesLoading] = useState(false);
 
   const mainRef = useRef<HTMLElement | null>(null);
-  const navButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const clientRef = useRef<AnalysisClient | null>(null);
   // Always holds the latest committed `params`, so runLoad reads the
@@ -404,66 +404,15 @@ export function App() {
     });
   }
 
-  // Roving-tabindex toolbar: Left/Right/Home/End move focus between screen
-  // buttons and activate (navigate to) the one focus lands on. Only the
-  // active screen's button is in the Tab order (see the button's tabIndex
-  // below); this handler moves both the React `screen` state and the DOM
-  // focus together so the two never disagree about which button is current.
-  function handleNavKeyDown(e: ReactKeyboardEvent<HTMLElement>) {
-    const idx = SCREENS.findIndex((s) => s.id === screen);
-    let nextIdx: number;
-    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % SCREENS.length;
-    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + SCREENS.length) % SCREENS.length;
-    else if (e.key === 'Home') nextIdx = 0;
-    else if (e.key === 'End') nextIdx = SCREENS.length - 1;
-    else return;
-    e.preventDefault();
-    const next = SCREENS[nextIdx];
-    if (next === undefined) return;
-    setScreen(next.id);
-    navButtonRefs.current[nextIdx]?.focus();
-  }
+  // null follows the screen; a user toggle pins the value (see the header).
+  const railIsCollapsed = railCollapsed ?? screen === 'genotypes';
 
   return (
     <div
+      className="app-shell"
       data-density={density}
-      style={{
-        fontFamily: 'system-ui, sans-serif',
-        maxWidth: 1200,
-        margin: '0 auto',
-        padding: 16,
-        // The app is deliberately single-theme (no dark mode); pin an
-        // explicit background/foreground so labels drawn by the canvas
-        // renderer (which hard-codes black text) stay legible against a
-        // dark host page.
-        background: '#ffffff',
-        color: '#111111',
-      }}
+      data-rail={railIsCollapsed ? 'collapsed' : undefined}
     >
-      {/* Global focus style (the browser default is not reliably visible on
-          this app's white background) and the skip-link's hidden-until-focus
-          styling; a plain <style> tag rather than a separate stylesheet, since
-          this file is the only one this change may touch. */}
-      <style>{`
-        *:focus-visible {
-          outline: 3px solid #005fcc;
-          outline-offset: 2px;
-        }
-        .skip-link {
-          position: absolute;
-          left: -9999px;
-          top: 0;
-          background: #ffffff;
-          color: #111111;
-          padding: 8px 12px;
-          border: 2px solid #005fcc;
-          z-index: 1000;
-        }
-        .skip-link:focus {
-          left: 8px;
-          top: 8px;
-        }
-      `}</style>
       <a
         href="#main-content"
         className="skip-link"
@@ -474,31 +423,19 @@ export function App() {
       >
         Skip to main content
       </a>
-      <header>
-        <h1 style={{ fontSize: 20, margin: 0 }}>Isoline Browser</h1>
-        <p style={{ margin: '4px 0 12px', color: '#555' }}>
-          Files are processed in this browser tab and never uploaded.
-        </p>
-        <nav role="toolbar" aria-label="Screens" onKeyDown={handleNavKeyDown}>
-          {SCREENS.map((s, i) => (
-            <button
-              key={s.id}
-              ref={(el) => {
-                navButtonRefs.current[i] = el;
-              }}
-              type="button"
-              onClick={() => setScreen(s.id)}
-              aria-current={screen === s.id ? 'page' : undefined}
-              tabIndex={screen === s.id ? 0 : -1}
-              style={{ marginRight: 8, fontWeight: screen === s.id ? 700 : 400 }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </nav>
-      </header>
-      {error !== null && <p role="alert">{error}</p>}
-      <main id="main-content" ref={mainRef} tabIndex={-1} style={{ marginTop: 16 }}>
+      <Rail
+        screen={screen}
+        loaded={loaded !== null}
+        collapsed={railIsCollapsed}
+        onNavigate={setScreen}
+        onToggleCollapsed={() => setRailCollapsed(!railIsCollapsed)}
+      />
+      <main className="app-main" id="main-content" ref={mainRef} tabIndex={-1}>
+        {error !== null && (
+          <p role="alert" className="alert">
+            {error}
+          </p>
+        )}
         {screen === 'upload' && (
           <UploadScreen
             params={params}
@@ -547,6 +484,8 @@ export function App() {
             filter={lineFilter}
             onFilterChange={setLineFilter}
             regions={regions}
+            selected={selected}
+            onSelectionChange={setSelected}
             onSelectAllVisible={selectAllVisible}
             onSelectNone={selectNone}
             onRequestMarkerDetail={(markerIndex, sampleIds) =>

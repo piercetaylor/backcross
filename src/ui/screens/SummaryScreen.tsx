@@ -20,9 +20,13 @@
  */
 import { useEffect, useRef } from 'react';
 
+import './screens.css';
 import type { GapCriterion } from '../../core/segments.ts';
 import type { QcReport, SegmentParams } from '../../core/types.ts';
 import type { LoadedState } from './UploadScreen.tsx';
+
+/** A full-height bar, as the percentage of its column that the tallest bin fills. */
+const PERCENT = 100;
 
 function rate3(v: number): string {
   return Number.isNaN(v) ? 'NA' : v.toFixed(3);
@@ -137,30 +141,33 @@ export function SummaryScreen({
 
       <h3>Call-rate histogram</h3>
       <div
+        className="hist"
         role="img"
         aria-label={`Marker call-rate histogram, 10 bins from 0 to 1: ${histCounts
           .map((c, i) => `${(i / 10).toFixed(1)}-${((i + 1) / 10).toFixed(1)}: ${c}`)
           .join(', ')}`}
-        style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120 }}
       >
-        {histCounts.map((count, i) => (
-          <div key={i} style={{ textAlign: 'center', flex: 1 }}>
-            <div>{count}</div>
-            <div
-              style={{
-                height: Math.max(2, (count / maxHistCount) * 90),
-                background: '#0072B2',
-              }}
-            />
-            <div style={{ fontSize: 10 }}>
-              {(i / 10).toFixed(1)}-{((i + 1) / 10).toFixed(1)}
+        {histCounts.map((count, i) => {
+          // The one thing about a bar that is not a design token: its share
+          // of the tallest bin. The container's height and the bar's colour
+          // and minimum are tokens in screens.css.
+          const height = `${Math.round((count / maxHistCount) * PERCENT)}%`;
+          return (
+            <div key={i} className="hist-col">
+              <div className="hist-count">{count}</div>
+              <div className="hist-bar-track">
+                <div className="hist-bar" style={{ height }} />
+              </div>
+              <div className="hist-axis">
+                {(i / 10).toFixed(1)}-{((i + 1) / 10).toFixed(1)}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <h3>Per-line QC</h3>
-      <table>
+      <table className="data-table">
         <thead>
           <tr>
             <th scope="col">sample_id</th>
@@ -178,14 +185,14 @@ export function SummaryScreen({
             : qc.lines.map((line) => {
                 const flagged = line.flags.includes('closer_to_donor');
                 return (
-                  <tr key={line.sampleId} style={flagged ? { background: '#fde0dc' } : undefined}>
+                  <tr key={line.sampleId} className={flagged ? 'qc-flagged' : undefined}>
                     <td>{line.sampleId}</td>
                     <td>{lineNameById.get(line.sampleId) ?? line.sampleId}</td>
                     <td>{line.role}</td>
                     <td>{rate3(line.missingRate)}</td>
                     <td>{rate3(line.hetRate)}</td>
                     <td>{rate3(line.nonparentalRate)}</td>
-                    <td>{line.flags.join(' ')}</td>
+                    <td className="flags">{line.flags.join(' ')}</td>
                   </tr>
                 );
               })}

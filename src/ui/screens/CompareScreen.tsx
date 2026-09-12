@@ -23,6 +23,8 @@
  */
 import { useEffect, useState } from 'react';
 
+import './screens.css';
+
 import type { PairwiseDiff, SampleRecord } from '../../core/types.ts';
 
 type Mode = 'informative' | 'all';
@@ -208,7 +210,7 @@ export function CompareScreen({
           {compare.mode === 'informative' && (
             <p>
               Skipped as missing: {compare.nSkippedMissing.toLocaleString()}.{' '}
-              <strong style={compare.nSkippedNonparental > 0 ? { fontSize: '1.2em' } : undefined}>
+              <strong className={compare.nSkippedNonparental > 0 ? 'emph' : undefined}>
                 Skipped as nonparental: {compare.nSkippedNonparental.toLocaleString()}
                 {compare.nSkippedNonparental > 0
                   ? ' -- check for contamination or a wrong parent'
@@ -221,7 +223,7 @@ export function CompareScreen({
             </p>
           )}
 
-          <table>
+          <table className="data-table">
             <caption>Discordance by chromosome</caption>
             <thead>
               <tr>

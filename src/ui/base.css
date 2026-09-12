@@ -1,0 +1,163 @@
+/*
+ * Document defaults: the rules that belong to the page rather than to any
+ * one component. Imported once, by src/main.tsx, after tokens.css and
+ * fonts.css.
+ *
+ * Token-only by rule, like every stylesheet under src/ui/ other than
+ * tokens.css and fonts.css: tests/css-literals.test.ts fails the build on a
+ * hex literal or a bare length here. That rules out the usual
+ * visually-hidden recipe (a 1px box at margin -1px) and the usual skip-link
+ * one (left: -9999px); both are done here by clipping instead, which is the
+ * modern recipe anyway and needs no length at all.
+ *
+ * The focus ring is global and deliberate: the browser default is not
+ * reliably visible against this app's white background (it was an inline
+ * <style> block in App.tsx through M2). It is :focus-visible, so a pointer
+ * click does not draw it, and it is the only outline the app declares
+ * outside the two grids, which use an inset ring because an outset one is
+ * clipped by the neighbouring row.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font: var(--text-ui) / var(--leading-ui) var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-2);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-semibold);
+}
+
+h1 {
+  font-size: var(--text-xl);
+}
+
+h2 {
+  font-size: var(--text-lg);
+}
+
+h3 {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+/* Controls inherit the page font; the browser default is 13px Arial. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--color-text);
+}
+
+button,
+select {
+  height: var(--control-height);
+  padding: 0 var(--control-padding-x);
+  background: var(--color-bg-control);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+button:hover:enabled,
+select:hover:enabled {
+  background: var(--color-bg-control-hover);
+}
+
+button:disabled {
+  color: var(--color-text-disabled);
+  border-color: var(--color-border-disabled);
+}
+
+input[type='text'],
+input[type='number'],
+input[type='search'],
+textarea {
+  height: var(--control-height);
+  padding: 0 var(--space-2);
+  background: var(--color-bg);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+input[type='number'] {
+  font-variant-numeric: var(--numeric);
+}
+
+*:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * Off-screen for sight, present for assistive technology. Clipping to
+ * nothing rather than moving off-canvas keeps the element in the layout's
+ * reading order and needs no length literal.
+ */
+.visually-hidden {
+  position: absolute;
+  width: var(--border-1);
+  height: var(--border-1);
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+}
+
+/*
+ * The one reserved hue (docs/adr/0009, amended 2026-09-11), so that an
+ * error is not carried by position and weight alone. Shared rather than
+ * per-screen: the shell's error paragraph and the genotype view's region
+ * error are the same thing wearing the same bar.
+ */
+.alert {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-alert);
+  background: var(--color-bg-alert);
+  border-left: var(--border-3) solid var(--color-border-alert);
+}
+
+/* The first focusable element on the page; visible only while focused. */
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: var(--z-skip-link);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: var(--border-2) solid var(--color-focus-ring);
+  border-radius: var(--radius-2);
+}
+
+.skip-link:not(:focus) {
+  width: var(--border-1);
+  height: var(--border-1);
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+}

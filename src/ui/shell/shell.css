@@ -1,0 +1,157 @@
+/*
+ * The shell: a left rail of steps and one content column.
+ *
+ * Token-only by rule (tests/css-literals.test.ts). The collapse is driven by
+ * one attribute, data-rail="collapsed", set by App on the grid root, so the
+ * rail's own width and everything inside it that has to change with it are
+ * decided in one place rather than by a prop threaded through the markup.
+ * Only the track width animates; nothing else on the rail transitions, and
+ * a reader who has asked for reduced motion gets the new width at once.
+ */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  min-height: 100vh;
+  transition: grid-template-columns var(--duration-1) var(--easing-1);
+}
+
+.app-shell[data-rail='collapsed'] {
+  grid-template-columns: var(--rail-width-collapsed) minmax(0, 1fr);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell {
+    transition: none;
+  }
+}
+
+/* ---- Rail ---- */
+
+.rail {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-rail);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100vh;
+  padding: var(--content-padding);
+  overflow: hidden;
+  background: var(--color-bg-subtle);
+  border-right: var(--border-1) solid var(--color-border-subtle);
+}
+
+[data-rail='collapsed'] .rail {
+  padding: var(--space-2);
+}
+
+.rail-title {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.rail-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Pushes the privacy note and the collapse control to the rail's foot. */
+.rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.rail-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--color-text-secondary);
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-2);
+  text-align: left;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-2);
+  color: var(--color-text);
+}
+
+[data-rail='collapsed'] .rail-item {
+  justify-content: center;
+  padding: 0;
+  font-variant-numeric: var(--numeric);
+}
+
+.rail-item:hover:enabled {
+  background: var(--color-bg-control-hover);
+}
+
+/*
+ * Current is the selected row's own treatment from the Lines table: an
+ * inset edge rather than a border, so the weight change costs no layout
+ * shift (docs/adr/0009).
+ */
+.rail-item[data-state='current'] {
+  font-weight: var(--weight-semibold);
+  background: var(--color-bg-row-selected);
+  box-shadow: inset var(--border-3) 0 0 0 var(--color-selected-indicator);
+}
+
+.rail-item[data-state='done']::after {
+  content: '\2713';
+  margin-left: auto;
+  color: var(--color-text-secondary);
+}
+
+[data-rail='collapsed'] .rail-item[data-state='done']::after {
+  content: none;
+}
+
+.rail-item[data-state='blocked'] {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.rail-item[data-state='blocked']:hover {
+  background: none;
+}
+
+.rail-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-2);
+  background: none;
+  border: var(--border-1) solid var(--color-border-subtle);
+}
+
+[data-rail='collapsed'] .rail-toggle {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ---- Content column ---- */
+
+.app-main {
+  min-width: 0;
+  padding: var(--content-padding);
+}
+
+.app-main:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}

@@ -45,6 +45,26 @@
  * (nothing more is ever coming), otherwise once when the debounced request
  * resolves or rejects for the still-hovered marker.
  *
+ * The canvas and its context (M2.5 phase 5): the line names are no longer
+ * drawn inside the canvas. The renderer is given `labelWidth: 0` and the
+ * names become an HTML gutter beside it -- an <ol> of buttons, sticky
+ * against the horizontal scroll, each one row period tall by the same two
+ * tokens the renderer bins rows with (screens.css), and each a toggle for
+ * that line's membership of the shared selection. Above the canvas a
+ * chromosome strip labels each track from renderer.trackLayouts(), plus the
+ * window's edges in Mb on a single chromosome; below it, on a single
+ * chromosome, a whole-chromosome overview canvas marks the current window,
+ * and a click on it recentres that window (the keyboard equivalent is the
+ * main canvas's own arrow keys, which pan the same window). The overview is
+ * bounded by --overview-height: a row cannot be thinner than a pixel, so
+ * past that many lines it draws an evenly spaced subsample rather than
+ * growing the canvas. It answers a horizontal question -- where the window
+ * sits along the chromosome -- so a subsample is honest there, but with more
+ * lines than it has pixels not every line is represented in it. Colours, font and geometry come
+ * from the stylesheet through ui/canvas/read-theme.ts, read once when the
+ * renderer is created; the renderer holds no literal that reaches this
+ * screen, and this screen holds no dimension of its own.
+ *
  * onRequestMarkerDetail is optional: App.tsx wires it to the worker's
  * `markerDetail` request (`(markerIndex, sampleIds) =>
  * client.request('markerDetail', { markerIndex, sampleIds })`). Without the
@@ -61,25 +81,24 @@
  * runs and clears the retained data so stale rows are not left on screen.
  *
  * Props: loaded, classesData, loading, counts, sort, onSortChange, filter,
- * onFilterChange, regions, onSelectAllVisible, onSelectNone,
- * onRequestMarkerDetail?.
+ * onFilterChange, regions, selected, onSelectionChange, onSelectAllVisible,
+ * onSelectNone, onRequestMarkerDetail?.
  */
 import { useEffect, useRef, useState } from 'react';
-import type {
-  CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-} from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 
 import { GraphicalGenotypeRenderer } from '../canvas/GraphicalGenotypeRenderer.ts';
-import type { Viewport } from '../canvas/GraphicalGenotypeRenderer.ts';
+import type { RendererTheme, Viewport } from '../canvas/GraphicalGenotypeRenderer.ts';
+import { readOverviewHeight, readRendererLayout, readRendererTheme } from '../canvas/read-theme.ts';
 import '../canvas/legend.css';
+import './screens.css';
 import { classSwatchCss } from '../../core/index.ts';
 import { parseLocus } from '../../core/targets.ts';
 import { CALL_CLASS_LABEL, CallClass } from '../../core/types.ts';
 import type { CallClassValue, TargetRegion } from '../../core/types.ts';
 import { LineActionBar } from '../lines/LineActionBar.tsx';
 import type { LineFilter, LineSort } from '../lines/line-order.ts';
+import { permuteClassesData } from '../lines/classes-order.ts';
 import type { GenotypeClassesData, MarkerDetailResult } from '../../workers/protocol.ts';
 import type { LoadedState } from './UploadScreen.tsx';
 
@@ -108,18 +127,10 @@ const MARKER_DETAIL_DEBOUNCE_MS = 120;
 
 const NO_HOVER_MESSAGE = 'Hover or focus a marker on the canvas to see its detail.';
 
-/** Visually hidden but still readable by assistive tech (the aria-live region for settled hover detail). */
-const VISUALLY_HIDDEN_STYLE: CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0, 0, 0, 0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
+/** A bp position as Mb, for the chromosome strip's window edges. */
+function mbLabel(bp: number): string {
+  return `${(bp / 1_000_000).toFixed(1)} Mb`;
+}
 
 interface HoverInfo {
   sampleId: string;
@@ -168,6 +179,8 @@ export function GenotypeViewScreen({
   filter,
   onFilterChange,
   regions,
+  selected,
+  onSelectionChange,
   onSelectAllVisible,
   onSelectNone,
   onRequestMarkerDetail,
@@ -183,14 +196,22 @@ export function GenotypeViewScreen({
   onFilterChange: (f: LineFilter) => void;
   /** Target regions, for the action bar's sort column list. */
   regions: TargetRegion[];
+  /** The shared line selection; the gutter both shows it and toggles it. */
+  selected: Set<string>;
+  onSelectionChange: (next: Set<string>) => void;
   onSelectAllVisible: () => void;
   onSelectNone: () => void;
   /** Fetches marker detail (id, cM, alleles, per-sample calls) for a hover. Omitted when the host has no wiring to the worker yet; the panel then shows only the cheap fields. */
   onRequestMarkerDetail?: (markerIndex: number, sampleIds: string[]) => Promise<MarkerDetailResult>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  /** The flex child holding the canvases: the ResizeObserver's target, so its width already excludes the gutter, and the element the tokens are read from. */
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<GraphicalGenotypeRenderer | null>(null);
+  const overviewRef = useRef<HTMLCanvasElement | null>(null);
+  const overviewRendererRef = useRef<GraphicalGenotypeRenderer | null>(null);
+  const themeRef = useRef<RendererTheme | null>(null);
+  const overviewHeightRef = useRef(0);
   const dragRef = useRef<DragState>({ active: false, startX: 0, chrom: null });
   /** `${sampleId}:${markerIndex}` of the marker a detail request was last scheduled for, so lingering on the same marker across mousemove events does not reschedule. */
   const hoverKeyRef = useRef<string | null>(null);
@@ -201,6 +222,10 @@ export function GenotypeViewScreen({
   const resizeRafRef = useRef<number | null>(null);
 
   const [viewport, setViewport] = useState<Viewport>({});
+  /** CSS width of the canvas host, from the ResizeObserver; 0 until it first reports. */
+  const [plotWidth, setPlotWidth] = useState(0);
+  /** Where each chromosome track sits, for the strip; refreshed after every draw. */
+  const [tracks, setTracks] = useState<{ chrom: string; x: number; widthPx: number }[]>([]);
   const [regionText, setRegionText] = useState('');
   const [regionError, setRegionError] = useState<string | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
@@ -209,9 +234,21 @@ export function GenotypeViewScreen({
   /** Text for the aria-live region: written only when a hover settles (see header comment). */
   const [settledText, setSettledText] = useState(NO_HOVER_MESSAGE);
 
+  // The canvas learns the design tokens once, here. labelWidth is overridden
+  // to 0 because this screen draws the line names in HTML beside the canvas;
+  // ExportScreen keeps DEFAULT_LAYOUT, so the report's figures keep theirs.
   useEffect(() => {
-    if (canvasRef.current === null) return;
-    rendererRef.current = new GraphicalGenotypeRenderer(canvasRef.current);
+    const canvas = canvasRef.current;
+    const host = containerRef.current;
+    if (canvas === null || host === null) return;
+    const theme = readRendererTheme(host);
+    themeRef.current = theme;
+    overviewHeightRef.current = readOverviewHeight(host);
+    rendererRef.current = new GraphicalGenotypeRenderer(
+      canvas,
+      { ...readRendererLayout(host), labelWidth: 0 },
+      theme,
+    );
   }, []);
 
   // Coalesced into a single requestAnimationFrame per resize burst: a
@@ -229,10 +266,11 @@ export function GenotypeViewScreen({
       if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
       resizeRafRef.current = requestAnimationFrame(() => {
         resizeRafRef.current = null;
-        const renderer = rendererRef.current;
-        if (renderer === null) return;
-        renderer.setSize(width);
-        renderer.draw();
+        // The draw effect below owns every draw, so a resize, a data change
+        // and a viewport change all go through one path and the chromosome
+        // strip is never left describing a width that is no longer on
+        // screen.
+        setPlotWidth(width);
       });
     });
     ro.observe(container);
@@ -250,10 +288,68 @@ export function GenotypeViewScreen({
     if (renderer === null) return;
     // Called with classesData === null too, so a cleared/empty selection
     // clears the previously drawn rows rather than leaving a stale frame.
+    if (plotWidth > 0) renderer.setSize(plotWidth);
     renderer.setData(classesData);
     renderer.setViewport(viewport);
     renderer.draw();
-  }, [classesData, viewport]);
+    setTracks(renderer.trackLayouts());
+
+    // The overview is a second renderer over the whole chromosome, one line
+    // per row at whatever height divides --overview-height, with the current
+    // window drawn as the same overlay a drag uses. Its layout depends on
+    // the number of lines, and a renderer's layout is fixed at
+    // construction, so it is rebuilt rather than mutated.
+    const overviewCanvas = overviewRef.current;
+    const chrom = viewport.chrom;
+    if (overviewCanvas === null || chrom === undefined || classesData === null) {
+      overviewRendererRef.current = null;
+      return;
+    }
+    // The renderer sizes its canvas from the row count, so the overview can
+    // only be bounded by --overview-height here: a row cannot be thinner than
+    // one pixel, and past that many lines the canvas would grow instead of
+    // the rows shrinking, pushing the page around. Beyond that point the
+    // overview draws an evenly spaced subsample. That is honest for what this
+    // canvas is for -- locating the current window along the chromosome, which
+    // is a horizontal question -- but it does mean that with more lines than
+    // the overview has pixels, not every line is represented in it. Drawing
+    // all of them at this size is the virtualisation problem M3 owns.
+    const overviewHeight = Math.max(1, overviewHeightRef.current);
+    const allLines = classesData.lines.length;
+    const shownLines = Math.max(1, Math.min(allLines, overviewHeight));
+    const overviewData =
+      shownLines < allLines
+        ? permuteClassesData(
+            classesData,
+            Array.from(
+              { length: shownLines },
+              (_, i) => classesData.lines[Math.floor((i * allLines) / shownLines)]!.sampleId,
+            ),
+          )
+        : classesData;
+    const overview = new GraphicalGenotypeRenderer(
+      overviewCanvas,
+      {
+        rowHeight: Math.max(1, Math.floor(overviewHeight / shownLines)),
+        rowGap: 0,
+        chromGap: 0,
+        labelWidth: 0,
+      },
+      themeRef.current ?? undefined,
+    );
+    overview.setData(overviewData);
+    overview.setViewport({ chrom });
+    if (plotWidth > 0) overview.setSize(plotWidth);
+    const length = chromLengthBp(classesData, chrom);
+    if (length !== null && length > 0) {
+      const shown = currentWindow(viewport, length);
+      const x0 = overview.xForBp(chrom, shown.startBp);
+      const x1 = overview.xForBp(chrom, shown.endBp);
+      overview.setSelection(x0 === null || x1 === null ? null : { x0, x1 });
+    }
+    overview.draw();
+    overviewRendererRef.current = overview;
+  }, [classesData, viewport, plotWidth]);
 
   // A pending debounced detail request must not fire after unmount.
   useEffect(() => {
@@ -461,6 +557,42 @@ export function GenotypeViewScreen({
     });
   }
 
+  /** The gutter's half of the shared selection: one line in or out, leaving every other line alone. */
+  function toggleSelected(sampleId: string) {
+    const next = new Set(selected);
+    if (!next.delete(sampleId)) next.add(sampleId);
+    onSelectionChange(next);
+  }
+
+  /** Recentres the current window on the clicked bp, keeping its width; the window stays inside the chromosome. */
+  function handleOverviewClick(e: ReactMouseEvent<HTMLCanvasElement>) {
+    const chrom = viewport.chrom;
+    const overview = overviewRendererRef.current;
+    if (chrom === undefined || overview === null) return;
+    const length = chromLengthBp(classesData, chrom);
+    if (length === null || length <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centre = overview.bpOnChrom(chrom, e.clientX - rect.left);
+    if (centre === null) return;
+    const { startBp, endBp } = currentWindow(viewport, length);
+    const width = endBp - startBp;
+    let s = centre - width / 2;
+    let en = centre + width / 2;
+    if (s < 0) {
+      en -= s;
+      s = 0;
+    } else if (en > length) {
+      s -= en - length;
+      en = length;
+    }
+    setRegionError(null);
+    setViewport({
+      chrom,
+      startBp: Math.round(Math.max(0, s)),
+      endBp: Math.round(Math.min(length, en)),
+    });
+  }
+
   function handleMouseLeave() {
     if (dragRef.current.active) cancelDrag();
     clearHover();
@@ -530,6 +662,14 @@ export function GenotypeViewScreen({
     }
   }
 
+  // The strip's window edges: only meaningful on a single chromosome.
+  const windowChrom = viewport.chrom;
+  const windowLength = windowChrom === undefined ? null : chromLengthBp(classesData, windowChrom);
+  const windowEdges =
+    windowChrom === undefined || windowLength === null || windowLength <= 0
+      ? null
+      : currentWindow(viewport, windowLength);
+
   return (
     <section>
       <h2>Graphical genotypes</h2>
@@ -551,7 +691,7 @@ export function GenotypeViewScreen({
       {loaded === null ? (
         <p>Load a dataset first.</p>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
+        <div className="geno-toolbar">
           <label>
             View{' '}
             <select
@@ -597,7 +737,7 @@ export function GenotypeViewScreen({
       )}
 
       {regionError !== null && (
-        <p role="alert" id="genotype-region-error">
+        <p role="alert" className="alert" id="genotype-region-error">
           {regionError}
         </p>
       )}
@@ -607,57 +747,107 @@ export function GenotypeViewScreen({
       <p aria-live="polite">{loading ? 'Loading class data...' : ''}</p>
       {!loading && loaded !== null && classesData === null && <p>No lines to draw.</p>}
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div
-          ref={containerRef}
-          style={{ flex: '1 1 auto', minWidth: 0, overflowX: 'auto', background: '#ffffff' }}
-        >
-          <canvas
-            ref={canvasRef}
-            tabIndex={0}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-            onKeyDown={handleCanvasKeyDown}
-            aria-label="Graphical genotypes: one row per line, one track per chromosome; colours as in the legend. Drag to zoom; arrow keys pan; plus and minus zoom; 0 resets; escape cancels or resets."
-          >
-            Graphical genotype rendering is not supported in this browser.
-          </canvas>
+      <div className="geno-layout">
+        <div className="geno-plot">
+          {/* One track per chromosome, placed from the renderer's own layout
+              in CSS pixels, so a name sits over the pixels it names. The
+              offsets are measurements, not design values, and stay inline. */}
+          <div className="geno-strip">
+            {tracks.map((track) => (
+              <div
+                key={track.chrom}
+                className="geno-strip-track"
+                style={{ left: track.x, width: track.widthPx }}
+              >
+                <span>{track.chrom}</span>
+                {windowEdges !== null && (
+                  <span className="geno-strip-window">
+                    <span>{mbLabel(windowEdges.startBp)}</span>
+                    <span>{mbLabel(windowEdges.endBp)}</span>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="geno-scroll">
+            {/* The line names, one per canvas row. Each <li> is one row
+                period tall by the same tokens the canvas bins rows with, so
+                the two stay in step at any density or zoom. */}
+            <ol className="geno-gutter" aria-label="Lines">
+              {(classesData?.lines ?? []).map((line) => (
+                <li key={line.sampleId}>
+                  <button
+                    type="button"
+                    aria-pressed={selected.has(line.sampleId)}
+                    title={line.sampleId}
+                    onClick={() => toggleSelected(line.sampleId)}
+                  >
+                    {line.sampleId}
+                  </button>
+                </li>
+              ))}
+            </ol>
+
+            <div ref={containerRef} className="geno-canvas-host">
+              <canvas
+                ref={canvasRef}
+                className="geno-canvas"
+                tabIndex={0}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
+                onKeyDown={handleCanvasKeyDown}
+                aria-label="Graphical genotypes: one row per line, one track per chromosome; colours as in the legend. Drag to zoom; arrow keys pan; plus and minus zoom; 0 resets; escape cancels or resets."
+              >
+                Graphical genotype rendering is not supported in this browser.
+              </canvas>
+
+              {/* The whole chromosome at a glance, with the current window
+                  marked; clicking recentres it. Panning by keyboard is the
+                  main canvas's arrow keys, which move the same window. */}
+              {viewport.chrom !== undefined && (
+                <canvas
+                  ref={overviewRef}
+                  className="geno-overview"
+                  onClick={handleOverviewClick}
+                  aria-label={`Overview of the whole of ${viewport.chrom}, with the shown window marked. Click to recentre the window.`}
+                />
+              )}
+            </div>
+          </div>
         </div>
 
-        <div style={{ width: 240, flex: '0 0 auto' }}>
-          <h3 style={{ fontSize: 14, margin: '0 0 4px' }}>Marker detail</h3>
+        <div className="marker-detail">
+          <h3>Marker detail</h3>
           {/* Visible text: updates immediately (cheap fields, then the
               enrichment once it lands) so the panel never lags the pointer.
               Not itself aria-live -- see the hidden paragraph below. */}
-          <p style={{ minHeight: '4.5em', margin: 0, fontSize: 13 }}>
+          <p className="marker-detail-text">
             {hoverInfo === null ? NO_HOVER_MESSAGE : formatDetail(hoverInfo, detail, detailNote)}
           </p>
           {/* aria-live region: announces once per settled hover (see header
               comment), not once for the cheap fields and again for the
               enrichment. */}
-          <p aria-live="polite" style={VISUALLY_HIDDEN_STYLE}>
+          <p aria-live="polite" className="visually-hidden">
             {settledText}
           </p>
         </div>
       </div>
 
-      <p style={{ fontSize: 12, color: '#555' }}>
+      <p className="keyboard-help">
         Keyboard, with the canvas focused: Left/Right pan; +/- zoom in and out; 0 resets to whole
         genome; Escape cancels a drag in progress, or otherwise resets to whole genome.
       </p>
 
-      <p style={{ fontSize: 12, color: '#555' }}>
+      <p className="keyboard-help">
         A column drawn in one class and overlaid with another class&apos;s pattern holds calls of
         both; the fill is the majority.
       </p>
-      <ul
-        aria-label="Class legend"
-        style={{ display: 'flex', gap: 16, listStyle: 'none', padding: 0 }}
-      >
+      <ul className="legend" aria-label="Class legend">
         {LEGEND_CLASSES.map((cls) => (
-          <li key={cls} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <li key={cls}>
             <span
               aria-hidden="true"
               className="class-swatch"

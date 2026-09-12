@@ -15,6 +15,7 @@
  */
 import { useState } from 'react';
 
+import './screens.css';
 import type { QcThresholds, RppParams, SegmentParams } from '../../core/types.ts';
 import type { WorkerRequest, WorkerResult } from '../../workers/protocol.ts';
 
@@ -65,7 +66,7 @@ function NumberField({
   }
 
   return (
-    <label style={{ display: 'block', marginBottom: 6 }}>
+    <label className="field">
       {label}{' '}
       <input
         type="number"
@@ -124,13 +125,13 @@ export function UploadScreen({
       <h2>Upload and validate</h2>
       <p>Files are processed in this browser tab and never uploaded anywhere.</p>
 
-      <div>
+      <div className="field">
         <label>
           Genotype file (VCF, HapMap, or wide CSV){' '}
           <input type="file" onChange={(e) => setGenotypeFile(e.target.files?.[0] ?? null)} />
         </label>
       </div>
-      <div>
+      <div className="field">
         <label>
           samples.csv{' '}
           <input
@@ -140,7 +141,7 @@ export function UploadScreen({
           />
         </label>
       </div>
-      <div>
+      <div className="field">
         <label>
           markers.csv (optional){' '}
           <input

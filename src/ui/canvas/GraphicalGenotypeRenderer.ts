@@ -28,8 +28,17 @@
  * hatch) now shows it. Patterns are built lazily from the renderer's own
  * canvas context and cached per device pixel ratio.
  *
+ * Colours, font and geometry are given to the renderer, never read from the
+ * page by it (M2.5 phase 5): the screen reads the tokens through
+ * src/ui/canvas/read-theme.ts and passes a RendererLayout and a
+ * RendererTheme in. DEFAULT_LAYOUT and DEFAULT_THEME hold the M2 values, so
+ * a Node caller and the self-contained HTML report (src/export/report.ts,
+ * which cannot reference the app stylesheet) draw exactly what they drew
+ * before. This module is outside the literal-value lint gate by
+ * construction, and these two constants are why.
+ *
  * Interface:
- *   new GraphicalGenotypeRenderer(canvas, layout?)
+ *   new GraphicalGenotypeRenderer(canvas, layout?, theme?)
  *   setData(data: GenotypeClassesData | null) — null clears the retained data
  *   setViewport({ chrom?, startBp?, endBp? })
  *   getViewport(): Viewport
@@ -41,6 +50,8 @@
  *   chromosomeAt(x) — which chromosome track a CSS-pixel x falls in, or null
  *   bpOnChrom(chrom, x) — bp position of a CSS-pixel x on one chromosome's
  *     track, clamped to that track; the drag-to-zoom math
+ *   xForBp(chrom, bp) — the inverse of bpOnChrom, for the overview's window
+ *   trackLayouts() — { chrom, x, widthPx }[] for the chromosome strip
  *   nearestMarkerIndex(positions, markerIndices, targetBp) — module-level export
  */
 import { CLASS_COLORS } from '../../core/index.ts';
@@ -65,6 +76,32 @@ export const DEFAULT_LAYOUT: RendererLayout = {
   labelWidth: 120,
 };
 
+/** The colours and font the canvas draws with; everything else on it is class data from src/core/palette.ts. */
+export interface RendererTheme {
+  /** A CSS font shorthand, as assigned to CanvasRenderingContext2D.font. */
+  font: string;
+  /** In-canvas row label (drawn only when layout.labelWidth > 0). */
+  labelColor: string;
+  /** Drag-selection overlay: a low-alpha fill and a darker stroke. */
+  overlayFill: string;
+  overlayStroke: string;
+}
+
+/**
+ * The M2 literals, unchanged. The font was derived from rowHeight until
+ * phase 5 (`max(9, rowHeight - 3)px`), which at DEFAULT_LAYOUT's rowHeight
+ * of 14 is the 11px pinned here, so the report figure is identical; a
+ * caller passing a different rowHeight now gets this size rather than a
+ * derived one, which matters to nothing that draws labels (the screen
+ * passes labelWidth: 0 and its own theme).
+ */
+export const DEFAULT_THEME: RendererTheme = {
+  font: '11px system-ui, sans-serif',
+  labelColor: '#000000',
+  overlayFill: 'rgba(17, 17, 17, 0.15)',
+  overlayStroke: 'rgba(17, 17, 17, 0.8)',
+};
+
 export interface Viewport {
   /** A single chromosome name, or undefined for the whole genome. */
   chrom?: string;
@@ -84,6 +121,9 @@ interface ChromLayout {
 
 /** A hover point must land within this many CSS pixels of a marker's drawn position to count as a hit. */
 const HIT_TEST_TOLERANCE_PX = 4;
+
+/** Gap between the end of an in-canvas row label and the start of the first track. */
+const LABEL_PADDING_PX = 4;
 
 const UNINFORMATIVE_COLOR = CLASS_COLORS[CallClass.UNINFORMATIVE];
 
@@ -124,6 +164,7 @@ export function nearestMarkerIndex(
 export class GraphicalGenotypeRenderer {
   readonly canvas: HTMLCanvasElement;
   readonly layout: RendererLayout;
+  readonly theme: RendererTheme;
 
   private data: GenotypeClassesData | null = null;
   private viewport: Viewport = {};
@@ -133,9 +174,14 @@ export class GraphicalGenotypeRenderer {
   private patterns: ClassPatterns | null = null;
   private patternsDpr: number | null = null;
 
-  constructor(canvas: HTMLCanvasElement, layout: RendererLayout = DEFAULT_LAYOUT) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    layout: RendererLayout = DEFAULT_LAYOUT,
+    theme: RendererTheme = DEFAULT_THEME,
+  ) {
     this.canvas = canvas;
     this.layout = layout;
+    this.theme = theme;
   }
 
   /** Pass null to clear the retained data, e.g. when the selection empties. */
@@ -256,14 +302,17 @@ export class GraphicalGenotypeRenderer {
     const plotWidth = Math.max(1, this.cssWidth - labelWidth);
     const chroms = this.chromLayouts(plotWidth);
 
-    ctx.font = `${Math.max(9, rowHeight - 3)}px system-ui, sans-serif`;
+    ctx.font = this.theme.font;
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#000000';
 
     data.lines.forEach((line, row) => {
       const y = row * (rowHeight + rowGap);
-      ctx.fillStyle = '#000000';
-      ctx.fillText(line.sampleId, 0, y + rowHeight / 2, labelWidth - 4);
+      // labelWidth is 0 on screen from phase 5 (the line names are the HTML
+      // gutter beside the canvas); the report still draws them in-canvas.
+      if (labelWidth > 0) {
+        ctx.fillStyle = this.theme.labelColor;
+        ctx.fillText(line.sampleId, 0, y + rowHeight / 2, labelWidth - LABEL_PADDING_PX);
+      }
 
       for (const chromLayout of chroms) {
         const { x, widthPx, startBp, endBp, chromIdx } = chromLayout;
@@ -334,9 +383,9 @@ export class GraphicalGenotypeRenderer {
       const width = Math.max(1, Math.abs(x1 - x0));
       // A dark border plus a low-alpha fill stays visible both on the white
       // background and over the saturated class colours.
-      ctx.fillStyle = 'rgba(17, 17, 17, 0.15)';
+      ctx.fillStyle = this.theme.overlayFill;
       ctx.fillRect(left, 0, width, cssHeight);
-      ctx.strokeStyle = 'rgba(17, 17, 17, 0.8)';
+      ctx.strokeStyle = this.theme.overlayStroke;
       ctx.lineWidth = 1;
       ctx.strokeRect(left + 0.5, 0.5, Math.max(0, width - 1), Math.max(0, cssHeight - 1));
     }
@@ -391,6 +440,44 @@ export class GraphicalGenotypeRenderer {
     const plotX = x - labelWidth;
     const relX = Math.min(Math.max(plotX - layout.x, 0), layout.widthPx);
     return layout.startBp + (relX / layout.widthPx) * span;
+  }
+
+  /**
+   * The inverse of bpOnChrom: the CSS-pixel x (relative to the canvas) at
+   * which `bp` falls on one named chromosome's track. `bp` outside the
+   * track's own window is clamped to it, exactly as bpOnChrom clamps x, so
+   * the two round-trip for every x inside the track. Null when that
+   * chromosome has no track in the current viewport, or its track spans no
+   * bp. Used by the overview canvas to draw the current window.
+   */
+  xForBp(chrom: string, bp: number): number | null {
+    const data = this.data;
+    if (data === null) return null;
+    const { labelWidth } = this.layout;
+    const plotWidth = Math.max(1, this.cssWidth - labelWidth);
+    const layout = this.chromLayouts(plotWidth).find((c) => c.chrom === chrom);
+    if (layout === undefined) return null;
+    const span = layout.endBp - layout.startBp;
+    if (span <= 0) return null;
+    const clampedBp = Math.min(Math.max(bp, layout.startBp), layout.endBp);
+    return labelWidth + layout.x + ((clampedBp - layout.startBp) / span) * layout.widthPx;
+  }
+
+  /**
+   * Where each chromosome track sits along the canvas, in CSS pixels
+   * relative to the canvas's left edge (labelWidth included, so a track's x
+   * can be used to position an HTML element over the canvas). The screen's
+   * chromosome strip reads this after every draw, so the strip and the
+   * pixels underneath it cannot disagree.
+   */
+  trackLayouts(): { chrom: string; x: number; widthPx: number }[] {
+    const { labelWidth } = this.layout;
+    const plotWidth = Math.max(1, this.cssWidth - labelWidth);
+    return this.chromLayouts(plotWidth).map((c) => ({
+      chrom: c.chrom,
+      x: labelWidth + c.x,
+      widthPx: c.widthPx,
+    }));
   }
 
   /**
