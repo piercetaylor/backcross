@@ -165,7 +165,10 @@ describe('graphical genotype view geometry', () => {
     const windowBp = 1_000_000;
     const start = Math.round(lengthBp * 0.55);
     await userEvent.fill(page.getByLabelText('Region'), `${CHROM}:${start}-${start + windowBp}`);
-    await userEvent.click(page.getByRole('button', { name: 'Apply', exact: true }));
+    // Submitted with Enter from the focused field, the form's own submit path.
+    // A pointer click on Apply was lost once in Firefox under load: the
+    // field kept focus and the view stayed on the whole genome.
+    await userEvent.keyboard('{Enter}');
     const overview = await waitFor(() =>
       document.querySelector<HTMLCanvasElement>('canvas.geno-overview'),
     );
