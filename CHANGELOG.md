@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The input file contract (chromosome names, VCF, HapMap and wide CSV genotype files, samples.csv, markers.csv and class codes) has moved from `docs/data-formats.md` to `contract/data-contract.md`, version 1.0.0, shared byte for byte with progeny-selector and checked by example cases under `contract/cases/`. The wording is unchanged and no input is read differently; `docs/data-formats.md` keeps the analysis parameters and outputs.
+
 ### Added
 
 - Large bgzipped VCFs load with memory under twice their inflated size; the file is read as a stream inside the worker. The bound is measured after the load in Chromium and accounted for the genotype builder in both browsers; the decompressor's transient buffers are not measured.

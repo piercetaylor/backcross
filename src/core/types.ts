@@ -15,7 +15,7 @@
 
 export const MISSING_ALLELE = 255;
 
-/** Sample roles from samples.csv (docs/data-formats.md). */
+/** Sample roles from samples.csv (contract/data-contract.md). */
 export type SampleRole = 'recurrent_parent' | 'donor_parent' | 'candidate' | 'progeny';
 
 export interface SampleRecord {

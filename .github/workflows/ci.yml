@@ -35,9 +35,10 @@ jobs:
         env:
           BGZIP_BIN: bgzip
       - run: npm run build
-      - name: Fixture is reproducible
+      - name: Fixture and contract cases are reproducible
         run: |
           npm run fixture
+          npm run contract
           git diff --exit-code -- tests/fixtures contract
       - uses: actions/upload-pages-artifact@v5
         if: vars.ENABLE_PAGES == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'

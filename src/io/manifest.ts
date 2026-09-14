@@ -1,5 +1,5 @@
 /**
- * samples.csv parser and validator (docs/data-formats.md, "Sample manifest").
+ * samples.csv parser and validator (contract/data-contract.md, "samples.csv").
  *
  * Responsibility: read sample_id, line_name, role, generation, family_id,
  * notes; enforce exactly one recurrent_parent and one donor_parent; reject

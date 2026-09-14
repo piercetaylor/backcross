@@ -20,6 +20,7 @@
     "test:bench": "vitest run --project bench",
     "test:watch": "vitest",
     "fixture": "node scripts/make-fixture.mjs",
+    "contract": "node scripts/make-contract.mjs",
     "cli": "node src/cli.ts"
   },
   "dependencies": {

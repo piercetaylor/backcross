@@ -137,6 +137,18 @@ Memory in the browser for very large VCFs (50K markers × hundreds of lines is s
 
 **Open for M3, recorded 2026-09-12 and deliberately not yet decided: contract vocabulary.** The two repositories already accept different inputs in four places, and the shared contract must eventually say, item by item, whether both accept the input (union) or neither is required to (intersection): the `chromosomeN` spelling of chromosome names; IUPAC single-letter calls in the nucleotide wide CSV; `.` and `NN` as missing calls in the wide CSV; and A/B/H coding detected over the whole file here but over the first 200 rows in progeny-selector. Contract v1.0.0 contains none of the four, only inputs both handle identically, so shipping it changes no behaviour in either repository. Each item decided as union becomes a minor version with its own case. Files affected: `src/io/wide-csv.ts` and `src/core/chromosomes.ts` here, `src/progeny_selector/io/calls.py` in the sibling. The sibling's behaviour-alignment commit (S2 in docs/m3-phases.md) waits on this.
 
+**Also open, found 2026-09-14 while building contract v1.0.0 (phase 3).** Contract 1.0.0 moved the shared input text verbatim, so it still states behaviour that the two repositories do not share. No case asserts any of these; each needs a decision, and each is either a contract text change or a behaviour change in one repository.
+
+1. Delimiters: the contract says wide CSV and `samples.csv` may be comma or tab delimited, with quoting; the sibling reads both with comma-only `csv` readers (`wide_csv.py`, `manifest.py`).
+2. `line_name`: both documents call it optional; the sibling requires the column (`manifest.py`).
+3. Genotype columns absent from the manifest: the contract says they are dropped, and this repository drops them and reorders samples to manifest order (`assembleDataset`); the sibling warns that they are ignored but keeps them, in file order (`build_dataset`).
+4. Coded wide CSV with parents only in `samples.csv`: the sibling appends synthetic parent columns (`add_synthetic_parents`); this repository does not materialise parent columns.
+5. VCF rows with ID `.`: this repository names the marker from the raw chromosome, the sibling from the normalised one; the documents are silent.
+6. This repository accepts more than its document states: `chromosome` and `lg` prefixes and `_`, `-`, space separators; `--`, `.` and `NN` as missing in wide CSV; `NA`, `./.` and `.` in HapMap; CRLF line ends. The document and Q2 describe A/B/H detection as whole-file, but `detectWideCsvMode` scans 2000 rows.
+7. Unverified on the sibling until S1 runs the cases: rejection of duplicate marker ids, its missing-token set, `normalize_chrom`, and marker ordering (its `load_dataset` never calls `sorted_by_position`).
+
+S1 must not paper over 3 and 4 in its test normaliser: if the sibling's `load_dataset` output differs, that is a finding for the maintainer, not a normalisation step.
+
 ## Assumptions
 
 Parents are inbred and homozygous at nearly all markers; the genotype file contains both parents unless the input is A/B/H-coded; at most one donor per analysis set; positions in the genotype file and markers.csv are on the same assembly, or markers.csv overrides them; users have a laptop with a current Chromium or Firefox browser; the sibling projects keep the samples.csv and wide-CSV contracts unchanged.

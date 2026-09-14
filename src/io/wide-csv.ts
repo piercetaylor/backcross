@@ -1,5 +1,5 @@
 /**
- * Wide genotype CSV/TSV parser (docs/data-formats.md, "Wide genotype CSV").
+ * Wide genotype CSV/TSV parser (contract/data-contract.md, "Wide CSV").
  *
  * Responsibility: read a matrix with columns marker_id, chrom, pos_bp and one
  * column per sample. Two cell vocabularies are supported:

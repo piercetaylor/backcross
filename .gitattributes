@@ -7,3 +7,10 @@
 # explicit rule is cheaper than discovering a corrupted woff2 later: line-ending
 # normalisation applied to a font file silently destroys it.
 *.woff2 binary
+
+# The data contract (contract/) is hashed byte for byte in MANIFEST.sha256 and
+# mirrored into progeny-selector, so its text must be LF on every checkout and
+# its gzip and bgzip cases must never be normalised.
+contract/** text eol=lf
+*.gz binary
+*.bgz binary

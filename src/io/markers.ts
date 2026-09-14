@@ -1,5 +1,5 @@
 /**
- * markers.csv parser (docs/data-formats.md, "Marker map"). Optional input.
+ * markers.csv parser (contract/data-contract.md, "markers.csv"). Optional input.
  *
  * Responsibility: read marker_id, chrom, pos_bp and optional cm. Values
  * override the positions carried in the genotype file when they differ (the

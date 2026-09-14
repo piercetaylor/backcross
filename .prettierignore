@@ -4,3 +4,4 @@ coverage/
 package-lock.json
 tests/fixtures/
 CHANGELOG.md
+contract/
