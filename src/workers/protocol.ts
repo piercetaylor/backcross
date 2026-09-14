@@ -2,8 +2,18 @@
  * Main-thread <-> worker message contract.
  *
  * Responsibility: the discriminated unions for every request the UI can send
- * and every response the worker returns. Payload buffers are transferred
+ * and every response the worker returns. The genotype file travels as a
+ * `Blob` (a `File` from the upload input), which is structured-cloned by
+ * reference and read as a stream inside the worker, so the main thread never
+ * reads it into memory; an `ArrayBuffer` is still accepted and is
+ * transferred. samples.csv and markers.csv are ArrayBuffers, transferred
  * (zero-copy); results that contain typed arrays are likewise transferred.
+ *
+ * 'loaded' reports three memory-accounting figures for the streaming load
+ * (docs/adr/0012): `bytesInflated`, the genotype file's size after
+ * inflation; `peakBuilderBytes`, the parser's own peak allele-array
+ * accounting (0 for HapMap and wide CSV); and `residentMatrixBytes`, the
+ * assembled dataset's allele1 plus allele2 bytes.
  *
  * The 'classes' result carries the data the canvas renderer needs (marker
  * positions and per-line class arrays, never raw alleles); its shape is
@@ -36,7 +46,7 @@ export type WorkerRequest =
       type: 'load';
       payload: {
         genotypeFileName: string;
-        genotypes: ArrayBuffer;
+        genotypes: ArrayBuffer | Blob;
         samples: ArrayBuffer;
         markers?: ArrayBuffer;
       };
@@ -134,6 +144,9 @@ export type WorkerResult =
       coded: boolean;
       /** Sorted ascending: every gap (bp) between consecutive informative markers on the same chromosome. */
       informativeGapsBp: Float64Array;
+      bytesInflated: number;
+      peakBuilderBytes: number;
+      residentMatrixBytes: number;
     }
   | { type: 'rpp'; lines: LineRpp[] }
   | { type: 'qc'; report: QcReport }

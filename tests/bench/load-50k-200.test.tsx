@@ -16,14 +16,23 @@
  * timed moments uses in-page clicks on the rail rather than Playwright, so
  * no RPC round trip is inside the figure.
  *
- * Memory: performance.measureUserAgentSpecificMemory() in Chromium, which
- * covers the analysis worker (tests/browser/isolation-probe.test.ts shows
- * the page is cross-origin isolated there). Firefox has no equivalent; its
- * figure is reported as unavailable. The delta is recorded, not asserted,
- * until phase 2 adds the bound.
+ * Memory (docs/m3-phases.md, phase 2; Q1 settled the bound as twice the
+ * inflated bytes). The worker's 'loaded' result carries three accounting
+ * figures -- bytesInflated, peakBuilderBytes, residentMatrixBytes -- which
+ * the test reads by wrapping the page's Worker constructor, so every worker
+ * App creates also reports its messages here and nothing in src/ changes
+ * for the test's sake. bytesInflated is checked against the byte length
+ * this file generated. In both browsers peakBuilderBytes +
+ * residentMatrixBytes must be under 2 x bytesInflated. In Chromium,
+ * performance.measureUserAgentSpecificMemory(), which covers the analysis
+ * worker (tests/browser/isolation-probe.test.ts shows the page is
+ * cross-origin isolated there), is taken before Load and after the first
+ * draw, where phase 1 took it, and that delta must also be under
+ * 2 x bytesInflated. Firefox has no equivalent API; its figure is reported
+ * as unavailable.
  */
 import { server } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { loadFilesInPage, mountApp, waitFor } from '../support/app-harness.tsx';
 import { bgzfBlocks } from '../support/bgzf.ts';
@@ -39,6 +48,38 @@ const BUDGET_MS = Number(import.meta.env['VITE_BENCH_BUDGET_MS'] ?? 30_000);
 const TIMEOUT_MS = 170_000;
 const CHUNK_CHARS = 1 << 20;
 
+interface LoadedFigures {
+  bytesInflated: number;
+  peakBuilderBytes: number;
+  residentMatrixBytes: number;
+}
+
+/**
+ * Replaces the page's Worker with a subclass that hands each 'loaded'
+ * result's accounting figures to `onLoaded`; returns the restore function.
+ * App constructs its worker in an effect during mount, so the spy must be
+ * in place before mountApp resolves.
+ */
+function spyOnWorkers(onLoaded: (figures: LoadedFigures) => void): () => void {
+  const Original = globalThis.Worker;
+  class SpiedWorker extends Original {
+    constructor(url: string | URL, options?: WorkerOptions) {
+      super(url, options);
+      this.addEventListener('message', (ev: MessageEvent) => {
+        const data = ev.data as { ok?: boolean; result?: { type?: string } & LoadedFigures };
+        if (data.ok === true && data.result?.type === 'loaded') {
+          const { bytesInflated, peakBuilderBytes, residentMatrixBytes } = data.result;
+          onLoaded({ bytesInflated, peakBuilderBytes, residentMatrixBytes });
+        }
+      });
+    }
+  }
+  globalThis.Worker = SpiedWorker;
+  return () => {
+    globalThis.Worker = Original;
+  };
+}
+
 type MemoryPerformance = Performance & {
   measureUserAgentSpecificMemory?: () => Promise<{ bytes: number }>;
 };
@@ -52,8 +93,11 @@ async function measureMemory(): Promise<number | null> {
   return (await perf.measureUserAgentSpecificMemory()).bytes;
 }
 
-/** BENCH_SPEC as a bgzipped VCF File, built in chunks so no 40 MB string is ever held. */
-function benchGenotypes(): File {
+/**
+ * BENCH_SPEC as a bgzipped VCF File, built in chunks so no 40 MB string is
+ * ever held, with the VCF's byte length before framing.
+ */
+function benchGenotypes(): { file: File; inflatedBytes: number } {
   const encoder = new TextEncoder();
   const parts: Uint8Array[] = [];
   let pending: string[] = [];
@@ -75,7 +119,10 @@ function benchGenotypes(): File {
     offset += p.length;
   }
   const blocks = bgzfBlocks(bytes) as Uint8Array<ArrayBuffer>[];
-  return new File(blocks, 'bench.vcf.gz', { type: 'application/gzip' });
+  return {
+    file: new File(blocks, 'bench.vcf.gz', { type: 'application/gzip' }),
+    inflatedBytes: bytes.length,
+  };
 }
 
 function railStep(name: string): HTMLElement {
@@ -96,8 +143,14 @@ function mb(bytes: number): string {
 describe('50K x 200 load', () => {
   it('loads, lists 200 lines and draws them, with the counts synthCounts derives', async () => {
     const counts = synthCounts(BENCH_SPEC);
+    let figures: LoadedFigures | null = null;
+    onTestFinished(
+      spyOnWorkers((f) => {
+        figures = f;
+      }),
+    );
     await mountApp();
-    const genotypes = benchGenotypes();
+    const { file: genotypes, inflatedBytes } = benchGenotypes();
     const files = {
       genotypes,
       samples: new File([synthSamplesCsv(BENCH_SPEC)], 'samples.csv'),
@@ -145,17 +198,30 @@ describe('50K x 200 load', () => {
     });
     const loaded = summary.slice(1, 4).map((v) => Number(v.replace(/,/g, '')));
 
+    const reported = figures as LoadedFigures | null;
+    if (reported === null) throw new Error("no 'loaded' result reached the worker spy");
+    const { bytesInflated, peakBuilderBytes, residentMatrixBytes } = reported;
+    const bound = 2 * bytesInflated;
+    const memoryDelta =
+      memoryBefore === null || memoryAfter === null ? null : memoryAfter - memoryBefore;
+
     const toSummary = Math.round(summaryAt - clickedAt);
     const toLines = Math.round(linesAt - clickedAt);
     const toDraw = Math.round(drawnAt - clickedAt);
     const memory =
-      memoryBefore === null || memoryAfter === null
+      memoryBefore === null || memoryAfter === null || memoryDelta === null
         ? 'memory delta unavailable (no measureUserAgentSpecificMemory)'
-        : `memory delta ${mb(memoryAfter - memoryBefore)} (${mb(memoryBefore)} -> ${mb(memoryAfter)})`;
+        : `memory delta ${mb(memoryDelta)} (${mb(memoryBefore)} -> ${mb(memoryAfter)}), ` +
+          `${(memoryDelta / bytesInflated).toFixed(2)} x bytesInflated`;
+    const accounting = peakBuilderBytes + residentMatrixBytes;
     console.log(
       `[bench ${server.browser}] input ${mb(genotypes.size)} bgzip; Load -> Summary ${toSummary} ms; ` +
         `Load -> "Lines: 200" ${toLines} ms; ` +
-        `Load -> first draw ${toDraw} ms; ${memory}; budget ${BUDGET_MS} ms`,
+        `Load -> first draw ${toDraw} ms; ${memory}; budget ${BUDGET_MS} ms; ` +
+        `bytesInflated ${bytesInflated} (${mb(bytesInflated)}); ` +
+        `peakBuilderBytes ${peakBuilderBytes} (${mb(peakBuilderBytes)}); ` +
+        `residentMatrixBytes ${residentMatrixBytes} (${mb(residentMatrixBytes)}); ` +
+        `peak + resident ${(accounting / bytesInflated).toFixed(2)} x bytesInflated`,
     );
 
     expect(alertText()).toBeNull();
@@ -163,5 +229,11 @@ describe('50K x 200 load', () => {
     expect(counts.nMarkers).toBe(50_000);
     expect(counts.nSamples).toBe(202);
     expect(toDraw).toBeLessThan(BUDGET_MS);
+    expect(bytesInflated).toBe(inflatedBytes);
+    expect(accounting).toBeLessThan(bound);
+    if (server.browser === 'chromium') {
+      expect(memoryDelta, 'Chromium measures memory (isolation-probe.test.ts)').not.toBeNull();
+      expect(memoryDelta as number).toBeLessThan(bound);
+    }
   });
 });

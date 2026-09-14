@@ -28,7 +28,7 @@ Details, licences and fetched URLs are in docs/reference-repos.md, including the
 flowchart LR
   subgraph Browser tab
     F[Files: VCF / HapMap / wide CSV<br/>samples.csv, markers.csv] --> U[Upload screen]
-    U -- ArrayBuffer, transferred --> W[Analysis Web Worker<br/>src/workers]
+    U -- genotype File cloned, CSVs transferred --> W[Analysis Web Worker<br/>src/workers]
     W --> P[Parsers src/io<br/>decompress, vcf, hapmap, wide-csv, manifest, markers]
     P --> D[(Dataset<br/>typed arrays)]
     D --> C[Core src/core<br/>classify, rpp, segments, targets, compare, qc]
@@ -41,7 +41,7 @@ flowchart LR
   E --> Shiny[Downstream R Shiny dashboards<br/>read CSV]
 ```
 
-The main thread owns React state and the single worker; the worker owns the genotype matrix and never sends it back, only per-line class arrays and summary numbers. File bytes and result arrays cross the boundary as transferable ArrayBuffers, which move ownership instead of copying [web] https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers. Every function in src/core is pure and runs unchanged in the worker, the main thread, or Node.
+The main thread owns React state and the single worker; the worker owns the genotype matrix and never sends it back, only per-line class arrays and summary numbers. samples.csv, markers.csv and result arrays cross the boundary as transferable ArrayBuffers, which move ownership instead of copying [web] https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers; the genotype file crosses as its `File`, which the worker reads as a stream (docs/adr/0012). Every function in src/core is pure and runs unchanged in the worker, the main thread, or Node.
 
 Performance plan. At 50K markers × 200 lines the allele arrays are 20 MB and the class arrays 10 MB; classification and RPP are single passes over typed arrays and take well under a second in the worker [inference from the fixture timing; to be measured in M1]. The genotype view bins markers per pixel column, so draw cost is proportional to pixels, not markers. For 1,000+ lines the class arrays reach 50 MB per 50K markers, still acceptable; the line table and renderer then virtualise rows (only visible lines are drawn) and per-line segment calling runs lazily on selection. For 500K+ markers (GBS), the plan is a streaming parser that reads the file in chunks and keeps only the two allele arrays (1 GB at 1,000 lines, which exceeds practical browser memory), so the M3 loader will additionally support pre-filtering to informative markers during parsing (parents are known from the manifest) and documenting `bcftools view -R` region subsetting; beyond that the CLI is the intended path.
 

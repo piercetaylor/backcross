@@ -12,7 +12,7 @@ Typical inputs come from three platforms. SoySNP50K: 52,041 SNPs passed manufact
 
 ## Genotype file
 
-One of three formats, detected by file name (`.vcf`, `.hmp.txt`/`.hmp`/`.hapmap`, `.csv`/`.tsv`/`.txt`) and then by content (`##fileformat=VCF`, a leading `rs#` header, otherwise wide CSV). Gzip and bgzip compression (`.gz`, `.bgz`) are inflated first, including multi-member bgzip streams.
+One of three formats, detected by file name (`.vcf`, `.hmp.txt`/`.hmp`/`.hapmap`, `.csv`/`.tsv`/`.txt`) and then by content (`##fileformat=VCF`, a leading `rs#` header, otherwise wide CSV). Gzip and bgzip compression (`.gz`, `.bgz`) are inflated first, including multi-member bgzip streams. VCF is parsed as a stream, so the inflated text is never held; HapMap and wide CSV are inflated to text first.
 
 ### VCF 4.2 or later
 

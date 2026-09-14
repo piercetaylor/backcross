@@ -2,7 +2,8 @@
  * The fixture loads through the real file inputs and the worker, end to end.
  *
  * Every node test calls src/io and src/core directly; this is the one that
- * goes through the Upload screen, the ArrayBuffer transfer, the worker's
+ * goes through the Upload screen, the genotype File handed to the worker
+ * and streamed there (docs/adr/0012), the worker's
  * load-rpp-qc-segments chain and App's navigation. The QC expectations are
  * the ones tests/qc.test.ts asserts from the same fixture in Node, read here
  * off the rendered Summary table.

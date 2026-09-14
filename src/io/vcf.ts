@@ -1,5 +1,5 @@
 /**
- * VCF 4.2+ parser (plain text; callers inflate bgzip first via decompress.ts).
+ * VCF 4.2+ parser, line by line.
  *
  * Responsibility: read the sample list from the #CHROM header line and the
  * GT field of every record into a GenotypeBuilder. Only CHROM, POS, ID, REF,
@@ -9,37 +9,48 @@
  * homozygous. Multiallelic ALT is supported (allele index = position in
  * REF,ALT list). Records without an ID get `${chrom}_${pos}`.
  *
- * Interface: parseVcf(text) -> ParsedGenotypes.
+ * The per-line body lives in VcfLineParser, which never sees more than one
+ * line, so the streaming loader (loaders.ts, parseGenotypesSource) can feed
+ * it from an inflating byte stream without holding the text. `parseVcf`
+ * splits an in-memory text and `parseVcfLines` drains an async iterable of
+ * lines; both go through the same class. Callers inflate first
+ * (decompress.ts). Lines arrive without their `\n`; a trailing `\r` is
+ * stripped here too.
+ *
+ * Interface: class VcfLineParser { pushLine(line); finish() -> ParsedGenotypes },
+ * parseVcf(text) -> ParsedGenotypes,
+ * parseVcfLines(lines) -> Promise<{ parsed, peakBuilderBytes }>.
  */
 import { MISSING_ALLELE } from '../core/types.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 
-export function parseVcf(text: string): ParsedGenotypes {
-  let builder: GenotypeBuilder | null = null;
-  let start = 0;
-  const n = text.length;
-  let lineNo = 0;
-  let sawFileformat = false;
+export class VcfLineParser {
+  private builder: GenotypeBuilder | null = null;
+  private lineNo = 0;
+  private sawFileformat = false;
 
-  while (start < n) {
-    let end = text.indexOf('\n', start);
-    if (end === -1) end = n;
-    let line = text.slice(start, end);
-    if (line.endsWith('\r')) line = line.slice(0, -1);
-    start = end + 1;
-    lineNo++;
-    if (line.length === 0) continue;
+  /** Bytes the builder has accounted at its peak (GenotypeBuilder.peakBytes); 0 before #CHROM. */
+  get peakBuilderBytes(): number {
+    return this.builder?.peakBytes ?? 0;
+  }
+
+  pushLine(raw: string): void {
+    const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+    this.lineNo++;
+    const lineNo = this.lineNo;
+    if (line.length === 0) return;
     if (line.startsWith('##')) {
-      if (line.startsWith('##fileformat=')) sawFileformat = true;
-      continue;
+      if (line.startsWith('##fileformat=')) this.sawFileformat = true;
+      return;
     }
     if (line.startsWith('#CHROM')) {
       const cols = line.split('\t');
       if (cols.length < 10) throw new Error('VCF header has no sample columns');
-      builder = new GenotypeBuilder(cols.slice(9));
-      continue;
+      this.builder = new GenotypeBuilder(cols.slice(9));
+      return;
     }
+    const builder = this.builder;
     if (builder === null) throw new Error(`VCF: data line ${lineNo} before #CHROM header`);
 
     const f = line.split('\t');
@@ -67,10 +78,36 @@ export function parseVcf(text: string): ParsedGenotypes {
       builder.setCall(offset, s, x, y);
     }
   }
-  if (builder === null) throw new Error('VCF: no #CHROM header line found');
-  const parsed = builder.finish();
-  if (!sawFileformat) parsed.warnings.push('VCF: no ##fileformat line; parsed as VCF 4.2');
-  return parsed;
+
+  finish(): ParsedGenotypes {
+    if (this.builder === null) throw new Error('VCF: no #CHROM header line found');
+    const parsed = this.builder.finish();
+    if (!this.sawFileformat) parsed.warnings.push('VCF: no ##fileformat line; parsed as VCF 4.2');
+    return parsed;
+  }
+}
+
+export function parseVcf(text: string): ParsedGenotypes {
+  const parser = new VcfLineParser();
+  let start = 0;
+  const n = text.length;
+  while (start < n) {
+    let end = text.indexOf('\n', start);
+    if (end === -1) end = n;
+    parser.pushLine(text.slice(start, end));
+    start = end + 1;
+  }
+  return parser.finish();
+}
+
+/** Drains `lines` into a VcfLineParser; returns it finished, with its peak accounting. */
+export async function parseVcfLines(
+  lines: AsyncIterable<string>,
+): Promise<{ parsed: ParsedGenotypes; peakBuilderBytes: number }> {
+  const parser = new VcfLineParser();
+  for await (const line of lines) parser.pushLine(line);
+  const parsed = parser.finish();
+  return { parsed, peakBuilderBytes: parser.peakBuilderBytes };
 }
 
 function cutAtColon(s: string): string {

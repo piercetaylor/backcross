@@ -12,9 +12,11 @@
  *                             [--min-markers N] [--max-missing-span N] [--include-short] [--out file.csv]
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
  *
- * Warnings from the loaders and the segment gap criterion go to stderr.
+ * The genotype file is read as a stream (parseGenotypesSource), so a
+ * bgzipped VCF is never held inflated. Warnings from the loaders and the
+ * segment gap criterion go to stderr.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs } from 'node:util';
 
@@ -26,7 +28,7 @@ import type { Classification, Dataset, SegmentParams } from './core/types.ts';
 import { segmentsCsv } from './export/segments-csv.ts';
 import { lineSummaryCsv } from './export/summary-csv.ts';
 import { targetsCsv } from './export/targets-csv.ts';
-import { assembleDataset, parseGenotypesBytes } from './io/loaders.ts';
+import { assembleDataset, parseGenotypesSource } from './io/loaders.ts';
 import { parseSampleManifest } from './io/manifest.ts';
 import { parseMarkerMap } from './io/markers.ts';
 
@@ -46,8 +48,13 @@ function numberOr(raw: string | undefined, fallback: number): number {
   return v;
 }
 
-function load(genotypes: string, samplesPath: string, markersPath: string | undefined): Dataset {
-  const parsed = parseGenotypesBytes(basename(genotypes), new Uint8Array(readFileSync(genotypes)));
+async function load(
+  genotypes: string,
+  samplesPath: string,
+  markersPath: string | undefined,
+): Promise<Dataset> {
+  // A Node Readable is async-iterable over Buffer chunks, which are Uint8Arrays.
+  const parsed = await parseGenotypesSource(basename(genotypes), createReadStream(genotypes));
   const samples = parseSampleManifest(readFileSync(samplesPath, 'utf8'));
   const markerMap =
     markersPath === undefined ? undefined : parseMarkerMap(readFileSync(markersPath, 'utf8'));
@@ -67,7 +74,7 @@ function allSegments(
   );
 }
 
-function main(argv: string[]): number {
+async function main(argv: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
@@ -116,7 +123,7 @@ ${USAGE}`);
 ${USAGE}`);
     return 2;
   }
-  const dataset = load(values.genotypes, values.samples, values.markers);
+  const dataset = await load(values.genotypes, values.samples, values.markers);
   const cls = classifyDataset(dataset);
 
   let csv: string;
@@ -157,7 +164,7 @@ ${USAGE}`);
 }
 
 try {
-  process.exitCode = main(process.argv.slice(2));
+  process.exitCode = await main(process.argv.slice(2));
 } catch (e) {
   console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
   process.exitCode = 1;

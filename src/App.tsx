@@ -8,6 +8,11 @@
  * screens in PLAN.md ("UI walkthrough"). Screens receive plain props and
  * callbacks; only this file talks to the worker.
  *
+ * Loading: the genotype `File` goes to the worker as-is, cloned by
+ * reference rather than read here, so the main thread never holds its bytes;
+ * the worker streams it (docs/adr/0012). samples.csv and markers.csv are
+ * transferred as ArrayBuffers.
+ *
  * Sequencing after a successful 'load': request 'rpp', then 'qc' (which
  * needs a LineRpp[] and so must follow rpp), then 'segmentsAll', awaited in
  * order so a failure is attributable to one step; then navigate to Summary.
@@ -190,7 +195,10 @@ export function App() {
     setError(null);
     setBusy(true);
     try {
-      const transfer: Transferable[] = [payload.genotypes, payload.samples];
+      // The genotype File is cloned by reference, not transferred, and read as
+      // a stream in the worker (docs/adr/0012); an ArrayBuffer is transferred.
+      const transfer: Transferable[] = [payload.samples];
+      if (payload.genotypes instanceof ArrayBuffer) transfer.push(payload.genotypes);
       if (payload.markers !== undefined) transfer.push(payload.markers);
       const client = getClient();
       const loadRes = await client.request('load', payload, transfer);

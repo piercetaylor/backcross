@@ -2,8 +2,12 @@
  * Analysis Web Worker.
  *
  * Responsibility: keep parsing and computation off the main thread. The UI
- * posts raw file bytes (ArrayBuffers, transferred, not copied) and analysis
- * parameters; the worker parses, assembles the Dataset, classifies, computes
+ * posts the genotype `File` itself (a Blob, cloned by reference), the two
+ * small CSVs as ArrayBuffers (transferred, not copied) and analysis
+ * parameters. 'load' reads the genotype Blob as a stream (`blobBytes`), or
+ * an ArrayBuffer through `bytesOf`, and awaits `parseGenotypesSource`, so
+ * a bgzipped VCF is inflated and parsed chunk by chunk and its inflated text
+ * is never held (docs/adr/0012). The worker parses, assembles the Dataset, classifies, computes
  * RPP/QC/segments/targets/compare/markerDetail, and posts results back. Typed-array
  * results are transferred: arrays that alias resident state (the dataset,
  * the classification matrix) are copied first with `.slice()` so the copy's
@@ -13,6 +17,10 @@
  * directly. `dataset`, `classification`
  * and the last computed `LineRpp[]` stay resident in the worker for
  * follow-up requests so the main thread never holds the genotype matrix.
+ *
+ * `handle` is async because 'load' is. Requests are queued and handled one
+ * at a time in arrival order, as the synchronous handler did, so a request
+ * posted while a load is still reading never sees a half-replaced dataset.
  *
  * Protocol (src/workers/protocol.ts): request {id, type, payload} ->
  * response {id, ok: true, result} | {id, ok: false, error}.
@@ -33,7 +41,8 @@ import {
 } from '../core/index.ts';
 import { classAt, resolveSample } from '../core/compare.ts';
 import type { Classification, Dataset, LineRpp } from '../core/types.ts';
-import { assembleDataset, parseGenotypesBytes } from '../io/loaders.ts';
+import { assembleDataset, parseGenotypesSource } from '../io/loaders.ts';
+import { blobBytes, bytesOf } from '../io/stream.ts';
 import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
 import { discordantMarkersCsv } from '../export/pairwise-csv.ts';
@@ -90,11 +99,13 @@ function requireLoaded(): { dataset: Dataset; classification: Classification } {
   return { dataset, classification };
 }
 
-function handle(req: WorkerRequest): WorkerResponse {
+async function handle(req: WorkerRequest): Promise<WorkerResponse> {
   switch (req.type) {
     case 'load': {
       const p = req.payload;
-      const parsed = parseGenotypesBytes(p.genotypeFileName, new Uint8Array(p.genotypes));
+      const source =
+        p.genotypes instanceof Blob ? blobBytes(p.genotypes) : bytesOf(new Uint8Array(p.genotypes));
+      const parsed = await parseGenotypesSource(p.genotypeFileName, source);
       const samples = parseSampleManifest(decoder.decode(p.samples));
       const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
       const out = assembleDataset(parsed, samples, map);
@@ -116,6 +127,10 @@ function handle(req: WorkerRequest): WorkerResponse {
           gapCriterion: segmentGapCriterion(dataset),
           coded: dataset.coded,
           informativeGapsBp: computeInformativeGaps(dataset, classification),
+          bytesInflated: parsed.bytesInflated,
+          peakBuilderBytes: parsed.peakBuilderBytes,
+          residentMatrixBytes:
+            dataset.genotypes.allele1.byteLength + dataset.genotypes.allele2.byteLength,
         },
       };
     }
@@ -301,12 +316,19 @@ function transferablesFor(result: WorkerResult): Transferable[] {
   }
 }
 
-self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
+async function respond(req: WorkerRequest): Promise<void> {
   try {
-    const response = handle(ev.data);
+    const response = await handle(req);
     self.postMessage(response, response.ok ? transferablesFor(response.result) : []);
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
-    self.postMessage({ id: ev.data.id, ok: false, error } satisfies WorkerResponse);
+    self.postMessage({ id: req.id, ok: false, error } satisfies WorkerResponse);
   }
+}
+
+let queue: Promise<void> = Promise.resolve();
+
+self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
+  const req = ev.data;
+  queue = queue.then(() => respond(req));
 };

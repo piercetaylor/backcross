@@ -6,7 +6,16 @@
  * GenotypeMatrix with unordered allele pairs (allele1 <= allele2, 255 = missing).
  * Enforces unique marker ids and a fixed sample count.
  *
- * Interface: new GenotypeBuilder(sampleIds); push(...); finish() -> ParsedGenotypes.
+ * `peakBytes` is the builder's own accounting of the most allele-array bytes
+ * it has held at once, for the streaming loader's memory bound
+ * (docs/m3-phases.md, resolution 2): while growing, the old and the new
+ * pair of arrays coexist until the copy finishes, so a growth step counts
+ * both; `finish()` slices both arrays, so it counts the capacity plus
+ * `2 x size`. JavaScript cannot observe the collector, so this is what the
+ * code keeps reachable, not what the engine has yet freed.
+ *
+ * Interface: new GenotypeBuilder(sampleIds); push(...); finish() -> ParsedGenotypes;
+ * readonly peakBytes.
  */
 import { normalizeChromosome } from '../core/chromosomes.ts';
 import { MISSING_ALLELE } from '../core/types.ts';
@@ -29,9 +38,14 @@ export class GenotypeBuilder {
   private a1 = new Uint8Array(0);
   private a2 = new Uint8Array(0);
   private nMarkers = 0;
+  private peak = 0;
   readonly warnings: string[] = [];
   readonly sampleIds: string[];
   private readonly coded: boolean;
+
+  get peakBytes(): number {
+    return this.peak;
+  }
 
   constructor(sampleIds: string[], coded = false) {
     this.sampleIds = sampleIds;
@@ -58,6 +72,7 @@ export class GenotypeBuilder {
       const na2 = new Uint8Array(cap).fill(MISSING_ALLELE);
       na1.set(this.a1);
       na2.set(this.a2);
+      this.notePeak(this.a1.length + this.a2.length + na1.length + na2.length);
       this.a1 = na1;
       this.a2 = na2;
     }
@@ -66,6 +81,10 @@ export class GenotypeBuilder {
     this.a2.fill(MISSING_ALLELE, offset, offset + n);
     this.nMarkers++;
     return offset;
+  }
+
+  private notePeak(bytes: number): void {
+    if (bytes > this.peak) this.peak = bytes;
   }
 
   setCall(offset: number, sampleIndex: number, x: number, y: number): void {
@@ -85,6 +104,7 @@ export class GenotypeBuilder {
     const n = this.sampleIds.length;
     const size = this.nMarkers * n;
     if (this.nMarkers === 0) throw new Error('genotype file contains no markers');
+    this.notePeak(this.a1.length + this.a2.length + 2 * size);
     return {
       markers: {
         ids: this.ids,

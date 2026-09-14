@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Large bgzipped VCFs load with memory under twice their inflated size; the file is read as a stream inside the worker. The bound is measured after the load in Chromium and accounted for the genotype builder in both browsers; the decompressor's transient buffers are not measured.
+- Corrupted or truncated gzip and bgzip genotype files are now rejected with an error naming the damaged member's byte offset, instead of loading wrong or missing genotypes: every member's CRC32 and length are checked, and a bgzip file must end with its end-of-file block.
+
 - A left rail of the six steps in place of the row of screen buttons. Each step says whether it is the one showing, already done, or still blocked for want of a dataset; blocked steps are announced as disabled and are stepped over by the arrow keys, which now run down the rail rather than across a row. The rail collapses to a numbered strip -- on its own on the graphical genotype screen, where horizontal room is the scarce resource, and by a control that pins it either way for the rest of the session. The heading and the reminder that files never leave the browser tab move into it, and "Skip to main content" is still the first thing a keyboard reaches.
 
 - The graphical genotype canvas surrounded by its context. The line names have moved out of the canvas into a gutter beside it, which stays put while the canvas scrolls sideways and toggles that line's place in the shared selection when clicked; a chromosome strip above the canvas names each track, and on a single chromosome gives the shown window's start and end in Mb; and below the canvas, on a single chromosome, a whole-chromosome overview marks where the window falls and recentres it when clicked. Figures in the exported HTML report are unchanged and keep their labels drawn inside the image.

@@ -9,21 +9,45 @@
  * a warning, chromosome names are normalized, markers sorted. This is the
  * only place where validation happens; everything downstream trusts Dataset.
  *
+ * Two genotype entries. `parseGenotypesBytes` is synchronous: inflate the
+ * whole file, decode it, parse the text. `parseGenotypesSource` is the
+ * streaming entry the worker and the CLI use: it inflates chunk by chunk
+ * (decompress.ts, inflateIfGzip, which verifies every gzip member's CRC32
+ * and ISIZE and rejects a truncated stream), counts the inflated bytes,
+ * splits lines (stream.ts) and detects the format by calling
+ * `detectGenotypeFormat` on a head window: lines are buffered until they
+ * reach HEAD_WINDOW_CHARS (4096, the window `detectGenotypeFormat` reads) or
+ * the stream ends, and joined with `\n`, so both entries see the same head
+ * and agree. (For a CRLF file the stripped `\r`s let the stream window reach
+ * a few characters further than the text window; only a header straddling
+ * character 4096 could be detected differently.) A VCF is then parsed line
+ * by line, so the inflated text is never held; HapMap and wide CSV are
+ * collected to text and parsed as before. The result carries
+ * `bytesInflated` and, for VCF, `peakBuilderBytes` (0 for the text formats,
+ * whose peak is not accounted).
+ *
  * Interface: detectGenotypeFormat(name, text), parseGenotypesText(text, format, mode?),
+ * parseGenotypesBytes(name, bytes, mode?),
+ * parseGenotypesSource(name, source, mode?) -> Promise<StreamedGenotypes>,
  * assembleDataset(parsed, samples, markerMap?) -> { dataset, warnings }.
  */
 import { buildChromosomeOrder, compareChromosomes } from '../core/chromosomes.ts';
 import type { Dataset, GenotypeMatrix, SampleRecord } from '../core/types.ts';
 import type { ParsedGenotypes } from './builder.ts';
-import { bytesToText } from './decompress.ts';
+import { bytesToText, inflateIfGzip } from './decompress.ts';
 import { parseHapMap } from './hapmap.ts';
 import { applyMarkerMap } from './markers.ts';
 import type { MarkerMap } from './markers.ts';
-import { parseVcf } from './vcf.ts';
+import { countBytes, lines } from './stream.ts';
+import type { ByteSource } from './stream.ts';
+import { parseVcf, parseVcfLines } from './vcf.ts';
 import { parseWideCsv } from './wide-csv.ts';
 import type { WideCsvMode } from './wide-csv.ts';
 
 export type GenotypeFormat = 'vcf' | 'hapmap' | 'wide-csv';
+
+/** Characters of the decoded text `detectGenotypeFormat` inspects. */
+const HEAD_WINDOW_CHARS = 4096;
 
 export function detectGenotypeFormat(fileName: string, text: string): GenotypeFormat {
   const name = fileName.toLowerCase().replace(/\.(gz|bgz)$/, '');
@@ -31,12 +55,12 @@ export function detectGenotypeFormat(fileName: string, text: string): GenotypeFo
   if (name.endsWith('.hmp.txt') || name.endsWith('.hmp') || name.endsWith('.hapmap'))
     return 'hapmap';
   if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
-    const head = text.slice(0, 4096);
+    const head = text.slice(0, HEAD_WINDOW_CHARS);
     if (head.startsWith('##fileformat=VCF') || head.includes('\n#CHROM')) return 'vcf';
     if (/^rs#/i.test(head)) return 'hapmap';
     return 'wide-csv';
   }
-  const head = text.slice(0, 4096);
+  const head = text.slice(0, HEAD_WINDOW_CHARS);
   if (head.startsWith('##fileformat=VCF')) return 'vcf';
   if (/^rs#/i.test(head)) return 'hapmap';
   return 'wide-csv';
@@ -64,6 +88,46 @@ export function parseGenotypesBytes(
 ): ParsedGenotypes {
   const text = bytesToText(bytes);
   return parseGenotypesText(text, detectGenotypeFormat(fileName, text), mode);
+}
+
+export interface StreamedGenotypes extends ParsedGenotypes {
+  /** Bytes after inflation (the file size, for uncompressed input). */
+  bytesInflated: number;
+  /** GenotypeBuilder.peakBytes for a streamed VCF; 0 for HapMap and wide CSV. */
+  peakBuilderBytes: number;
+}
+
+export async function parseGenotypesSource(
+  fileName: string,
+  source: ByteSource,
+  mode: WideCsvMode = 'auto',
+): Promise<StreamedGenotypes> {
+  const counter = { bytes: 0 };
+  const iterator = lines(countBytes(inflateIfGzip(source), counter))[Symbol.asyncIterator]();
+  // Buffer the head window: lines until their joined length reaches the window, or EOF.
+  const head: string[] = [];
+  let headChars = 0;
+  while (headChars < HEAD_WINDOW_CHARS) {
+    const next = await iterator.next();
+    if (next.done === true) break;
+    head.push(next.value);
+    headChars += next.value.length + 1;
+  }
+  const format = detectGenotypeFormat(fileName, head.join('\n'));
+  const all: AsyncIterable<string> = {
+    async *[Symbol.asyncIterator]() {
+      yield* head;
+      yield* { [Symbol.asyncIterator]: () => iterator };
+    },
+  };
+  if (format === 'vcf') {
+    const { parsed, peakBuilderBytes } = await parseVcfLines(all);
+    return { ...parsed, bytesInflated: counter.bytes, peakBuilderBytes };
+  }
+  const collected: string[] = [];
+  for await (const line of all) collected.push(line);
+  const parsed = parseGenotypesText(collected.join('\n'), format, mode);
+  return { ...parsed, bytesInflated: counter.bytes, peakBuilderBytes: 0 };
 }
 
 /** Keep only the manifest's samples, in manifest order; returns the column subset. */

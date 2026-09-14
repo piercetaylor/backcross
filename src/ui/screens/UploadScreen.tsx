@@ -5,10 +5,12 @@
  * samples.csv; optional markers.csv), a parameter panel seeded from
  * `params` and reported through `onParamsChange` on blur or Enter
  * (docs/data-formats.md, "Analysis parameters"), and a "Load" action that
- * reads the chosen files as ArrayBuffers and calls `onLoad`. Shows parser
+ * passes the genotype `File` as-is (the worker reads it as a stream,
+ * docs/adr/0012), reads samples.csv and markers.csv as ArrayBuffers, and
+ * calls `onLoad`. Shows parser
  * warnings and a one-line dataset summary once `loaded` is set. Every
- * parameter input is disabled while `busy` is true, so a value cannot be
- * edited mid-chain. Props/callbacks only: this screen never touches the
+ * file picker and parameter input is disabled while `busy` is true, so
+ * neither a file nor a value can be changed mid-chain. Props/callbacks only: this screen never touches the
  * worker, App does.
  *
  * Props: params, onParamsChange, busy, onLoad, loaded.
@@ -107,8 +109,8 @@ export function UploadScreen({
 
   async function handleLoad() {
     if (genotypeFile === null || samplesFile === null) return;
-    const [genotypes, samples, markers] = await Promise.all([
-      genotypeFile.arrayBuffer(),
+    const genotypes: Blob = genotypeFile;
+    const [samples, markers] = await Promise.all([
       samplesFile.arrayBuffer(),
       markersFile === null ? Promise.resolve(undefined) : markersFile.arrayBuffer(),
     ]);
@@ -128,7 +130,11 @@ export function UploadScreen({
       <div className="field">
         <label>
           Genotype file (VCF, HapMap, or wide CSV){' '}
-          <input type="file" onChange={(e) => setGenotypeFile(e.target.files?.[0] ?? null)} />
+          <input
+            type="file"
+            disabled={busy}
+            onChange={(e) => setGenotypeFile(e.target.files?.[0] ?? null)}
+          />
         </label>
       </div>
       <div className="field">
@@ -137,6 +143,7 @@ export function UploadScreen({
           <input
             type="file"
             accept=".csv,.tsv,.txt"
+            disabled={busy}
             onChange={(e) => setSamplesFile(e.target.files?.[0] ?? null)}
           />
         </label>
@@ -147,6 +154,7 @@ export function UploadScreen({
           <input
             type="file"
             accept=".csv,.tsv,.txt"
+            disabled={busy}
             onChange={(e) => setMarkersFile(e.target.files?.[0] ?? null)}
           />
         </label>
