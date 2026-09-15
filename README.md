@@ -10,7 +10,7 @@ Parsers for VCF 4.2+ (plain or bgzip), HapMap and wide CSV (nucleotide or A/B/H)
 
 ## Quickstart
 
-Requires Node 22.18 or later.
+Requires Node 22.19 or later.
 
 ```
 npm ci

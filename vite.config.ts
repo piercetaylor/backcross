@@ -29,6 +29,16 @@ const bringToFront: BrowserCommand<[], void> = async ({ page }) => {
   await page.bringToFront();
 };
 
+// Switches the page's media type for tests/browser/print-media.test.tsx;
+// null restores the browser's own. Playwright's page.emulateMedia applies to
+// every frame of the page, so the tester iframe sees @media print.
+const emulateMedia: BrowserCommand<[media: 'print' | 'screen' | null], void> = async (
+  { page },
+  media,
+) => {
+  await page.emulateMedia({ media });
+};
+
 // Chromium and Firefox, per the maintainer's 2026-09-12 decision. Chromium
 // launches the full browser (channel 'chromium') rather than Playwright's
 // headless shell, because the shell refuses measureUserAgentSpecificMemory()
@@ -52,7 +62,7 @@ function browserMode() {
     // Twelve pages start at once, six per browser; under the same CPU load a
     // Firefox session missed Vitest's default 60 s connect timeout.
     connectTimeout: 120_000,
-    commands: { bringToFront },
+    commands: { bringToFront, emulateMedia },
   };
 }
 
@@ -64,6 +74,7 @@ const BROWSER_DEPS = [
   'react-aria-components',
   'fflate',
   'vitest-browser-react',
+  'axe-core',
 ];
 
 // VITE_BASE_PATH lets the same build serve from "/" (custom host) or
@@ -102,6 +113,11 @@ export default defineConfig(({ mode }) => ({
           name: 'browser',
           include: ['tests/browser/**/*.test.{ts,tsx}'],
           browser: browserMode(),
+          // One page at a time: focus-order, focus-not-obscured and
+          // lines-grid-keyboard each take Firefox window focus back through
+          // bringToFront, and run side by side they take it from each other
+          // until one times out (observed 2026-09-15; serially all pass).
+          fileParallelism: false,
           testTimeout: 60_000,
           expect: { poll: { timeout: 30_000 } },
         },

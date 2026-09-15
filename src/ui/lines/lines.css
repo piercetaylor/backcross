@@ -296,3 +296,21 @@
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
+
+/* ---- Print ---- */
+
+@media print {
+  .line-action-bar {
+    display: none;
+  }
+
+  /* Nothing scrolls on paper: the whole table prints under a static header. */
+  .lines-table-viewport {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .lines-table thead th {
+    position: static;
+  }
+}

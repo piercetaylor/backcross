@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=22.18"
+    "node": ">=22.19"
   },
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "fixture": "node scripts/make-fixture.mjs",
     "contract": "node scripts/make-contract.mjs",
     "brapi:record": "node scripts/brapi-record.mjs",
+    "a11y:lighthouse": "node scripts/lighthouse-a11y.mjs",
     "cli": "node src/cli.ts"
   },
   "dependencies": {
@@ -37,9 +38,12 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/browser-playwright": "5.0.0",
+    "axe-core": "4.13.0",
+    "chrome-launcher": "1.2.1",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
+    "lighthouse": "13.4.1",
     "playwright": "^1.63.0",
     "prettier": "^3.9.6",
     "typescript": "^5.9.3",

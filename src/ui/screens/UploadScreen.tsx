@@ -21,12 +21,13 @@
  * from the intro paragraph. Every
  * file picker and parameter input is disabled while `busy` is true, so
  * neither a file nor a value can be changed mid-chain. Props/callbacks only: this screen never touches the
- * worker, App does.
+ * worker, App does. Cancel moves focus to the screen heading before it unmounts, so focus never
+ * drops to the body (tests/browser/focus-order.test.tsx).
  *
  * Props: params, onParamsChange, busy, loaded, onLoad, onFetchCallSets,
  * onCancelBrapi, brapiLoading.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Input, Label, RadioGroup, TextField } from 'react-aria-components';
 
 import './screens.css';
@@ -133,6 +134,7 @@ export function UploadScreen({
   /** True from a loadBrapi dispatch until its 'loaded' or error; shows the Cancel button. */
   brapiLoading: boolean;
 }) {
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const [genotypeFile, setGenotypeFile] = useState<File | null>(null);
   const [samplesFile, setSamplesFile] = useState<File | null>(null);
   const [markersFile, setMarkersFile] = useState<File | null>(null);
@@ -200,12 +202,14 @@ export function UploadScreen({
 
   return (
     <section>
-      <h2>Upload and validate</h2>
+      <h2 ref={headingRef} tabIndex={-1}>
+        Upload and validate
+      </h2>
       <p>
         Files are processed in this browser tab and never uploaded anywhere. Accepted, missing and
         rejected genotype codes per format:{' '}
         <a className="input-coding-link" href={INPUT_CODING_URL} target="_blank" rel="noreferrer">
-          input coding reference
+          input coding reference<span className="visually-hidden"> (opens in a new tab)</span>
         </a>
         .
       </p>
@@ -391,7 +395,13 @@ export function UploadScreen({
         Load
       </button>
       {source === 'brapi' && brapiLoading && (
-        <button type="button" onClick={onCancelBrapi}>
+        <button
+          type="button"
+          onClick={() => {
+            onCancelBrapi();
+            headingRef.current?.focus();
+          }}
+        >
           Cancel
         </button>
       )}

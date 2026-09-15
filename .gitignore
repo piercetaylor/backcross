@@ -2,6 +2,7 @@
 node_modules/
 dist/
 coverage/
+lighthouse/
 .vitest/
 *.tsbuildinfo
 

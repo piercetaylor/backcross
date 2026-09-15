@@ -155,3 +155,26 @@
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
   outline-offset: calc(-1 * var(--focus-ring-width));
 }
+
+/* ---- Print ---- */
+
+/*
+ * Paper gets the data, not the chrome: the rail is navigation, and the
+ * content column takes the whole sheet. tests/browser/print-media.test.tsx.
+ */
+@media print {
+  /* The collapsed selector is as specific as this one, so it is named here
+     too: otherwise a collapsed rail leaves an empty first column on paper. */
+  .app-shell,
+  .app-shell[data-rail='collapsed'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail {
+    display: none;
+  }
+
+  .app-main {
+    padding: 0;
+  }
+}

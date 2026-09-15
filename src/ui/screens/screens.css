@@ -299,3 +299,17 @@
   align-items: center;
   margin-bottom: var(--space-2);
 }
+
+/* ---- Print ---- */
+
+@media print {
+  .geno-toolbar,
+  .keyboard-help,
+  .marker-detail {
+    display: none;
+  }
+
+  .geno-scroll {
+    overflow-x: visible;
+  }
+}

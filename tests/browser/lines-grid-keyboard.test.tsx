@@ -4,7 +4,8 @@
  * tests/line-table.test.tsx asserts the grid's roles and states from
  * server-rendered markup and says it cannot assert behaviour; this is the
  * behaviour. React Aria's Table is one tab stop: Tab from the action bar
- * enters the grid, arrow keys move within it, and a second Tab leaves it.
+ * enters the grid, arrow keys, Home/End and Ctrl+Home/End move within it,
+ * and a second Tab leaves it.
  *
  * React Aria focuses a row, not a cell, on entry, and with a row focused
  * Home and End move to the first and last row. They move within a row only
@@ -113,6 +114,7 @@ describe('Lines grid keyboard pattern', () => {
     await pressExpectingFocus('{Home}', focusedCell, cells[0]);
 
     await pressExpectingFocus('{Control>}{End}{/Control}', focusedRowIndex, bodyRows().length - 1);
+    await pressExpectingFocus('{Control>}{Home}{/Control}', focusedRowIndex, 0);
 
     await pressExpectingFocus('Tab', () => grid().contains(active()), false);
   });

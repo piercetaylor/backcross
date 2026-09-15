@@ -12,7 +12,9 @@
  * Tab order; Up/Down/Home/End move focus between steps and activate the one
  * focus lands on, and they skip blocked steps rather than landing on a
  * control that would do nothing. The collapse control sits outside the
- * toolbar, at the rail's foot, and is an ordinary tab stop.
+ * toolbar, at the rail's foot, and is an ordinary tab stop. The toolbar is a
+ * `<div role="toolbar">` inside the `<nav>` landmark, because `toolbar` is
+ * not an allowed role on `nav`.
  *
  * A step is blocked when nothing is loaded and it is not the Upload step:
  * aria-disabled (not `disabled`, so it stays discoverable by a screen
@@ -88,7 +90,7 @@ export function Rail({
   // Roving tabindex: move the React state and the DOM focus together, so the
   // two never disagree about which step is current. Blocked steps are not
   // in `reachable` and so are stepped over, not landed on.
-  function handleKeyDown(e: ReactKeyboardEvent<HTMLElement>) {
+  function handleKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
     if (reachable.length === 0) return;
     const here = reachable.indexOf(SCREENS.findIndex((s) => s.id === screen));
     let target: number | undefined;
@@ -113,38 +115,40 @@ export function Rail({
     <div className="rail">
       <h1 className={collapsed ? 'rail-title visually-hidden' : 'rail-title'}>Isoline Browser</h1>
 
-      <nav
-        className="rail-steps"
-        role="toolbar"
-        aria-label="Steps"
-        aria-orientation="vertical"
-        onKeyDown={handleKeyDown}
-      >
-        {SCREENS.map((entry, i) => {
-          const state = states[i] as StepState;
-          const blocked = state === 'blocked';
-          return (
-            <button
-              key={entry.id}
-              ref={(el) => {
-                itemRefs.current[i] = el;
-              }}
-              type="button"
-              className="rail-item"
-              data-state={state}
-              aria-current={entry.id === screen ? 'page' : undefined}
-              aria-disabled={blocked ? true : undefined}
-              aria-label={collapsed ? fullLabel(entry) : undefined}
-              title={collapsed ? fullLabel(entry) : undefined}
-              tabIndex={entry.id === screen ? 0 : -1}
-              onClick={() => {
-                if (!blocked) onNavigate(entry.id);
-              }}
-            >
-              {collapsed ? entry.step : fullLabel(entry)}
-            </button>
-          );
-        })}
+      <nav aria-label="Steps">
+        <div
+          className="rail-steps"
+          role="toolbar"
+          aria-label="Steps"
+          aria-orientation="vertical"
+          onKeyDown={handleKeyDown}
+        >
+          {SCREENS.map((entry, i) => {
+            const state = states[i] as StepState;
+            const blocked = state === 'blocked';
+            return (
+              <button
+                key={entry.id}
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
+                type="button"
+                className="rail-item"
+                data-state={state}
+                aria-current={entry.id === screen ? 'page' : undefined}
+                aria-disabled={blocked ? true : undefined}
+                aria-label={collapsed ? fullLabel(entry) : undefined}
+                title={collapsed ? fullLabel(entry) : undefined}
+                tabIndex={entry.id === screen ? 0 : -1}
+                onClick={() => {
+                  if (!blocked) onNavigate(entry.id);
+                }}
+              >
+                {collapsed ? entry.step : fullLabel(entry)}
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       <div className="rail-foot">

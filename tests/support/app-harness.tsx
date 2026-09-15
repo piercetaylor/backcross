@@ -30,7 +30,8 @@
  * loadBrapi(files, source),
  * loadFilesInPage(files), goTo(step), pressExpectingFocus(keys, read,
  * expected), expectFocus(read, expected), focusStats, focusReport(),
- * waitFor(predicate, timeoutMs?), nextFrame().
+ * waitFor(predicate, timeoutMs?), nextFrame(), bringToFront and
+ * emulateMedia (Playwright commands declared in vite.config.ts).
  */
 import { StrictMode } from 'react';
 import { commands, page, userEvent } from 'vitest/browser';
@@ -64,6 +65,8 @@ declare module 'vitest/browser' {
   interface BrowserCommands {
     /** Defined in vite.config.ts: Playwright's page.bringToFront(). */
     bringToFront: () => Promise<void>;
+    /** Defined in vite.config.ts: Playwright's page.emulateMedia({ media }). */
+    emulateMedia: (media: 'print' | 'screen' | null) => Promise<void>;
   }
 }
 

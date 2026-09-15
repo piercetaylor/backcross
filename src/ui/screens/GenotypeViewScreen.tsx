@@ -63,7 +63,12 @@
  * lines than it has pixels not every line is represented in it. Colours, font and geometry come
  * from the stylesheet through ui/canvas/read-theme.ts, read once when the
  * renderer is created; the renderer holds no literal that reaches this
- * screen, and this screen holds no dimension of its own.
+ * screen, and this screen holds no dimension of its own. Both canvases are
+ * `role="img"` with a description: the main one is focusable and
+ * keyboard-operated, and its label states the keys (docs/m3-phases.md,
+ * phase 5). A screen reader in browse mode does not switch to focus mode
+ * for an image, so those keys reach the canvas only after the user
+ * switches modes; unverified without assistive technology.
  *
  * onRequestMarkerDetail is optional: App.tsx wires it to the worker's
  * `markerDetail` request (`(markerIndex, sampleIds) =>
@@ -793,6 +798,7 @@ export function GenotypeViewScreen({
               <canvas
                 ref={canvasRef}
                 className="geno-canvas"
+                role="img"
                 tabIndex={0}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -811,6 +817,7 @@ export function GenotypeViewScreen({
                 <canvas
                   ref={overviewRef}
                   className="geno-overview"
+                  role="img"
                   onClick={handleOverviewClick}
                   aria-label={`Overview of the whole of ${viewport.chrom}, with the shown window marked. Click to recentre the window.`}
                 />

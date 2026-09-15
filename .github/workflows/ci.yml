@@ -47,7 +47,9 @@ jobs:
 
   # Browser-mode tests and the bench. The bench's 30 s budget is the laptop
   # figure; here it is only a hang guard, to be tightened to 3-5x the first
-  # recorded CI baseline (docs/m3-phases.md, Q5).
+  # recorded CI baseline (docs/m3-phases.md, Q5). Then Lighthouse's
+  # accessibility category on the built landing page
+  # (scripts/lighthouse-a11y.mjs, PLAN.md M3).
   browser:
     needs: check
     runs-on: ubuntu-latest
@@ -63,6 +65,7 @@ jobs:
       - run: npm run test:bench
         env:
           VITE_BENCH_BUDGET_MS: '120000'
+      - run: npm run a11y:lighthouse
 
   # Deploying needs Pages turned on for the repository first (docs/adr/0003).
   # Until then this job is skipped rather than failing every push to main: set

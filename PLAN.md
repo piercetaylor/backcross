@@ -130,7 +130,7 @@ M2 usable (complete, 2026-09-09): genotype view zoom and hover, Compare screen, 
 
 M2.5 interface (complete, 2026-09-11): replace the inline-styled screens with a domain-native interface (docs/adr/0009, docs/design-brief.md). A collapsible left rail of the six steps over a light content area; the Lines table and the graphical genotype become one selection model, so sorting or filtering either reorders both, with a single action bar reporting total, visible and selected lines; the canvas is surrounded by its context (labels in a fixed left gutter, overview below) instead of controls floating over data; design tokens for a hueless neutral ramp, IBM Plex Sans and Mono self-hosted, 32 px rows and 13 px interface type with density as a user control; React Aria for the table and the form controls (the application has no menu and no dialog, and M2.5 adds none); and a texture per genotype class alongside its colour. Acceptance as measured: sorting the Lines table reorders the canvas and the reverse, verified in Chromium against the fixture (the table and the gutter read the same six lines in the same order); every class swatch and component boundary clears the 3:1 of WCAG 1.4.11 and the four textured classes clear it against their own fill, all re-derived from src/core/contrast.ts rather than asserted; no literal colour or dimension survives in a component file, which `npm run lint` now enforces mechanically with no allowlist. Greyscale print legibility is argued from the texture encoding and the 3.67:1 between the two plain classes but was not tested on paper, and the APG grid keyboard pattern is asserted from server-rendered markup rather than from real key events; both need the browser-mode tests M3 owes.
 
-M3 hardened: streaming parse of bgzipped VCF in the worker to keep memory under twice the file size; BrAPI allele-matrix loader; browser-mode tests for the renderer; accessibility review (focus order, contrast, non-colour cues); versioned data-contract document shared with progeny-selector. Acceptance: 50K × 200 lines load and draw correctly within the memory bound, in under 30 s on the maintainer's laptop (reframed 2026-09-12 as a scale test; CI records the time against a hang guard, see docs/m3-phases.md Q5); Lighthouse accessibility score above 90; contract tests shared with the sibling repository pass on both.
+M3 hardened (complete, 2026-09-15): streaming parse of bgzipped VCF in the worker to keep memory under twice the file size; BrAPI allele-matrix loader; browser-mode tests for the renderer; accessibility review (focus order, contrast, non-colour cues); versioned data-contract document shared with progeny-selector. Acceptance: 50K × 200 lines load and draw correctly within the memory bound, in under 30 s on the maintainer's laptop (reframed 2026-09-12 as a scale test; CI records the time against a hang guard, see docs/m3-phases.md Q5); Lighthouse accessibility score above 90; contract tests shared with the sibling repository pass on both.
 
 ## Risks and open questions
 
@@ -308,3 +308,48 @@ Five commits, one per phase of docs/m2.5-phases.md, plus one for the fonts. All 
 **Bundle.** React Aria cost 279.79 kB raw, taking the main chunk from 249.83 kB to 533.71 kB and crossing Vite's 500 kB warning, which could not fire before. ADR 0009 accepted the dependency but cited a 244 kB bundle as a decision driver without quantifying it; 165 kB gzipped is the honest figure for a static-hosted tool. Splitting the vendor chunk or narrowing the component surface is open.
 
 Deferred past M2.5, in rough order of value: the four M3 items PLAN.md already lists; a vendor chunk split to clear the size warning; virtualisation, still the blocker for drawing more lines than the overview has pixels, where it now subsamples; from docs/design-survey.md, a numeric-threshold fallback to a denser display when a track has more features than pixels, scrollbar tick marks for filter matches with a "bring matches together" action, and a pattern-based column clustering sort distinct from the RPP sorts; and `readr::read_csv` parsing the exports, which the M2 block recorded as unverified because it believed no R was present. R 4.4.3 was present; `readr` was not. It was installed on 2026-09-12 (readr 2.2.0) and the check run: the summary, segments and targets CSVs from the CLI, on the synthetic fixture, parse with zero problems; all 88 `NA` cells become real R `NA`, not strings; every column that carries an `NA` still parses as numeric rather than being silently coerced to character, which is the failure an R user would actually meet; and both documented headers match docs/data-formats.md character for character. Not checked: the pairwise and QC CSVs, which only the browser emits, though they share the same field serialiser.
+
+### M3 run, 2026-09-15
+
+Same laptop as the M1, M2 and M2.5 runs. Node v24.13.1, npm 11.8.0, vitest 5.0.0, Playwright 1.63.0 (Chromium 153.0.8010.12, Firefox 155.0), all browser runs headless (`CI=true`). Five commits, one per phase of docs/m3-phases.md, plus the contract 1.1.0 and 1.2.0 commits; every gate passes at each, and the figures above are from the last.
+
+```
+$ npm run lint && npm run typecheck
+(exit 0; "All matched files use Prettier code style!")
+
+$ npm test
+ Test Files  27 passed | 1 skipped (28)
+      Tests  480 passed | 2 skipped (482)
+
+$ npm run test:browser
+ Test Files  24 passed (24)   (12 per browser)
+      Tests  74 passed | 2 skipped (76)
+   Duration  106.86s
+
+$ npm run build
+dist/assets/analysis.worker-*.js   55.19 kB
+dist/assets/index-*.css            17.28 kB
+dist/assets/index-*.js            538.21 kB  (gzip 166.45 kB)
+
+$ npm run fixture && npm run contract && git diff --exit-code -- tests/fixtures contract
+(exit 0; no diff)
+
+$ node scripts/check-contract-mirror.mjs ../progeny-selector
+contract mirror: 108 files identical
+
+$ npm run test:bench
+ chromium: Load -> "Lines: 200" 9457 ms; first draw 10462 ms; measureUserAgentSpecificMemory delta 68.0 MiB (1.67 x bytesInflated) against 2 x bytesInflated = 81.2 MiB; peakBuilderBytes + residentMatrixBytes = 63.8 MiB (1.57 x)
+ firefox:  Load -> "Lines: 200" 7188 ms; first draw 8543 ms; peakBuilderBytes + residentMatrixBytes = 63.8 MiB (1.57 x; accounting only, no memory API)
+ Phase 1 baseline (non-streaming path, commit 43e182f): first draw Chromium 3.6 s, Firefox 5.0 s; Chromium memory +72.5 MiB. Phase 2 (streaming, commit 6325bf0): 1.57 x accounting, Chromium 1.62-1.64 x; wall-clock not recorded (loaded machine).
+
+$ npm run a11y:lighthouse
+Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://127.0.0.1:4173/
+```
+
+**Measured.** Memory: the 50K x 200 bgzipped load stays under twice its inflated size, measured after the load in Chromium (1.67 x) and by accounting in both browsers (1.57 x); the decompressor's transient buffers are not measured (docs/adr/0012). Time: first draw at 10.5 s in Chromium and 8.5 s in Firefox, under the 30 s budget, and slower than the phase 1 headless figures of 3.6 s and 5.0 s. This run followed two full browser suites on the same machine, and phase 2 recorded that integrity-checked decompression costs 0.6-0.8 s, so the difference is not attributed here; CI records the time against its hang guard. Contract: the cases pass in this repository, and the mirror check finds 108 files identical with progeny-selector. Lighthouse scores the Upload screen 100 with axe-core 4.13.0 underneath it. `tests/browser/a11y-axe.test.tsx` finds no WCAG 2.0/2.1 A or AA violation in either browser, with `KNOWN_A11Y_EXCEPTIONS` empty, across: Upload empty; the BrAPI form empty, in flight with Cancel, after cancel, and on a 404; Upload revisited after a load; Summary and QC; Lines by default, all selected, and with an empty filter; Graphical genotypes over the whole genome, one chromosome with its overview, a region error, and the sort popover open; Compare's form and result; Export. The focus order, WCAG 2.4.11 under the sticky header, non-colour cues and print media are asserted in both browsers by `focus-order`, `focus-not-obscured`, `non-colour-cues` and `print-media`. No `src/ui/tokens.css` change was needed.
+
+**Test mechanics worth knowing.** The browser project now runs its files one at a time (`fileParallelism: false`): `focus-order`, `focus-not-obscured` and `lines-grid-keyboard` each take Firefox window focus back with `bringToFront`, and side by side they failed every full run by taking it from each other. `commands.emulateMedia(null)` throws in vitest 5.0.0, whose command layer treats any object argument as a locator, so the print test restores with `'screen'`. In Firefox, tabbing off the end of a screen with no controls drops `document.hasFocus()` for good, so the walk-through re-enters each screen with a real click on the rail toggle. At 40 rows the Lines scroll container becomes a tab stop of its own before the grid. On Windows, chrome-launcher 1.2.1 fails with EPERM removing its profile directory after every audit; the Lighthouse script catches that cleanup error so the exit code reflects the score.
+
+**Not verified.** Screen readers (no assistive technology in the environment; in particular whether a browse-mode user can reach the canvas keys); paper output (print media is emulated, not printed); Lighthouse on any screen that needs a dataset (it cannot load files; axe covers those); Safari; a real SoySNP50K or BARCSoySNP6K file; `readr` on the browser-only CSVs; the Lighthouse script's exit code on CI's Linux runner, which has not run yet.
+
+Deferred past M3, in rough order of value: virtualisation of the genotype overview; WCAG 2.2 target-size on the gutter buttons (2.5.8; the Equivalent exception arguably applies through the Lines rows, which axe cannot see); the vendor chunk split (docs/adr/0010); the contract items PLAN.md lists under "Deferred, 2026-09-14"; contract 1.3.0.

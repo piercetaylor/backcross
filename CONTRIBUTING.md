@@ -11,7 +11,7 @@ npm run typecheck  # tsc --noEmit
 npm run fixture    # regenerate tests/fixtures/synthetic (deterministic; commit the result)
 ```
 
-Node 22.18 or newer is required: the CLI and tests import `.ts` files directly through Node's built-in type stripping, so the codebase avoids syntax that needs transpilation (`enum`, parameter properties, namespaces; enforced by `erasableSyntaxOnly` in tsconfig.json).
+Node 22.19 or newer is required: the CLI and tests import `.ts` files directly through Node's built-in type stripping, so the codebase avoids syntax that needs transpilation (`enum`, parameter properties, namespaces; enforced by `erasableSyntaxOnly` in tsconfig.json).
 
 ## Where code goes
 

@@ -161,3 +161,9 @@ input[type='number'] {
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
 }
+
+@media print {
+  .skip-link {
+    display: none;
+  }
+}
