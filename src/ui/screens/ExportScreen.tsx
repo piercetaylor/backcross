@@ -8,7 +8,7 @@
  * it needs the parsed dataset and classification that stay worker-resident)
  * and the self-contained HTML report (export/report.ts); PDF via the
  * browser's own print dialog. Every CSV and the report are downloaded as a
- * Blob URL created and revoked in the main thread; nothing is uploaded. This
+ * Blob URL created and revoked in the main thread (ui/download.ts); nothing is uploaded. This
  * screen formats worker results and already-fetched main-thread state into
  * files; it does not compute anything the worker has not already produced.
  *
@@ -21,7 +21,9 @@
  * never genotypes, `chromIndex`, `sortedMarkerOrder`, or the two
  * parent-column indices. `ReportInput.dataset` is a small `ReportDataset` of
  * exactly those facts, taken from `loaded`, so no genotype matrix is needed
- * here.
+ * here. Its optional `source` is `describeSource(loaded.source)`: the genotype
+ * file name, or the BrAPI variant set and server with the URL scheme dropped.
+ * Every CSV gets `loaded.samples`, which carries the BrAPI call-set ids.
  *
  * Graphical genotype figures for the report are rendered here, offscreen,
  * from `classesData` -- the same class data the genotype view screen draws,
@@ -63,22 +65,18 @@ import { buildHtmlReport } from '../../export/report.ts';
 import { lineSummaryCsv } from '../../export/summary-csv.ts';
 import { segmentsCsv } from '../../export/segments-csv.ts';
 import { targetsCsv } from '../../export/targets-csv.ts';
-import type { GenotypeClassesData } from '../../workers/protocol.ts';
+import type { DatasetSource, GenotypeClassesData } from '../../workers/protocol.ts';
+import { downloadText } from '../download.ts';
 import type { AnalysisParams, LoadedState } from './UploadScreen.tsx';
 
 /** Fixed offscreen render width for report figures, CSS px. */
 const REPORT_IMAGE_WIDTH_PX = 900;
 
-function download(filename: string, content: string, mime: string): void {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+/** The report's Source text (docs/data-formats.md); the URL scheme is dropped so the report names no link. */
+function describeSource(source: DatasetSource): string {
+  return source.kind === 'files'
+    ? `Genotype file ${source.genotypeFileName}`
+    : `BrAPI variant set ${source.variantSetDbId} from ${source.baseUrl.replace(/^https?:\/\//, '')}`;
 }
 
 /** Renders one offscreen canvas per line in `classesData`, at a fixed width, into a sample_id -> PNG data URI map. */
@@ -181,6 +179,7 @@ export function ExportScreen({
         nChromosomes: loaded.chromosomeOrder.length,
         hasCm: loaded.hasCm,
         samples: loaded.samples,
+        source: describeSource(loaded.source),
       },
       lineRpp: rpp,
       qc,
@@ -207,9 +206,9 @@ export function ExportScreen({
             disabled={!canSummary}
             onClick={() => {
               if (rpp === null) return;
-              download(
+              downloadText(
                 'isoline-summary.csv',
-                lineSummaryCsv(rpp, loaded.chromosomeOrder),
+                lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples),
                 'text/csv',
               );
             }}
@@ -225,9 +224,9 @@ export function ExportScreen({
             disabled={!canSegments}
             onClick={() => {
               if (segmentsByCandidate === null) return;
-              download(
+              downloadText(
                 'isoline-segments.csv',
-                segmentsCsv(segmentsByCandidate.flat(), effectiveGapCriterion),
+                segmentsCsv(segmentsByCandidate.flat(), effectiveGapCriterion, loaded.samples),
                 'text/csv',
               );
             }}
@@ -243,7 +242,11 @@ export function ExportScreen({
             disabled={!canTargets}
             onClick={() => {
               if (targets === null) return;
-              download('isoline-targets.csv', targetsCsv(targets.checks), 'text/csv');
+              downloadText(
+                'isoline-targets.csv',
+                targetsCsv(targets.checks, loaded.samples),
+                'text/csv',
+              );
             }}
           >
             Download target check CSV
@@ -256,9 +259,9 @@ export function ExportScreen({
             type="button"
             disabled={!canPairwise}
             onClick={() => {
-              download(
+              downloadText(
                 'isoline-pairwise.csv',
-                pairwiseCsv(diffs, loaded.chromosomeOrder),
+                pairwiseCsv(diffs, loaded.chromosomeOrder, loaded.samples),
                 'text/csv',
               );
             }}
@@ -280,7 +283,7 @@ export function ExportScreen({
               // the worker builds it and hands back the finished text.
               void onRequestDiscordantMarkersCsv(compare.sampleA, compare.sampleB, compare.mode)
                 .then((csv) => {
-                  download('isoline-discordant-markers.csv', csv, 'text/csv');
+                  downloadText('isoline-discordant-markers.csv', csv, 'text/csv');
                 })
                 .catch((e: unknown) => {
                   setDiscordantError(e instanceof Error ? e.message : String(e));
@@ -307,7 +310,7 @@ export function ExportScreen({
             type="button"
             disabled={!canReport}
             onClick={() => {
-              download('isoline-report.html', buildReportHtml(), 'text/html');
+              downloadText('isoline-report.html', buildReportHtml(), 'text/html');
             }}
           >
             Download HTML report
@@ -330,7 +333,7 @@ export function ExportScreen({
             onClick={() => {
               const html = buildReportHtml();
               if (!openForPrint(html)) {
-                download('isoline-report.html', html, 'text/html');
+                downloadText('isoline-report.html', html, 'text/html');
               }
             }}
           >

@@ -18,6 +18,14 @@
  * and the last computed `LineRpp[]` stay resident in the worker for
  * follow-up requests so the main thread never holds the genotype matrix.
  *
+ * 'loadBrapi' fetches a BrAPI v2.1 variant set through `fetchBrapiGenotypes`
+ * (src/io/brapi.ts, the only module that calls fetch) and assembles it with
+ * samples.csv and markers.csv exactly as 'load' does; its `loaded` reports
+ * `bytesInflated` 0 and the builder's `peakBuilderBytes`. 'brapiCallSets'
+ * pages /callsets only. Both keep an AbortController for the in-flight fetch;
+ * 'cancelBrapi' is handled out of band in onmessage, not queued, so it
+ * reaches the worker while the load it cancels is still running.
+ *
  * `handle` is async because 'load' is. Requests are queued and handled one
  * at a time in arrival order, as the synchronous handler did, so a request
  * posted while a load is still reading never sees a half-replaced dataset.
@@ -41,16 +49,26 @@ import {
 } from '../core/index.ts';
 import { classAt, resolveSample } from '../core/compare.ts';
 import type { Classification, Dataset, LineRpp } from '../core/types.ts';
+import {
+  attachCallSetIds,
+  explainAssembleError,
+  fetchBrapiCallSets,
+  fetchBrapiGenotypes,
+  normaliseBaseUrl,
+} from '../io/brapi.ts';
+import type { BrapiGenotypes, FetchLike } from '../io/brapi.ts';
 import { assembleDataset, parseGenotypesSource } from '../io/loaders.ts';
 import { blobBytes, bytesOf } from '../io/stream.ts';
 import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
 import { discordantMarkersCsv } from '../export/pairwise-csv.ts';
-import type { WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
+import type { DatasetSource, WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
 
 let dataset: Dataset | null = null;
 let classification: Classification | null = null;
 let lastRpp: LineRpp[] | null = null;
+let brapiAbort: AbortController | null = null;
+const fetchImpl: FetchLike = (url, init) => fetch(url, init);
 
 const decoder = new TextDecoder();
 
@@ -99,6 +117,39 @@ function requireLoaded(): { dataset: Dataset; classification: Classification } {
   return { dataset, classification };
 }
 
+/** Makes `out` the resident dataset, classifies it and builds the 'loaded' response. */
+function loadedResult(
+  id: number,
+  out: { dataset: Dataset; warnings: string[] },
+  extra: { bytesInflated: number; peakBuilderBytes: number; source: DatasetSource },
+): WorkerResponse {
+  dataset = out.dataset;
+  classification = classifyDataset(dataset);
+  lastRpp = null;
+  return {
+    id,
+    ok: true,
+    result: {
+      type: 'loaded',
+      nMarkers: dataset.genotypes.nMarkers,
+      nSamples: dataset.genotypes.nSamples,
+      chromosomeOrder: dataset.chromosomeOrder,
+      warnings: out.warnings,
+      samples: dataset.samples,
+      nInformative: countInformative(classification),
+      hasCm: dataset.markers.cm !== undefined,
+      gapCriterion: segmentGapCriterion(dataset),
+      coded: dataset.coded,
+      informativeGapsBp: computeInformativeGaps(dataset, classification),
+      bytesInflated: extra.bytesInflated,
+      peakBuilderBytes: extra.peakBuilderBytes,
+      residentMatrixBytes:
+        dataset.genotypes.allele1.byteLength + dataset.genotypes.allele2.byteLength,
+      source: extra.source,
+    },
+  };
+}
+
 async function handle(req: WorkerRequest): Promise<WorkerResponse> {
   switch (req.type) {
     case 'load': {
@@ -109,31 +160,56 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
       const samples = parseSampleManifest(decoder.decode(p.samples));
       const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
       const out = assembleDataset(parsed, samples, map);
-      dataset = out.dataset;
-      classification = classifyDataset(dataset);
-      lastRpp = null;
-      return {
-        id: req.id,
-        ok: true,
-        result: {
-          type: 'loaded',
-          nMarkers: dataset.genotypes.nMarkers,
-          nSamples: dataset.genotypes.nSamples,
-          chromosomeOrder: dataset.chromosomeOrder,
-          warnings: out.warnings,
-          samples: dataset.samples,
-          nInformative: countInformative(classification),
-          hasCm: dataset.markers.cm !== undefined,
-          gapCriterion: segmentGapCriterion(dataset),
-          coded: dataset.coded,
-          informativeGapsBp: computeInformativeGaps(dataset, classification),
-          bytesInflated: parsed.bytesInflated,
-          peakBuilderBytes: parsed.peakBuilderBytes,
-          residentMatrixBytes:
-            dataset.genotypes.allele1.byteLength + dataset.genotypes.allele2.byteLength,
-        },
-      };
+      return loadedResult(req.id, out, {
+        bytesInflated: parsed.bytesInflated,
+        peakBuilderBytes: parsed.peakBuilderBytes,
+        source: { kind: 'files', genotypeFileName: p.genotypeFileName },
+      });
     }
+    case 'loadBrapi': {
+      const p = req.payload;
+      const samples = parseSampleManifest(decoder.decode(p.samples)); // before any network
+      const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
+      brapiAbort = new AbortController();
+      let parsed: BrapiGenotypes;
+      try {
+        parsed = await fetchBrapiGenotypes(p.source, fetchImpl, map, { signal: brapiAbort.signal });
+      } finally {
+        brapiAbort = null;
+      }
+      let out: { dataset: Dataset; warnings: string[] };
+      try {
+        out = assembleDataset(parsed, attachCallSetIds(samples, parsed.callSets), map);
+      } catch (e) {
+        // A samples.csv id missing from the variant set may be a call set renamed to its DbId.
+        throw explainAssembleError(e, parsed.warnings);
+      }
+      return loadedResult(req.id, out, {
+        bytesInflated: 0,
+        peakBuilderBytes: parsed.peakBuilderBytes,
+        source: {
+          kind: 'brapi',
+          baseUrl: normaliseBaseUrl(p.source.baseUrl),
+          variantSetDbId: p.source.variantSetDbId.trim(),
+        },
+      });
+    }
+    case 'brapiCallSets': {
+      brapiAbort = new AbortController();
+      const { signal } = brapiAbort;
+      try {
+        const r = await fetchBrapiCallSets(req.payload.source, fetchImpl, { signal });
+        return {
+          id: req.id,
+          ok: true,
+          result: { type: 'brapiCallSets', callSets: r.callSets, warnings: r.warnings },
+        };
+      } finally {
+        brapiAbort = null;
+      }
+    }
+    case 'cancelBrapi':
+      return { id: req.id, ok: true, result: { type: 'cancelBrapi' } };
     case 'rpp': {
       const { dataset: ds, classification: cls } = requireLoaded();
       lastRpp = computeRpp(ds, cls, req.payload);
@@ -312,6 +388,8 @@ function transferablesFor(result: WorkerResult): Transferable[] {
     case 'targets':
     case 'markerDetail':
     case 'discordantMarkersCsv':
+    case 'brapiCallSets':
+    case 'cancelBrapi':
       return [];
   }
 }
@@ -330,5 +408,14 @@ let queue: Promise<void> = Promise.resolve();
 
 self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
   const req = ev.data;
+  if (req.type === 'cancelBrapi') {
+    brapiAbort?.abort();
+    self.postMessage({
+      id: req.id,
+      ok: true,
+      result: { type: 'cancelBrapi' },
+    } satisfies WorkerResponse);
+    return;
+  }
   queue = queue.then(() => respond(req));
 };

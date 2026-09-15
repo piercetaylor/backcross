@@ -1,0 +1,150 @@
+{
+ "atContext": null,
+ "@context": null,
+ "metadata": {
+  "datafiles": [],
+  "pagination": {
+   "currentPage": 0,
+   "pageSize": 1000,
+   "totalCount": 1,
+   "totalPages": 1
+  },
+  "status": [
+   {
+    "message": "Request accepted, response successful",
+    "messageType": "INFO"
+   }
+  ]
+ },
+ "result": {
+  "callSetDbIds": [
+   "callset6",
+   "callset7",
+   "callset8"
+  ],
+  "dataMatrices": [
+   {
+    "dataMatrixAbbreviation": "GT",
+    "dataMatrixName": "Genotype",
+    "dataMatrix": [
+     [
+      "./.",
+      "./.",
+      "./."
+     ],
+     [
+      "1/1",
+      "0/0",
+      "1/1"
+     ],
+     [
+      "1/1",
+      "0/0",
+      "1/1"
+     ],
+     [
+      "1/1",
+      "0/0",
+      "1/1"
+     ],
+     [
+      "1",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "1",
+      "."
+     ],
+     [
+      "1",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "1",
+      "0",
+      "1"
+     ],
+     [
+      "1",
+      "1",
+      "1"
+     ],
+     [
+      "1",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "0",
+      "."
+     ],
+     [
+      ".",
+      "1",
+      "0"
+     ]
+    ],
+    "dataType": "string"
+   }
+  ],
+  "expandHomozygotes": false,
+  "pagination": [
+   {
+    "dimension": "VARIANTS",
+    "page": 0,
+    "pageSize": 15,
+    "totalCount": 29,
+    "totalPages": 2
+   },
+   {
+    "dimension": "CALLSETS",
+    "page": 1,
+    "pageSize": 5,
+    "totalCount": 8,
+    "totalPages": 2
+   }
+  ],
+  "sepPhased": "/",
+  "sepUnphased": "|",
+  "unknownString": ".",
+  "variantDbIds": [
+   "variant1",
+   "variant2",
+   "variant3",
+   "variant4",
+   "variant5",
+   "variant6",
+   "variant7",
+   "variant8",
+   "variant9",
+   "variant10",
+   "variant11",
+   "variant12",
+   "variant13",
+   "variant14",
+   "variant15"
+  ],
+  "variantSetDbIds": [
+   "variantset1"
+  ]
+ }
+}

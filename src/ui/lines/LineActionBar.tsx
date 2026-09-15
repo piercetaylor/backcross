@@ -15,7 +15,9 @@
  * lives in ui/lines/lines.css as a token, which is what the literal-value
  * lint gate over src/ui/ requires. React Aria visually hides the native
  * checkbox and radio inputs, so `LineCheckbox` draws the visible box; the
- * Lines table imports it for its row and header selection checkboxes.
+ * Lines table imports it for its row and header selection checkboxes, and
+ * `LineRadio` does the same for a radio (the density control here, the Source
+ * switch on the Upload screen).
  *
  * Density is optional here. App passes it on the Lines screen; the
  * graphical genotype screen does not yet, and the control is simply absent
@@ -108,6 +110,16 @@ export function LineCheckbox({
       <CheckIndicator />
       {children}
     </Checkbox>
+  );
+}
+
+/** A React Aria Radio with a visible indicator; `children` is the label. */
+export function LineRadio({ value, children }: { value: string; children?: ReactNode }) {
+  return (
+    <Radio className="line-radio" value={value}>
+      <CheckIndicator />
+      {children}
+    </Radio>
   );
 }
 
@@ -226,10 +238,9 @@ export function LineActionBar({
           <Label>Density</Label>
           <div className="line-density-radios">
             {DENSITIES.map((d) => (
-              <Radio key={d.value} className="line-radio" value={d.value}>
-                <CheckIndicator />
+              <LineRadio key={d.value} value={d.value}>
                 {d.label}
-              </Radio>
+              </LineRadio>
             ))}
           </div>
         </RadioGroup>

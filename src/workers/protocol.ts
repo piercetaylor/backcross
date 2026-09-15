@@ -15,6 +15,15 @@
  * accounting (0 for HapMap and wide CSV); and `residentMatrixBytes`, the
  * assembled dataset's allele1 plus allele2 bytes.
  *
+ * 'loadBrapi' is the BrAPI counterpart of 'load' (docs/adr/0015): the payload
+ * carries a BrapiSource instead of a genotype file, the worker fetches the
+ * variant set itself, and samples.csv and markers.csv travel as for 'load'.
+ * 'brapiCallSets' pages /callsets only, so the Upload screen can offer the
+ * call-set table before a samples.csv exists. 'cancelBrapi' is handled out of
+ * band by the worker and aborts the in-flight BrAPI fetch, if any. 'loaded'
+ * carries `source`, which names the genotype file or the BrAPI variant set and
+ * server (never the token); `bytesInflated` is 0 for a BrAPI load.
+ *
  * The 'classes' result carries the data the canvas renderer needs (marker
  * positions and per-line class arrays, never raw alleles); its shape is
  * defined here as GenotypeClassesData and imported by
@@ -39,6 +48,7 @@ import type {
   TargetCheck,
   TargetRegion,
 } from '../core/types.ts';
+import type { BrapiCallSet, BrapiSource } from '../io/brapi.ts';
 
 export type WorkerRequest =
   | {
@@ -77,7 +87,29 @@ export type WorkerRequest =
        */
       type: 'discordantMarkersCsv';
       payload: { sampleA: string; sampleB: string; mode: 'informative' | 'all' };
+    }
+  | {
+      id: number;
+      /** BrAPI load (docs/adr/0015): the worker fetches; samples.csv and markers.csv as for 'load'. */
+      type: 'loadBrapi';
+      payload: { source: BrapiSource; samples: ArrayBuffer; markers?: ArrayBuffer };
+    }
+  | {
+      id: number;
+      /** Pages /callsets only, so the Upload screen can offer the call-set table before a samples.csv exists. */
+      type: 'brapiCallSets';
+      payload: { source: BrapiSource };
+    }
+  | {
+      id: number;
+      /** Handled out of band in onmessage, not queued: aborts the in-flight BrAPI fetch, if any. */
+      type: 'cancelBrapi';
+      payload: Record<string, never>;
     };
+
+export type DatasetSource =
+  | { kind: 'files'; genotypeFileName: string }
+  | { kind: 'brapi'; baseUrl: string; variantSetDbId: string }; // baseUrl normalised; never the token
 
 export interface GenotypeClassesLine {
   sampleId: string;
@@ -147,6 +179,7 @@ export type WorkerResult =
       bytesInflated: number;
       peakBuilderBytes: number;
       residentMatrixBytes: number;
+      source: DatasetSource;
     }
   | { type: 'rpp'; lines: LineRpp[] }
   | { type: 'qc'; report: QcReport }
@@ -156,7 +189,9 @@ export type WorkerResult =
   | ({ type: 'classes' } & GenotypeClassesData)
   | ({ type: 'markerDetail' } & MarkerDetailResult)
   | { type: 'compare'; diff: PairwiseDiff }
-  | { type: 'discordantMarkersCsv'; csv: string };
+  | { type: 'discordantMarkersCsv'; csv: string }
+  | { type: 'brapiCallSets'; callSets: BrapiCallSet[]; warnings: string[] }
+  | { type: 'cancelBrapi' };
 
 export type WorkerResponse =
   { id: number; ok: true; result: WorkerResult } | { id: number; ok: false; error: string };

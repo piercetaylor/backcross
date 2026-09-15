@@ -15,6 +15,11 @@
  * filesystem or the network, so it runs the same way in Node, in the worker
  * and in the browser tab.
  *
+ * When the dataset came from a BrAPI server (docs/adr/0015), the dataset
+ * summary starts with a Source row naming the variant set and server, and the
+ * Per-line quality control and Lines tables carry call_set_db_id and
+ * sample_db_id after sample_id; both appear only when their data is present.
+ *
  * Every value in the report was computed with the parameters carried in
  * `input.params`; ADR 0006 requires the RPP coverage cap to be stated because
  * results depend on it, so the Parameters section always lists it.
@@ -47,6 +52,8 @@ export interface ReportDataset {
   /** True when markers.csv supplied cM positions. */
   hasCm: boolean;
   samples: SampleRecord[];
+  /** Where the genotypes came from, e.g. "Genotype file x.vcf" or "BrAPI variant set vs1 from host/brapi/v2" (no URL scheme). */
+  source?: string;
 }
 
 export interface ReportInput {
@@ -177,6 +184,15 @@ export function buildHtmlReport(input: ReportInput): string {
 
   const lineNameById = new Map(dataset.samples.map((s) => [s.sampleId, s.lineName] as const));
   const nameFor = (sampleId: string): string => lineNameById.get(sampleId) ?? sampleId;
+  // BrAPI call-set ids go into the per-line tables only when some sample carries them.
+  const hasExternalIds = dataset.samples.some((s) => s.callSetDbId !== undefined);
+  const sampleById = new Map(dataset.samples.map((s) => [s.sampleId, s] as const));
+  const idHeader = hasExternalIds ? ['call_set_db_id', 'sample_db_id'] : [];
+  const idCells = (sampleId: string): string[] => {
+    if (!hasExternalIds) return [];
+    const s = sampleById.get(sampleId);
+    return [escapeHtml(s?.callSetDbId ?? ''), escapeHtml(s?.sampleDbId ?? '')];
+  };
 
   // --- Header ---
   const headerHtml = `
@@ -189,6 +205,9 @@ browser and is not included in this file except as the summary figures and image
   for (const s of dataset.samples) roleCounts[s.role]++;
   const nInformative = input.nInformative;
   const datasetPairs: [string, string][] = [
+    ...(dataset.source === undefined
+      ? []
+      : ([['Source', escapeHtml(dataset.source)]] as [string, string][])),
     ['Marker count', String(dataset.nMarkers)],
     ['Informative markers', int(nInformative)],
     ['Recurrent parent samples', String(roleCounts.recurrent_parent)],
@@ -238,6 +257,7 @@ cap values above (docs/adr/0006); a different cap produces different rpp_bp and 
       qc.datasetFlags.length === 0 ? '<p>No dataset-level flags.</p>' : bulletList(qc.datasetFlags);
     const qcRows = qc.lines.map((line) => [
       escapeHtml(line.sampleId),
+      ...idCells(line.sampleId),
       escapeHtml(nameFor(line.sampleId)),
       escapeHtml(line.role),
       num(line.missingRate),
@@ -249,6 +269,7 @@ cap values above (docs/adr/0006); a different cap produces different rpp_bp and 
       'Per-line quality control',
       [
         'sample_id',
+        ...idHeader,
         'line_name',
         'role',
         'missing rate (all markers)',
@@ -268,6 +289,7 @@ cap values above (docs/adr/0006); a different cap produces different rpp_bp and 
     const largestBp = segs.length === 0 ? NaN : Math.max(...segs.map((s) => s.endBp - s.startBp));
     return [
       escapeHtml(line.sampleId),
+      ...idCells(line.sampleId),
       escapeHtml(nameFor(line.sampleId)),
       String(line.overall.nInformative),
       String(line.overall.nCalled),
@@ -282,6 +304,7 @@ cap values above (docs/adr/0006); a different cap produces different rpp_bp and 
     'Per-line RPP and segment summary',
     [
       'sample_id',
+      ...idHeader,
       'line_name',
       'n_informative',
       'n_called',

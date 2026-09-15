@@ -2,15 +2,17 @@
  * Target check CSV export.
  *
  * Responsibility: serialize TargetCheck[] to the target table in
- * docs/data-formats.md ("Outputs"): sample_id, target, chrom, start_bp,
+ * docs/data-formats.md ("Outputs"): sample_id, call_set_db_id, sample_db_id
+ * (empty for a file-loaded dataset), target, chrom, start_bp,
  * end_bp, status, n_informative_in_region, segment_start_bp, segment_end_bp,
  * drag_min_bp, drag_max_bp. One row per (candidate, region) in the order
  * checkTargets produced them; positions are integers and NaN is NA.
  *
- * Interface: targetsCsv(checks) -> string.
+ * Interface: targetsCsv(checks, samples) -> string.
  */
-import type { TargetCheck } from '../core/types.ts';
+import type { SampleRecord, TargetCheck } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
+import { externalIdCells } from './sample-ids.ts';
 
 function int(x: number): string {
   return Number.isNaN(x) ? 'NA' : String(Math.round(x));
@@ -18,6 +20,8 @@ function int(x: number): string {
 
 export const TARGETS_CSV_HEADER = [
   'sample_id',
+  'call_set_db_id',
+  'sample_db_id',
   'target',
   'chrom',
   'start_bp',
@@ -30,10 +34,12 @@ export const TARGETS_CSV_HEADER = [
   'drag_max_bp',
 ] as const;
 
-export function targetsCsv(checks: TargetCheck[]): string {
+export function targetsCsv(checks: TargetCheck[], samples: SampleRecord[]): string {
+  const ids = externalIdCells(samples);
   const rows = checks.map((t) =>
     [
       csvField(t.sampleId),
+      ...ids(t.sampleId),
       csvField(t.target),
       csvField(t.region.chrom),
       int(t.region.startBp),

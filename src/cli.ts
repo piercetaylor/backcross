@@ -132,7 +132,11 @@ ${USAGE}`);
       maxGapBp: numberOr(values['max-gap-bp'], DEFAULT_RPP_PARAMS.maxGapBp),
       maxGapCm: numberOr(values['max-gap-cm'], DEFAULT_RPP_PARAMS.maxGapCm),
     };
-    csv = lineSummaryCsv(computeRpp(dataset, cls, params), dataset.chromosomeOrder);
+    csv = lineSummaryCsv(
+      computeRpp(dataset, cls, params),
+      dataset.chromosomeOrder,
+      dataset.samples,
+    );
   } else {
     const params: SegmentParams = {
       minMarkers: numberOr(values['min-markers'], DEFAULT_SEGMENT_PARAMS.minMarkers),
@@ -152,10 +156,10 @@ ${USAGE}`);
     );
     const segments = allSegments(dataset, cls, params, values['include-short'] === true);
     if (command === 'segments') {
-      csv = segmentsCsv(segments.flat(), criterion);
+      csv = segmentsCsv(segments.flat(), criterion, dataset.samples);
     } else {
       const regions = (values.target ?? []).map((s) => parseTargetSpec(s, dataset));
-      csv = targetsCsv(checkTargets(dataset, cls, segments, regions));
+      csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples);
     }
   }
   if (values.out === undefined) process.stdout.write(csv);

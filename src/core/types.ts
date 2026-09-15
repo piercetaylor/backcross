@@ -25,6 +25,9 @@ export interface SampleRecord {
   generation: string;
   familyId: string;
   notes: string;
+  /** BrAPI call set this sample was loaded from (docs/data-formats.md, "BrAPI allele matrix"); absent for file-loaded datasets. */
+  callSetDbId?: string;
+  sampleDbId?: string;
 }
 
 export interface MarkerTable {

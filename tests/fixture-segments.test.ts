@@ -89,10 +89,10 @@ describe.each([
 
   it('writes the segments CSV with the documented columns and the criterion', () => {
     const all = CANDIDATES.flatMap((_, c) => callSegments(dataset, cls, c, expected.segmentParams));
-    const csv = segmentsCsv(all, segmentGapCriterion(dataset));
+    const csv = segmentsCsv(all, segmentGapCriterion(dataset), dataset.samples);
     const lines = csv.trim().split('\n');
     expect(lines[0]).toBe(
-      'sample_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion',
+      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion',
     );
     expect(lines).toHaveLength(all.length + 1);
     for (const row of lines.slice(1)) expect(row.endsWith(`,${criterion}`)).toBe(true);

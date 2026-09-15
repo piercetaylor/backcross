@@ -23,6 +23,14 @@
  * genotypes.hmp.txt, genotypes_wide.csv (nucleotide), genotypes_coded.csv
  * (A/B/H, informative markers only), samples.csv, markers.csv, expected.json.
  *
+ * BrAPI outputs under tests/fixtures/brapi/: the Gm13 markers, syn_Gm02_03..05 and
+ * syn_Gm07_04 (hets, half-missing and phased tokens, a third allele), and all eight
+ * samples as a variant set `variantset1` served in pages (callsets.p0/p1,
+ * variants.p0/p1, variants-nopos.p0 with null positions and bases, and the GT
+ * allelematrix.v{0,1}.c{0,1}). Their shapes follow the BrAPI v2.1 Genotyping
+ * schemas and the test-server responses recorded with scripts/brapi-record.mjs
+ * (a shape check only, never a data source); every value is synthetic.
+ *
  * Usage: node scripts/make-fixture.mjs
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -519,10 +527,192 @@ const map = ['marker_id,chrom,pos_bp,cm'];
 for (const mk of markers) map.push(`${mk.id},${mk.chrom},${mk.pos},${mk.cm}`);
 writeFileSync(join(OUT, 'markers.csv'), map.join('\n') + '\n');
 
+// BrAPI v2.1 responses (docs/m3-phase4-brapi.md section 7) for the Gm13 markers
+// plus syn_Gm02_03..05 (an RP het, a NIL_02 het segment, missing candidates) and
+// syn_Gm07_04 (the third allele), in VCF order. Values are the synthetic cells
+// above; only the field names follow the server. On the four extra markers the
+// GT tokens vary in spelling, always classification-equivalent to the VCF call
+// (TOKEN_VARIANTS below); elsewhere a homozygote is collapsed ("0") and a
+// missing call is ".".
+const BRAPI_OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'tests', 'fixtures', 'brapi');
+mkdirSync(BRAPI_OUT, { recursive: true });
+const VS = 'variantset1';
+const CS_PAGE = 5;
+const V_PAGE = 15;
+const BRAPI_EXTRA = new Set(['syn_Gm02_03', 'syn_Gm02_04', 'syn_Gm02_05', 'syn_Gm07_04']);
+const brapiMarkers = markers
+  .map((mk, m) => ({ mk, m }))
+  .filter(({ mk }) => mk.chrom === 'Gm13' || BRAPI_EXTRA.has(mk.id));
+// Token spellings on the extra markers, keyed by marker id then sample. Hets as
+// unphased "0/1" and "1/0" and phased "0|1"; half-missing "./1" and "0/." where
+// the VCF call is ./. (vcf.ts reads both as missing).
+const TOKEN_VARIANTS = {
+  syn_Gm02_03: { RP_Williams: '0/1', NIL_01: './1', NIL_02: '0/.' },
+  syn_Gm02_04: { NIL_02: '0|1' },
+  syn_Gm02_05: { NIL_02: '1/0' },
+};
+const brapiStatus = [{ message: 'Request accepted, response successful', messageType: 'INFO' }];
+let brapiBytes = 0;
+function writeBrapi(name, obj) {
+  const text = JSON.stringify(obj, null, 1) + '\n';
+  brapiBytes += Buffer.byteLength(text);
+  writeFileSync(join(BRAPI_OUT, name), text);
+}
+function page(data, currentPage, pageSize, totalCount, pageTokens = false) {
+  return {
+    '@context': null,
+    metadata: {
+      datafiles: [],
+      pagination: {
+        currentPage,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+        // The test server adds token fields to /variants pagination only.
+        ...(pageTokens
+          ? { currentPageToken: String(currentPage), nextPageToken: '', prevPageToken: '' }
+          : {}),
+      },
+      status: brapiStatus,
+    },
+    result: { data },
+  };
+}
+const callSetRows = samples.map((s, i) => ({
+  additionalInfo: {},
+  callSetDbId: `callset${i + 1}`,
+  callSetName: s,
+  created: null,
+  externalReferences: null,
+  sampleDbId: `sample${i + 1}`,
+  studyDbId: 'study1',
+  updated: null,
+  variantSetDbIds: [VS],
+}));
+writeBrapi('callsets.p0.json', page(callSetRows.slice(0, CS_PAGE), 0, CS_PAGE, samples.length));
+writeBrapi('callsets.p1.json', page(callSetRows.slice(CS_PAGE), 1, CS_PAGE, samples.length));
+const brapiAlleles = (mk) => [mk.ref, ...(mk.extraAllele ? [mk.alt, mk.extraAllele] : [mk.alt])];
+const variantDbIdOf = (k) =>
+  k === brapiMarkers.length ? brapiMarkers[k - 1].mk.id : `variant${k}`;
+const variantRows = brapiMarkers.map(({ mk }, i) => {
+  const k = i + 1;
+  const [ref, ...alts] = brapiAlleles(mk);
+  return {
+    additionalInfo: {},
+    alternate_bases: [], // legacy snake_case field the test server also emits
+    alternateBases: alts,
+    ciend: null,
+    cipos: null,
+    created: null,
+    end: mk.pos,
+    externalReferences: null,
+    filtersApplied: false,
+    filtersFailed: [],
+    filtersPassed: true,
+    referenceBases: ref,
+    referenceDbId: `ref_${mk.chrom}`,
+    referenceName: mk.chrom,
+    referenceSetDbId: 'refset1',
+    referenceSetName: null,
+    start: mk.pos - 1,
+    svlen: null,
+    updated: null,
+    variantDbId: variantDbIdOf(k),
+    variantNames: k === brapiMarkers.length ? [] : [mk.id],
+    variantSetDbId: [VS],
+    variantType: 'SNP',
+  };
+});
+writeBrapi(
+  'variants.p0.json',
+  page(variantRows.slice(0, V_PAGE), 0, V_PAGE, brapiMarkers.length, true),
+);
+writeBrapi(
+  'variants.p1.json',
+  page(variantRows.slice(V_PAGE), 1, V_PAGE, brapiMarkers.length, true),
+);
+const noposRows = variantRows.map((row) => ({
+  ...row,
+  alternateBases: null,
+  end: null,
+  referenceBases: null,
+  referenceDbId: null,
+  referenceName: null,
+  start: null,
+}));
+writeBrapi(
+  'variants-nopos.p0.json',
+  page(noposRows, 0, brapiMarkers.length, brapiMarkers.length, true),
+);
+for (let v = 0; v < 2; v++) {
+  for (let c = 0; c < 2; c++) {
+    const vRows = brapiMarkers.slice(v * V_PAGE, (v + 1) * V_PAGE);
+    const vIds = vRows.map((_, i) => variantDbIdOf(v * V_PAGE + i + 1));
+    const cSamples = samples.slice(c * CS_PAGE, (c + 1) * CS_PAGE);
+    const cIds = cSamples.map((_, j) => `callset${c * CS_PAGE + j + 1}`);
+    const dataMatrix = vRows.map(({ mk, m }) => {
+      const alleles = brapiAlleles(mk);
+      const extra = BRAPI_EXTRA.has(mk.id);
+      return cSamples.map((s) => {
+        const cl = cell(m, s);
+        const variant = TOKEN_VARIANTS[mk.id]?.[s];
+        if (variant !== undefined) return variant;
+        if (cl === null) return extra ? './.' : '.';
+        const i0 = alleles.indexOf(cl[0]);
+        const i1 = alleles.indexOf(cl[1]);
+        if (extra) return `${i0}/${i1}`; // spelled out, e.g. syn_Gm07_04 NIL_03 "2/2"
+        return i0 === i1 ? String(i0) : `${i0}/${i1}`;
+      });
+    });
+    writeBrapi(`allelematrix.v${v}.c${c}.json`, {
+      atContext: null,
+      '@context': null,
+      metadata: {
+        datafiles: [],
+        pagination: { currentPage: 0, pageSize: 1000, totalCount: 1, totalPages: 1 },
+        status: brapiStatus,
+      },
+      result: {
+        callSetDbIds: cIds,
+        dataMatrices: [
+          {
+            dataMatrixAbbreviation: 'GT',
+            dataMatrixName: 'Genotype',
+            dataMatrix,
+            dataType: 'string',
+          },
+        ],
+        expandHomozygotes: false,
+        pagination: [
+          {
+            dimension: 'VARIANTS',
+            page: v,
+            pageSize: V_PAGE,
+            totalCount: brapiMarkers.length,
+            totalPages: 2,
+          },
+          {
+            dimension: 'CALLSETS',
+            page: c,
+            pageSize: CS_PAGE,
+            totalCount: samples.length,
+            totalPages: 2,
+          },
+        ],
+        sepPhased: '/',
+        sepUnphased: '|',
+        unknownString: '.',
+        variantDbIds: vIds,
+        variantSetDbIds: [VS],
+      },
+    });
+  }
+}
+
 expected.markerReasons = Object.fromEntries(
   markers.filter((m) => !m.informative).map((m) => [m.id, m.reason]),
 );
 writeFileSync(join(OUT, 'expected.json'), JSON.stringify(expected, null, 1) + '\n');
 console.log(
-  `wrote fixture to ${OUT}: ${M} markers, ${samples.length} samples, ${expected.nInformative} informative`,
+  `wrote fixture to ${OUT}: ${M} markers, ${samples.length} samples, ${expected.nInformative} informative; BrAPI responses to ${BRAPI_OUT}: ${brapiBytes} bytes`,
 );

@@ -1,0 +1,864 @@
+{
+ "@context": null,
+ "metadata": {
+  "datafiles": [],
+  "pagination": {
+   "currentPage": 0,
+   "pageSize": 29,
+   "totalCount": 29,
+   "totalPages": 1,
+   "currentPageToken": "0",
+   "nextPageToken": "",
+   "prevPageToken": ""
+  },
+  "status": [
+   {
+    "message": "Request accepted, response successful",
+    "messageType": "INFO"
+   }
+  ]
+ },
+ "result": {
+  "data": [
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant1",
+    "variantNames": [
+     "syn_Gm02_03"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant2",
+    "variantNames": [
+     "syn_Gm02_04"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant3",
+    "variantNames": [
+     "syn_Gm02_05"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant4",
+    "variantNames": [
+     "syn_Gm07_04"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant5",
+    "variantNames": [
+     "syn_Gm13_01"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant6",
+    "variantNames": [
+     "syn_Gm13_02"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant7",
+    "variantNames": [
+     "syn_Gm13_03"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant8",
+    "variantNames": [
+     "syn_Gm13_04"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant9",
+    "variantNames": [
+     "syn_Gm13_05"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant10",
+    "variantNames": [
+     "syn_Gm13_06"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant11",
+    "variantNames": [
+     "syn_Gm13_07"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant12",
+    "variantNames": [
+     "syn_Gm13_08"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant13",
+    "variantNames": [
+     "syn_Gm13_09"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant14",
+    "variantNames": [
+     "syn_Gm13_10"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant15",
+    "variantNames": [
+     "syn_Gm13_11"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant16",
+    "variantNames": [
+     "syn_Gm13_12"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant17",
+    "variantNames": [
+     "syn_Gm13_13"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant18",
+    "variantNames": [
+     "syn_Gm13_14"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant19",
+    "variantNames": [
+     "syn_Gm13_15"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant20",
+    "variantNames": [
+     "syn_Gm13_16"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant21",
+    "variantNames": [
+     "syn_Gm13_17"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant22",
+    "variantNames": [
+     "syn_Gm13_18"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant23",
+    "variantNames": [
+     "syn_Gm13_19"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant24",
+    "variantNames": [
+     "syn_Gm13_20"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant25",
+    "variantNames": [
+     "syn_Gm13_21"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant26",
+    "variantNames": [
+     "syn_Gm13_22"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant27",
+    "variantNames": [
+     "syn_Gm13_23"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "variant28",
+    "variantNames": [
+     "syn_Gm13_24"
+    ],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   },
+   {
+    "additionalInfo": {},
+    "alternate_bases": [],
+    "alternateBases": null,
+    "ciend": null,
+    "cipos": null,
+    "created": null,
+    "end": null,
+    "externalReferences": null,
+    "filtersApplied": false,
+    "filtersFailed": [],
+    "filtersPassed": true,
+    "referenceBases": null,
+    "referenceDbId": null,
+    "referenceName": null,
+    "referenceSetDbId": "refset1",
+    "referenceSetName": null,
+    "start": null,
+    "svlen": null,
+    "updated": null,
+    "variantDbId": "syn_Gm13_25",
+    "variantNames": [],
+    "variantSetDbId": [
+     "variantset1"
+    ],
+    "variantType": "SNP"
+   }
+  ]
+ }
+}

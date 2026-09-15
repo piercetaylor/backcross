@@ -10,9 +10,9 @@ URL: https://github.com/cropgeeks/flapjack (fetched). Licence: BSD-2-Clause. Lan
 
 URL: https://github.com/cropgeeks/flapjack-bytes (fetched). Licence: BSD-2-Clause. Language: JavaScript; Rollup build, Babel, ESLint; test/ and sample-data/ directories; no CI file visible. HTML5 canvas graphical-genotype visualisation library modelled on Flapjack, loading from BrAPI, local files or URLs, with colouring by state or by similarity to a reference line. Borrowed: canvas rendering with a retained data model, the "colour by similarity to line" idea, and the plan to load from BrAPI later. Not borrowed: its build chain (Rollup/Babel) and untyped JavaScript; this project uses Vite and strict TypeScript.
 
-## plantbreeding/API (BrAPI)
+## plantbreeding/BrAPI (BrAPI specification)
 
-URL: https://github.com/plantbreeding/API (fetched). Licence: MIT. Specification repository for the Breeding API; V2.1 (2022) with Core, Phenotyping, Genotyping and Germplasm modules; Genotyping covers samples, markers, variant sets, variants, call sets, calls. Borrowed: vocabulary for a future loader (variant set, call set, allele matrix). Not borrowed: nothing is implemented; the scaffold reads files only.
+URL: https://github.com/plantbreeding/BrAPI (fetched 2026-09-15; the former plantbreeding/API paths return 404). Licence: MIT. Specification repository for the Breeding API; V2.1 (2022) with Core, Phenotyping, Genotyping and Germplasm modules; Genotyping covers samples, markers, variant sets, variants, call sets, calls. The Variant schema (`Specification/BrAPI-Genotyping/Variants/Schemas/Variant.yaml`, branch brapi-V2.1) gives `start` as 0-based and `variantNames` as human-readable names. Responses from test-server.brapi.org were checked on 2026-09-12 and 2026-09-15 (docs/adr/0015 records its `/variants` paging). Borrowed: the Genotyping vocabulary and the `/allelematrix` paging model for the loader in `src/io/brapi.ts`. Not borrowed: code.
 
 ## Breeding-Insight (organisation)
 

@@ -96,6 +96,30 @@ describe('buildHtmlReport', () => {
     }
   });
 
+  it('adds call_set_db_id and sample_db_id to the Lines and QC tables only when a sample carries them', () => {
+    const plain = buildHtmlReport(baseInput);
+    expect(plain).not.toContain('<th scope="col">call_set_db_id</th>');
+    const withIds = dataset.samples.map((s, i) => ({
+      ...s,
+      callSetDbId: `cs${i}`,
+      sampleDbId: `smp${i}`,
+    }));
+    const html = buildHtmlReport({ ...baseInput, dataset: { ...reportDataset, samples: withIds } });
+    expect(html).toContain('<th scope="col">call_set_db_id</th>');
+    expect(html).toContain('<th scope="col">sample_db_id</th>');
+    expect(html).toContain('<td>cs2</td>');
+  });
+
+  it('states the source without a URL scheme', () => {
+    const html = buildHtmlReport({
+      ...baseInput,
+      dataset: { ...reportDataset, source: 'BrAPI variant set variantset1 from host/brapi/v2' },
+    });
+    expect(html).toContain('<dt>Source</dt>');
+    expect(html).not.toContain('http://');
+    expect(html).not.toContain('https://');
+  });
+
   it('escapes an untrusted line name instead of emitting it raw', () => {
     const payload = '<script>alert("x")</script>';
     const taintedDataset: ReportDataset = {

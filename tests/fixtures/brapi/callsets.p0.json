@@ -1,0 +1,87 @@
+{
+ "@context": null,
+ "metadata": {
+  "datafiles": [],
+  "pagination": {
+   "currentPage": 0,
+   "pageSize": 5,
+   "totalCount": 8,
+   "totalPages": 2
+  },
+  "status": [
+   {
+    "message": "Request accepted, response successful",
+    "messageType": "INFO"
+   }
+  ]
+ },
+ "result": {
+  "data": [
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset1",
+    "callSetName": "RP_Williams",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample1",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   },
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset2",
+    "callSetName": "DONOR_PI",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample2",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   },
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset3",
+    "callSetName": "NIL_01",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample3",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   },
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset4",
+    "callSetName": "NIL_02",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample4",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   },
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset5",
+    "callSetName": "NIL_03",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample5",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   }
+  ]
+ }
+}

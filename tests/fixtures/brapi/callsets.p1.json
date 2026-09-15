@@ -1,0 +1,61 @@
+{
+ "@context": null,
+ "metadata": {
+  "datafiles": [],
+  "pagination": {
+   "currentPage": 1,
+   "pageSize": 5,
+   "totalCount": 8,
+   "totalPages": 2
+  },
+  "status": [
+   {
+    "message": "Request accepted, response successful",
+    "messageType": "INFO"
+   }
+  ]
+ },
+ "result": {
+  "data": [
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset6",
+    "callSetName": "NIL_04",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample6",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   },
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset7",
+    "callSetName": "NIL_05",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample7",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   },
+   {
+    "additionalInfo": {},
+    "callSetDbId": "callset8",
+    "callSetName": "NIL_06",
+    "created": null,
+    "externalReferences": null,
+    "sampleDbId": "sample8",
+    "studyDbId": "study1",
+    "updated": null,
+    "variantSetDbIds": [
+     "variantset1"
+    ]
+   }
+  ]
+ }
+}

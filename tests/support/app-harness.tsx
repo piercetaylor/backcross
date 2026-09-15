@@ -3,7 +3,7 @@
  *
  * Responsibility: render <App/> with the three stylesheets src/main.tsx
  * imports, so layout and tokens are the ones a user sees; load files through
- * the Upload screen's three real inputs; and navigate by the rail's keyboard. Every
+ * the Upload screen's real inputs (files, or a BrAPI server); and navigate by the rail's keyboard. Every
  * helper goes through the page the way a user would -- nothing reaches into
  * App's state -- so what a browser test asserts is what a user gets.
  *
@@ -23,7 +23,11 @@
  * page back to the front and, where a blur undid a key, press it again.
  * goTo does not need them: the rail moves focus itself.
  *
+ * `loadBrapi` switches the Source to BrAPI server, fills Base URL and
+ * Variant set id, uploads samples.csv (and markers.csv) and clicks Load.
+ *
  * Interface: AppFiles, mountApp(), fixtureFiles(), loadFiles(files),
+ * loadBrapi(files, source),
  * loadFilesInPage(files), goTo(step), pressExpectingFocus(keys, read,
  * expected), expectFocus(read, expected), focusStats, focusReport(),
  * waitFor(predicate, timeoutMs?), nextFrame().
@@ -95,6 +99,30 @@ export async function loadFiles(files: AppFiles): Promise<void> {
   // (it is disabled while `busy`) before Playwright's action timeout starts.
   await expect.element(page.getByLabelText(GENOTYPE_LABEL)).toBeEnabled();
   await userEvent.upload(page.getByLabelText(GENOTYPE_LABEL), files.genotypes);
+  await userEvent.upload(page.getByLabelText(SAMPLES_LABEL), files.samples);
+  if (files.markers !== undefined) {
+    await userEvent.upload(page.getByLabelText(MARKERS_LABEL), files.markers);
+  }
+  await userEvent.click(page.getByRole('button', { name: 'Load', exact: true }));
+  await expect
+    .element(page.getByRole('heading', { name: 'Dataset summary and QC' }))
+    .toBeInTheDocument();
+}
+
+/**
+ * Loads a BrAPI variant set through the Upload screen: the Source radio, the
+ * two text fields, the samples.csv and markers.csv inputs, then Load; waits
+ * for the Summary screen as loadFiles does.
+ */
+export async function loadBrapi(
+  files: { samples: File; markers?: File },
+  source: { baseUrl: string; variantSetDbId: string },
+): Promise<void> {
+  await expect.element(page.getByLabelText(SAMPLES_LABEL)).toBeEnabled();
+  // React Aria hides the native radio; the visible target is its label.
+  await userEvent.click(page.getByText('BrAPI server', { exact: true }));
+  await userEvent.fill(page.getByLabelText('Base URL'), source.baseUrl);
+  await userEvent.fill(page.getByLabelText('Variant set id'), source.variantSetDbId);
   await userEvent.upload(page.getByLabelText(SAMPLES_LABEL), files.samples);
   if (files.markers !== undefined) {
     await userEvent.upload(page.getByLabelText(MARKERS_LABEL), files.markers);

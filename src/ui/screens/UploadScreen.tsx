@@ -1,13 +1,21 @@
 /**
  * Screen 1: upload and validate.
  *
- * Responsibility: three file pickers (genotypes: VCF/VCF.gz/HapMap/wide CSV;
- * samples.csv; optional markers.csv), a parameter panel seeded from
+ * Responsibility: a Source switch between Files and BrAPI server; for Files
+ * a genotype file picker (VCF/VCF.gz/HapMap/wide CSV), for BrAPI three text
+ * fields (Base URL, Variant set id, and an optional access token that lives
+ * in this component's state only, never in storage, a URL or `loaded`) and a
+ * "Download call-set table" button that asks App for the variant set's call
+ * sets (`onFetchCallSets`) and downloads them as brapi-callsets.csv, so
+ * samples.csv can be written before a load; then the samples.csv and optional
+ * markers.csv pickers, a parameter panel seeded from
  * `params` and reported through `onParamsChange` on blur or Enter
  * (docs/data-formats.md, "Analysis parameters"), and a "Load" action that
  * passes the genotype `File` as-is (the worker reads it as a stream,
  * docs/adr/0012), reads samples.csv and markers.csv as ArrayBuffers, and
- * calls `onLoad`. Shows parser
+ * calls `onLoad` with a 'load' request, or with a 'loadBrapi' request carrying
+ * the BrAPI source (docs/adr/0015). While a BrAPI load runs (`brapiLoading`)
+ * a Cancel button calls `onCancelBrapi`; it is not disabled by `busy`. Shows parser
  * warnings and a one-line dataset summary once `loaded` is set. Links
  * docs/input-coding.md (the accepted, missing and rejected codes per format)
  * from the intro paragraph. Every
@@ -15,13 +23,19 @@
  * neither a file nor a value can be changed mid-chain. Props/callbacks only: this screen never touches the
  * worker, App does.
  *
- * Props: params, onParamsChange, busy, onLoad, loaded.
+ * Props: params, onParamsChange, busy, loaded, onLoad, onFetchCallSets,
+ * onCancelBrapi, brapiLoading.
  */
 import { useState } from 'react';
+import { Input, Label, RadioGroup, TextField } from 'react-aria-components';
 
 import './screens.css';
 import type { QcThresholds, RppParams, SegmentParams } from '../../core/types.ts';
+import { callSetsCsv } from '../../export/callsets-csv.ts';
+import type { BrapiCallSet, BrapiSource } from '../../io/brapi.ts';
 import type { WorkerRequest, WorkerResult } from '../../workers/protocol.ts';
+import { downloadText } from '../download.ts';
+import { LineRadio } from '../lines/LineActionBar.tsx';
 
 /** docs/input-coding.md on the repository; the static site does not serve docs/. */
 const INPUT_CODING_URL =
@@ -35,6 +49,9 @@ export interface AnalysisParams {
 
 export type LoadedState = Extract<WorkerResult, { type: 'loaded' }>;
 export type LoadPayload = Extract<WorkerRequest, { type: 'load' }>['payload'];
+export type BrapiLoadPayload = Extract<WorkerRequest, { type: 'loadBrapi' }>['payload'];
+export type LoadRequest =
+  { type: 'load'; payload: LoadPayload } | { type: 'loadBrapi'; payload: BrapiLoadPayload };
 
 /**
  * A number input that keeps its own text so a field being edited never
@@ -100,31 +117,84 @@ export function UploadScreen({
   busy,
   onLoad,
   loaded,
+  onFetchCallSets,
+  onCancelBrapi,
+  brapiLoading,
 }: {
   params: AnalysisParams;
   onParamsChange: (next: AnalysisParams) => void;
   busy: boolean;
-  onLoad: (payload: LoadPayload) => void;
+  onLoad: (request: LoadRequest) => void;
   loaded: LoadedState | null;
+  onFetchCallSets: (
+    source: BrapiSource,
+  ) => Promise<{ callSets: BrapiCallSet[]; warnings: string[] }>;
+  onCancelBrapi: () => void;
+  /** True from a loadBrapi dispatch until its 'loaded' or error; shows the Cancel button. */
+  brapiLoading: boolean;
 }) {
   const [genotypeFile, setGenotypeFile] = useState<File | null>(null);
   const [samplesFile, setSamplesFile] = useState<File | null>(null);
   const [markersFile, setMarkersFile] = useState<File | null>(null);
+  const [source, setSource] = useState<'files' | 'brapi'>('files');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [variantSetDbId, setVariantSetDbId] = useState('');
+  const [token, setToken] = useState('');
+  const [callSetsError, setCallSetsError] = useState<string | null>(null);
+  const [callSetsWarnings, setCallSetsWarnings] = useState<string[]>([]);
 
-  const canLoad = genotypeFile !== null && samplesFile !== null && !busy;
+  function brapiSource(): BrapiSource {
+    return { baseUrl, variantSetDbId, ...(token.trim() === '' ? {} : { token: token.trim() }) };
+  }
+
+  const canFetchCallSets =
+    source === 'brapi' && baseUrl.trim() !== '' && variantSetDbId.trim() !== '' && !busy;
+
+  const canLoad =
+    samplesFile !== null &&
+    !busy &&
+    (source === 'files'
+      ? genotypeFile !== null
+      : baseUrl.trim() !== '' && variantSetDbId.trim() !== '');
+
+  async function handleFetchCallSets() {
+    setCallSetsError(null);
+    try {
+      const r = await onFetchCallSets(brapiSource());
+      downloadText('brapi-callsets.csv', callSetsCsv(r.callSets), 'text/csv');
+      setCallSetsWarnings(r.warnings);
+    } catch (e) {
+      setCallSetsError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function handleLoad() {
-    if (genotypeFile === null || samplesFile === null) return;
-    const genotypes: Blob = genotypeFile;
+    if (samplesFile === null) return;
     const [samples, markers] = await Promise.all([
       samplesFile.arrayBuffer(),
       markersFile === null ? Promise.resolve(undefined) : markersFile.arrayBuffer(),
     ]);
+    if (source === 'brapi') {
+      onLoad({
+        type: 'loadBrapi',
+        payload: {
+          source: brapiSource(),
+          samples,
+          ...(markers === undefined ? {} : { markers }),
+        },
+      });
+      return;
+    }
+    if (genotypeFile === null) return;
+    const genotypes: Blob = genotypeFile;
     onLoad({
-      genotypeFileName: genotypeFile.name,
-      genotypes,
-      samples,
-      ...(markers === undefined ? {} : { markers }),
+      type: 'load',
+      payload: {
+        genotypeFileName: genotypeFile.name,
+        genotypes,
+        samples,
+        ...(markers === undefined ? {} : { markers }),
+      },
     });
   }
 
@@ -140,16 +210,51 @@ export function UploadScreen({
         .
       </p>
 
-      <div className="field">
-        <label>
-          Genotype file (VCF, HapMap, or wide CSV){' '}
-          <input
-            type="file"
-            disabled={busy}
-            onChange={(e) => setGenotypeFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-      </div>
+      <RadioGroup
+        className="source-group"
+        orientation="horizontal"
+        value={source}
+        isDisabled={busy}
+        onChange={(value) => setSource(value === 'brapi' ? 'brapi' : 'files')}
+      >
+        <Label>Source</Label>
+        <LineRadio value="files">Files</LineRadio>
+        <LineRadio value="brapi">BrAPI server</LineRadio>
+      </RadioGroup>
+
+      {source === 'files' && (
+        <div className="field">
+          <label>
+            Genotype file (VCF, HapMap, or wide CSV){' '}
+            <input
+              type="file"
+              disabled={busy}
+              onChange={(e) => setGenotypeFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
+      )}
+      {source === 'brapi' && (
+        <>
+          <TextField className="field" isDisabled={busy} value={baseUrl} onChange={setBaseUrl}>
+            <Label>Base URL</Label>
+            <Input type="url" autoComplete="url" placeholder="https://host/brapi/v2" />
+          </TextField>
+          <TextField
+            className="field"
+            isDisabled={busy}
+            value={variantSetDbId}
+            onChange={setVariantSetDbId}
+          >
+            <Label>Variant set id</Label>
+            <Input type="text" autoComplete="off" />
+          </TextField>
+          <TextField className="field" isDisabled={busy} value={token} onChange={setToken}>
+            <Label>Access token (optional)</Label>
+            <Input type="password" autoComplete="off" />
+          </TextField>
+        </>
+      )}
       <div className="field">
         <label>
           samples.csv{' '}
@@ -172,6 +277,29 @@ export function UploadScreen({
           />
         </label>
       </div>
+
+      {source === 'brapi' && (
+        <div className="field">
+          <button
+            type="button"
+            disabled={!canFetchCallSets}
+            onClick={() => void handleFetchCallSets()}
+          >
+            Download call-set table
+          </button>{' '}
+          <span>
+            Lists the variant set's call sets so samples.csv can be written from their ids.
+          </span>
+          {callSetsError !== null && <span role="alert"> {callSetsError}</span>}
+          {callSetsWarnings.length > 0 && (
+            <ul>
+              {callSetsWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <fieldset>
         <legend>RPP coverage cap</legend>
@@ -262,6 +390,11 @@ export function UploadScreen({
       <button type="button" onClick={() => void handleLoad()} disabled={!canLoad}>
         Load
       </button>
+      {source === 'brapi' && brapiLoading && (
+        <button type="button" onClick={onCancelBrapi}>
+          Cancel
+        </button>
+      )}
 
       {loaded !== null && (
         <div>

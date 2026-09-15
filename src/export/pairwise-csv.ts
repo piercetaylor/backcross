@@ -6,8 +6,11 @@
  * pairwise comparison contract: a summary table (`pairwiseCsv`) with one row
  * per chromosome plus an ALL totals row per comparison, and a discordant
  * marker table (`discordantMarkersCsv`) with one row per discordant marker
- * per comparison. These column names are a published contract; do not add,
- * rename or reorder a column.
+ * per comparison. Both carry each sample's call_set_db_id and sample_db_id,
+ * suffixed _a and _b, after sample_a and sample_b (empty for a file-loaded
+ * dataset). These column names are documented in docs/data-formats.md; a
+ * change there is a user-visible output change (CHANGELOG) and needs the
+ * maintainer's approval (CLAUDE.md).
  *
  * `discordantMarkersCsv` reports class_a/class_b using classAt, the same
  * class-resolution logic compareLines uses internally, so a parent reads
@@ -19,17 +22,22 @@
  * show it because classAt reports UNINFORMATIVE for every sample at an
  * uninformative marker.
  *
- * Interface: pairwiseCsv(diffs, chromosomeOrder) -> string.
- *            discordantMarkersCsv(diffs, dataset, cls) -> string.
+ * Interface: pairwiseCsv(diffs, chromosomeOrder, samples) -> string.
+ *            discordantMarkersCsv(diffs, dataset, cls) -> string (ids from dataset.samples).
  */
 import { classAt, resolveSample } from '../core/compare.ts';
 import { CALL_CLASS_LABEL } from '../core/types.ts';
-import type { Classification, Dataset, PairwiseDiff } from '../core/types.ts';
+import type { Classification, Dataset, PairwiseDiff, SampleRecord } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
+import { externalIdCells } from './sample-ids.ts';
 
 export const PAIRWISE_CSV_HEADER = [
   'sample_a',
   'sample_b',
+  'call_set_db_id_a',
+  'sample_db_id_a',
+  'call_set_db_id_b',
+  'sample_db_id_b',
   'mode',
   'chrom',
   'n_compared',
@@ -39,6 +47,10 @@ export const PAIRWISE_CSV_HEADER = [
 export const DISCORDANT_MARKERS_CSV_HEADER = [
   'sample_a',
   'sample_b',
+  'call_set_db_id_a',
+  'sample_db_id_a',
+  'call_set_db_id_b',
+  'sample_db_id_b',
   'marker_id',
   'chrom',
   'pos_bp',
@@ -46,9 +58,15 @@ export const DISCORDANT_MARKERS_CSV_HEADER = [
   'class_b',
 ] as const;
 
-export function pairwiseCsv(diffs: PairwiseDiff[], chromosomeOrder: string[]): string {
+export function pairwiseCsv(
+  diffs: PairwiseDiff[],
+  chromosomeOrder: string[],
+  samples: SampleRecord[],
+): string {
+  const ids = externalIdCells(samples);
   const rows: string[] = [];
   for (const diff of diffs) {
+    const pairIds = [...ids(diff.sampleA), ...ids(diff.sampleB)];
     const byChrom = new Map(diff.byChromosome.map((r) => [r.chrom, r]));
     for (const chrom of chromosomeOrder) {
       const r = byChrom.get(chrom);
@@ -56,6 +74,7 @@ export function pairwiseCsv(diffs: PairwiseDiff[], chromosomeOrder: string[]): s
         [
           csvField(diff.sampleA),
           csvField(diff.sampleB),
+          ...pairIds,
           diff.mode,
           csvField(chrom),
           r === undefined ? 0 : r.nCompared,
@@ -67,6 +86,7 @@ export function pairwiseCsv(diffs: PairwiseDiff[], chromosomeOrder: string[]): s
       [
         csvField(diff.sampleA),
         csvField(diff.sampleB),
+        ...pairIds,
         diff.mode,
         'ALL',
         diff.nCompared,
@@ -83,16 +103,19 @@ export function discordantMarkersCsv(
   cls: Classification,
 ): string {
   const { ids, chrom, posBp } = dataset.markers;
+  const externalIds = externalIdCells(dataset.samples);
   const rows: string[] = [];
   for (const diff of diffs) {
     const a = resolveSample(dataset, cls, diff.sampleA);
     const b = resolveSample(dataset, cls, diff.sampleB);
+    const pairIds = [...externalIds(diff.sampleA), ...externalIds(diff.sampleB)];
     for (let i = 0; i < diff.discordantMarkers.length; i++) {
       const m = diff.discordantMarkers[i] as number;
       rows.push(
         [
           csvField(diff.sampleA),
           csvField(diff.sampleB),
+          ...pairIds,
           csvField(ids[m] as string),
           csvField(chrom[m] as string),
           Math.round(posBp[m] as number),

@@ -13,6 +13,15 @@
  * the worker streams it (docs/adr/0012). samples.csv and markers.csv are
  * transferred as ArrayBuffers.
  *
+ * BrAPI (docs/adr/0015): `runLoad` takes a `LoadRequest`, either 'load' or
+ * 'loadBrapi'; for 'loadBrapi' the worker fetches the variant set itself, and
+ * `brapiLoading` is true from dispatch until its 'loaded' or error, which is
+ * what shows the Upload screen's Cancel button. `cancelBrapi` posts
+ * 'cancelBrapi', which the worker handles out of band (not queued behind the
+ * load it cancels). `fetchCallSets` issues 'brapiCallSets' for the call-set
+ * table download; like `runCompare` it is not on the sequence counter, and
+ * its errors go back to the Upload screen rather than the app alert.
+ *
  * Sequencing after a successful 'load': request 'rpp', then 'qc' (which
  * needs a LineRpp[] and so must follow rpp), then 'segmentsAll', awaited in
  * order so a failure is attributable to one step; then navigate to Summary.
@@ -111,10 +120,11 @@ import { ExportScreen } from './ui/screens/ExportScreen.tsx';
 import { GenotypeViewScreen } from './ui/screens/GenotypeViewScreen.tsx';
 import { LineTableScreen } from './ui/screens/LineTableScreen.tsx';
 import { SummaryScreen } from './ui/screens/SummaryScreen.tsx';
-import type { AnalysisParams, LoadedState, LoadPayload } from './ui/screens/UploadScreen.tsx';
+import type { AnalysisParams, LoadedState, LoadRequest } from './ui/screens/UploadScreen.tsx';
 import { UploadScreen } from './ui/screens/UploadScreen.tsx';
 import { AnalysisClient } from './workers/client.ts';
 import type { GenotypeClassesData } from './workers/protocol.ts';
+import type { BrapiCallSet, BrapiSource } from './io/brapi.ts';
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -148,6 +158,7 @@ export function App() {
   const [compare, setCompare] = useState<PairwiseDiff | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [brapiLoading, setBrapiLoading] = useState(false);
   const [density, setDensity] = useState<Density>('default');
   // null = follow the screen (see the header comment); a boolean is a user
   // choice and wins for the rest of the session.
@@ -190,18 +201,24 @@ export function App() {
     return client;
   }
 
-  async function runLoad(payload: LoadPayload) {
+  async function runLoad(request: LoadRequest) {
     const seq = ++requestSeqRef.current;
     setError(null);
     setBusy(true);
     try {
       // The genotype File is cloned by reference, not transferred, and read as
       // a stream in the worker (docs/adr/0012); an ArrayBuffer is transferred.
-      const transfer: Transferable[] = [payload.samples];
-      if (payload.genotypes instanceof ArrayBuffer) transfer.push(payload.genotypes);
-      if (payload.markers !== undefined) transfer.push(payload.markers);
+      const transfer: Transferable[] = [request.payload.samples];
+      if (request.type === 'load' && request.payload.genotypes instanceof ArrayBuffer) {
+        transfer.push(request.payload.genotypes);
+      }
+      if (request.payload.markers !== undefined) transfer.push(request.payload.markers);
+      if (request.type === 'loadBrapi') setBrapiLoading(true);
       const client = getClient();
-      const loadRes = await client.request('load', payload, transfer);
+      const loadRes =
+        request.type === 'load'
+          ? await client.request('load', request.payload, transfer)
+          : await client.request('loadBrapi', request.payload, transfer);
       if (requestSeqRef.current !== seq) return;
       setLoaded(loadRes);
       setRpp(null);
@@ -231,8 +248,28 @@ export function App() {
     } catch (e) {
       if (requestSeqRef.current === seq) setError(errorMessage(e));
     } finally {
-      if (requestSeqRef.current === seq) setBusy(false);
+      if (requestSeqRef.current === seq) {
+        setBusy(false);
+        setBrapiLoading(false);
+      }
     }
+  }
+
+  // Not on the sequence counter, like runCompare; errors propagate to the Upload screen.
+  async function fetchCallSets(
+    source: BrapiSource,
+  ): Promise<{ callSets: BrapiCallSet[]; warnings: string[] }> {
+    setBusy(true);
+    try {
+      const r = await getClient().request('brapiCallSets', { source });
+      return { callSets: r.callSets, warnings: r.warnings };
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancelBrapi() {
+    void getClient().request('cancelBrapi', {});
   }
 
   async function handleParamsChange(next: AnalysisParams) {
@@ -449,7 +486,10 @@ export function App() {
             params={params}
             onParamsChange={(next) => void handleParamsChange(next)}
             busy={busy}
-            onLoad={(payload) => void runLoad(payload)}
+            onLoad={(r) => void runLoad(r)}
+            onFetchCallSets={fetchCallSets}
+            onCancelBrapi={cancelBrapi}
+            brapiLoading={brapiLoading}
             loaded={loaded}
           />
         )}

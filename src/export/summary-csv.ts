@@ -5,20 +5,29 @@
  * documented in docs/data-formats.md ("Outputs"). One row per candidate;
  * per-chromosome RPP as wide columns rpp_count_Gm01.. so the file opens
  * directly in R (`readr::read_csv`) without reshaping. Numeric NaN is written
- * as NA.
+ * as NA. `call_set_db_id` and `sample_db_id` follow `sample_id`
+ * (sample-ids.ts); they are empty for a file-loaded dataset.
  *
- * Interface: lineSummaryCsv(lineRpp, chromosomeOrder) -> string.
+ * Interface: lineSummaryCsv(lineRpp, chromosomeOrder, samples) -> string.
  */
-import type { LineRpp } from '../core/types.ts';
+import type { LineRpp, SampleRecord } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
+import { externalIdCells } from './sample-ids.ts';
 
 function num(x: number, digits = 6): string {
   return Number.isNaN(x) ? 'NA' : x.toFixed(digits);
 }
 
-export function lineSummaryCsv(lines: LineRpp[], chromosomeOrder: string[]): string {
+export function lineSummaryCsv(
+  lines: LineRpp[],
+  chromosomeOrder: string[],
+  samples: SampleRecord[],
+): string {
+  const ids = externalIdCells(samples);
   const header = [
     'sample_id',
+    'call_set_db_id',
+    'sample_db_id',
     'n_informative',
     'n_called',
     'n_rp_hom',
@@ -39,6 +48,7 @@ export function lineSummaryCsv(lines: LineRpp[], chromosomeOrder: string[]): str
     });
     return [
       csvField(l.sampleId),
+      ...ids(l.sampleId),
       o.nInformative,
       o.nCalled,
       o.nRpHom,

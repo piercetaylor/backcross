@@ -2,6 +2,7 @@
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vite';
+import { brapiMockPlugin } from './tests/support/brapi-mock-plugin.ts';
 import type { BrowserCommand } from 'vitest/node';
 
 // Cross-origin isolation for the browser-mode test server only, so that
@@ -69,7 +70,8 @@ const BROWSER_DEPS = [
 // "/isoline-browser/" (GitHub Pages project site). See .env.example.
 export default defineConfig(({ mode }) => ({
   base: process.env['VITE_BASE_PATH'] ?? (mode === 'production' ? '/isoline-browser/' : '/'),
-  plugins: [react()],
+  // brapiMockPlugin serves tests/fixtures/brapi under /__brapi__ for browser-mode tests (no build hook).
+  plugins: [react(), brapiMockPlugin()],
   worker: { format: 'es' },
   build: {
     target: 'es2022',

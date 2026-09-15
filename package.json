@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "fixture": "node scripts/make-fixture.mjs",
     "contract": "node scripts/make-contract.mjs",
+    "brapi:record": "node scripts/brapi-record.mjs",
     "cli": "node src/cli.ts"
   },
   "dependencies": {
