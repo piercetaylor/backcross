@@ -270,6 +270,11 @@
   color: var(--color-text-secondary);
 }
 
+.input-coding-link {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

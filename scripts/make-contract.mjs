@@ -9,15 +9,18 @@
  * compares their output with the expectation, so the test checks the code
  * against a reading of contract/data-contract.md rather than against itself.
  *
- * Version 1.0.0 covers only inputs both this repository and progeny-selector
- * handle identically and both documents state (docs/m3-phases.md, phase 3 and
- * question 2). Deliberately absent: the `chromosomeN` spelling, IUPAC single
- * letters in nucleotide wide CSV, `.` and `NN` as wide-CSV missing calls,
- * the row window of A/B/H detection, synthesised coded parents, tab-delimited
- * or quoted wide CSV and tab-delimited samples.csv (the sibling reads them
- * with Python's comma-only csv defaults), an omitted line_name column (the
- * sibling requires it), CRLF line ends and a VCF with no GT field (neither
- * document states the behaviour), and half-missing calls such as `0/.`.
+ * Version 1.1.0 adds the inputs the maintainer decided on 2026-09-14
+ * (docs/adr/0014): the shared chromosome pattern and natural order, the
+ * per-mode wide-CSV missing-token lists and the HapMap list (NA ./. . .|.
+ * X XX), IUPAC heterozygote codes read as two nucleotides in both HapMap
+ * and wide CSV, rejection of every other cell (? B H 0 + A?, and X/XX in
+ * wide CSV), CRLF and BOM, tab delimiters and RFC 4180 quoting in both CSV
+ * files, an omitted line_name column, raw CHROM in `<CHROM>_<POS>` ids,
+ * and the error kind genotypes.unknown_cell. Deliberately absent: a pair
+ * of one nucleotide and one of N - . (`AN`, `A-`; undecided, PLAN.md); a
+ * VCF with no GT field; half-missing GT such as `0/.`; and a
+ * whole-file-detection case, which would exceed the 4 KB limit and is
+ * unit-tested in each repository instead.
  *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
@@ -44,6 +47,8 @@ const MAX_CONTRACT_BYTES = 64 * 1024;
 const lines = (...rows) => rows.join('\n') + '\n';
 const tsv = (...cells) => cells.join('\t');
 const utf8 = (text) => new TextEncoder().encode(text);
+const crlf = (...rows) => rows.join('\r\n') + '\r\n';
+const bom = (text) => '﻿' + text;
 
 // ---- compression ------------------------------------------------------------
 
@@ -85,6 +90,21 @@ function bgzip(...memberTexts) {
 // ---- shared literals --------------------------------------------------------
 
 const VCF_HEADER = tsv('#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT');
+const HAPMAP_HEADER = tsv(
+  'rs#',
+  'alleles',
+  'chrom',
+  'pos',
+  'strand',
+  'assembly#',
+  'center',
+  'protLSID',
+  'assayLSID',
+  'panelLSID',
+  'QCcode',
+);
+/** strand, assembly#, center, protLSID, assayLSID, panelLSID, QCcode. */
+const HAPMAP_FIXED = ['+', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA'];
 
 const SAMPLES_RP_DONOR_L1_L2 = lines(
   'sample_id,line_name,role,generation,family_id,notes',
@@ -745,6 +765,403 @@ const cases = [
       'samples.csv': SAMPLES_RP_DONOR_L1,
     },
     error: 'genotypes.duplicate_marker',
+  },
+  {
+    // Tab-delimited .tsv with a UTF-8 BOM and CRLF line ends; the four missing tokens new in
+    // 1.1.0 (.|. NN -- .) plus an empty cell; samples.csv tab-delimited, CRLF, BOM, no line_name.
+    name: 'wide-nucleotide-tab-crlf-bom',
+    files: {
+      'genotypes.tsv': bom(
+        crlf(
+          tsv('marker_id', 'chrom', 'pos_bp', 'RP', 'DONOR', 'L1', 'L2'),
+          tsv('t1', 'Gm09', '1000', 'A', 'G', '.|.', 'AG'),
+          tsv('t2', 'Gm09', '2000', 'C', 'T', 'NN', '.'),
+          tsv('t3', 'Gm09', '3000', 'G', 'T', '--', 'G/T'),
+          tsv('t4', 'Gm09', '4000', 'T', 'C', '', 'T'),
+        ),
+      ),
+      'samples.csv': bom(
+        crlf(
+          tsv('sample_id', 'role', 'family_id'),
+          tsv('RP', 'recurrent_parent', ''),
+          tsv('DONOR', 'donor_parent', ''),
+          tsv('L1', 'candidate', 'FAM1'),
+          tsv('L2', 'progeny', 'FAM1'),
+        ),
+      ),
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm09'],
+      markers: [
+        { id: 't1', chrom: 'Gm09', posBp: 1000, cm: null },
+        { id: 't2', chrom: 'Gm09', posBp: 2000, cm: null },
+        { id: 't3', chrom: 'Gm09', posBp: 3000, cm: null },
+        { id: 't4', chrom: 'Gm09', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['T', 'T'],
+          ['C', 'C'],
+        ],
+        L1: [null, null, null, null],
+        L2: [['A', 'G'], null, ['G', 'T'], ['T', 'T']],
+      },
+    },
+  },
+  {
+    // RFC 4180 quoting: quoted header cell, quoted marker id and calls, embedded commas and
+    // doubled quotes in samples.csv.
+    name: 'samples-quoted-fields',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,"L1"',
+        '"q1",Gm11,1000,A,G,"A/G"',
+        'q2,Gm11,2000,C,T,"C"',
+      ),
+      'samples.csv': lines(
+        'sample_id,line_name,role,notes',
+        'RP,"Williams, 82",recurrent_parent,"say ""hi"""',
+        'DONOR,Donor,donor_parent,',
+        '"L1","Line, one",candidate,"a, b"',
+      ),
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm11'],
+      markers: [
+        { id: 'q1', chrom: 'Gm11', posBp: 1000, cm: null },
+        { id: 'q2', chrom: 'Gm11', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['C', 'C'],
+        ],
+      },
+    },
+  },
+  {
+    // ID `.` takes CHROM as written (chr13_..., 13_...), not the normalised Gm13; CRLF line ends.
+    name: 'vcf-id-dot-crlf',
+    files: {
+      'genotypes.vcf': crlf(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('chr13', '19000000', '.', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1/1'),
+        tsv('13', '21000000', '.', 'G', 'A', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm13', '23000000', 'v3', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm13'],
+      markers: [
+        { id: 'chr13_19000000', chrom: 'Gm13', posBp: 19000000, cm: null },
+        { id: '13_21000000', chrom: 'Gm13', posBp: 21000000, cm: null },
+        { id: 'v3', chrom: 'Gm13', posBp: 23000000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['C', 'C'],
+          ['G', 'G'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['T', 'T'],
+          ['A', 'A'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['T', 'T'],
+          ['A', 'G'],
+          ['A', 'A'],
+        ],
+      },
+    },
+  },
+  {
+    // Chromosome_07, LG7, Gm-7 and "gm 7" normalise to Gm07; ch7 does not; non-soybean names
+    // sort after Gm20 in natural order (ch7, scaffold_2, scaffold_10), then by position.
+    name: 'chrom-natural-order',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'n_s10,scaffold_10,100,A,G,A',
+        'n_lg,LG7,300,A,G,A/G',
+        'n_s2,scaffold_2,100,C,T,T',
+        'n_chromo,Chromosome_07,100,C,T,C',
+        'n_ch,ch7,100,A,G,G',
+        'n_space,gm 7,400,G,T,G',
+        'n_dash,Gm-7,200,A,C,C',
+        'n_s2b,scaffold_2,50,A,G,A',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm07', 'ch7', 'scaffold_2', 'scaffold_10'],
+      markers: [
+        { id: 'n_chromo', chrom: 'Gm07', posBp: 100, cm: null },
+        { id: 'n_dash', chrom: 'Gm07', posBp: 200, cm: null },
+        { id: 'n_lg', chrom: 'Gm07', posBp: 300, cm: null },
+        { id: 'n_space', chrom: 'Gm07', posBp: 400, cm: null },
+        { id: 'n_ch', chrom: 'ch7', posBp: 100, cm: null },
+        { id: 'n_s2b', chrom: 'scaffold_2', posBp: 50, cm: null },
+        { id: 'n_s2', chrom: 'scaffold_2', posBp: 100, cm: null },
+        { id: 'n_s10', chrom: 'scaffold_10', posBp: 100, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['C', 'C'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['G', 'G'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['C', 'C'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['T', 'T'],
+          ['C', 'C'],
+          ['G', 'G'],
+          ['T', 'T'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['T', 'T'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['C', 'C'],
+          ['C', 'C'],
+          ['A', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['A', 'A'],
+          ['T', 'T'],
+          ['A', 'A'],
+        ],
+      },
+    },
+  },
+  {
+    // The eleven HapMap missing tokens of 1.1.0: N NN - -- empty (1.0.0) and NA ./. . .|. X XX
+    // (added); every other cell is a plain call so the case proves only the token list.
+    name: 'hapmap-missing-na-dot',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1', 'L2'),
+        tsv('p1', 'A/G', 'Gm02', '100', ...HAPMAP_FIXED, 'AA', 'GG', 'NA', './.'),
+        tsv('p2', 'C/T', 'Gm02', '200', ...HAPMAP_FIXED, 'CC', 'TT', '.', 'CT'),
+        tsv('p3', 'A/T', 'Gm02', '300', ...HAPMAP_FIXED, 'N', 'NN', '-', '--'),
+        tsv('p4', 'G/T', 'Gm02', '400', ...HAPMAP_FIXED, 'G', 'T', '', 'GT'),
+        tsv('p5', 'A/C', 'Gm02', '500', ...HAPMAP_FIXED, 'X', 'XX', '.|.', 'AC'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'p1', chrom: 'Gm02', posBp: 100, cm: null },
+        { id: 'p2', chrom: 'Gm02', posBp: 200, cm: null },
+        { id: 'p3', chrom: 'Gm02', posBp: 300, cm: null },
+        { id: 'p4', chrom: 'Gm02', posBp: 400, cm: null },
+        { id: 'p5', chrom: 'Gm02', posBp: 500, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [['A', 'A'], ['C', 'C'], null, ['G', 'G'], null],
+        DONOR: [['G', 'G'], ['T', 'T'], null, ['T', 'T'], null],
+        L1: [null, null, null, null, null],
+        L2: [null, ['C', 'T'], null, ['G', 'T'], ['A', 'C']],
+      },
+    },
+  },
+  {
+    // R Y S W K M in nucleotide wide CSV read as their two nucleotides, as in HapMap.
+    name: 'wide-nucleotide-iupac',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1,L2',
+        'i1,Gm15,100,A,G,R,A/G',
+        'i2,Gm15,200,C,T,Y,C',
+        'i3,Gm15,300,C,G,S,G|C',
+        'i4,Gm15,400,A,T,W,T',
+        'i5,Gm15,500,G,T,K,GT',
+        'i6,Gm15,600,A,C,M,N',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm15'],
+      markers: [
+        { id: 'i1', chrom: 'Gm15', posBp: 100, cm: null },
+        { id: 'i2', chrom: 'Gm15', posBp: 200, cm: null },
+        { id: 'i3', chrom: 'Gm15', posBp: 300, cm: null },
+        { id: 'i4', chrom: 'Gm15', posBp: 400, cm: null },
+        { id: 'i5', chrom: 'Gm15', posBp: 500, cm: null },
+        { id: 'i6', chrom: 'Gm15', posBp: 600, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['C', 'C'],
+          ['A', 'A'],
+          ['G', 'G'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['G', 'G'],
+          ['T', 'T'],
+          ['T', 'T'],
+          ['C', 'C'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['C', 'T'],
+          ['C', 'G'],
+          ['A', 'T'],
+          ['G', 'T'],
+          ['A', 'C'],
+        ],
+        L2: [['A', 'G'], ['C', 'C'], ['C', 'G'], ['T', 'T'], ['G', 'T'], null],
+      },
+    },
+  },
+  {
+    // Detected as coded (A, B, H; `--` is skipped by detection as a nucleotide missing token),
+    // then `--` is rejected because it is not a coded missing token.
+    name: 'err-coded-unknown-cell',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,BC_01,BC_02',
+        'c1,Gm13,1000,A,B',
+        'c2,Gm13,2000,H,--',
+      ),
+      'samples.csv': lines(
+        'sample_id,line_name,role',
+        'RP_ABSENT,,recurrent_parent',
+        'DONOR_ABSENT,,donor_parent',
+        'BC_01,,progeny',
+        'BC_02,,progeny',
+      ),
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // `?` is neither a call nor a missing token in nucleotide wide CSV.
+    name: 'err-nucleotide-unknown-cell',
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'u1,Gm02,1000,A,G,?'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // The T makes the file nucleotide, so a single H is a stray coded letter, not a call.
+    name: 'err-nucleotide-single-h',
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'u1,Gm02,1000,A,T,H'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // `0` is not a call (TASSEL's `0` is rejected in both formats).
+    name: 'err-nucleotide-zero',
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'u1,Gm02,1000,A,T,0'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // A two-character cell with a non-nucleotide is an error, not half-missing.
+    name: 'err-nucleotide-pair-stray',
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'u1,Gm02,1000,A,T,A?'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // XX is missing in HapMap only; in wide CSV it is an error.
+    name: 'err-nucleotide-xx',
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'u1,Gm02,1000,A,T,XX'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // `?` in a HapMap cell.
+    name: 'err-hapmap-unknown-cell',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('e1', 'A/G', 'Gm02', '100', ...HAPMAP_FIXED, 'AA', 'GG', '?'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // `+` in a HapMap cell (TASSEL's insertion symbol) is rejected.
+    name: 'err-hapmap-plus',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('e1', 'A/G', 'Gm02', '100', ...HAPMAP_FIXED, 'AA', 'GG', '+'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // A single B (not a nucleotide, not an IUPAC code) in a HapMap cell is rejected.
+    name: 'err-hapmap-single-b',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('e1', 'A/G', 'Gm02', '100', ...HAPMAP_FIXED, 'AA', 'GG', 'B'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
   },
 ];
 

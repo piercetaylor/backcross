@@ -4,7 +4,7 @@ This document is the contract for every file the Isoline Browser reads or writes
 
 ## Input contract
 
-The input contract is `contract/data-contract.md`, version 1.0.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
+The input contract is `contract/data-contract.md`, version 1.1.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
 
 ## Soybean genotyping platforms
 

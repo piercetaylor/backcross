@@ -1,10 +1,11 @@
 /**
  * Soybean chromosome naming.
  *
- * Responsibility: map the chromosome spellings found in the wild (Gm01, gm1,
- * Chr01, chr1, 1, 01) onto the canonical Gm01..Gm20 used by SoyBase and the
- * Wm82 assemblies, keep scaffold/unplaced contig names unchanged, and provide
- * a stable display order (Gm01..Gm20, then scaffolds in natural order).
+ * Responsibility: map the chromosome spellings the contract accepts (prefix
+ * Gm, Chr, Chromosome or LG, optional _, space or - separator, 1..20 with
+ * leading zeros; contract/data-contract.md 1.1.0, soybean-only in this
+ * version) onto Gm01..Gm20, keep other names unchanged, and provide a stable
+ * display order (Gm01..Gm20, then the rest in natural order).
  *
  * Interface: normalizeChromosome, isNuclearChromosome, compareChromosomes,
  * buildChromosomeOrder.

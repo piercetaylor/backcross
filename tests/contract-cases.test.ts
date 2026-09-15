@@ -35,6 +35,7 @@ const ERROR_MESSAGES: Record<ErrorKind, RegExp> = {
   'genotypes.duplicate_marker': /duplicate marker id/,
   'genotypes.no_gt': /FORMAT has no GT field/,
   'genotypes.no_header': /no #CHROM header|no header row|"rs#" not found/,
+  'genotypes.unknown_cell': /unexpected cell/,
 };
 
 const caseNames = readdirSync(CASES).sort();

@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import { buildChromosomeOrder, normalizeChromosome } from '../src/core/chromosomes.ts';
 import { MISSING_ALLELE } from '../src/core/types.ts';
+import { HAPMAP_MISSING, NUCLEOTIDE_MISSING, parseNucleotideCell } from '../src/io/calls.ts';
 import { parseDelimited, parseLine } from '../src/io/csv.ts';
+import { parseHapMap } from '../src/io/hapmap.ts';
 import { assembleDataset } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
 import { parseVcf } from '../src/io/vcf.ts';
@@ -43,12 +45,25 @@ describe('samples.csv contract', () => {
 
 describe('chromosome naming', () => {
   it('normalizes accepted spellings to Gm01..Gm20 and keeps scaffolds', () => {
-    for (const s of ['Gm07', 'gm7', 'Chr07', 'chr7', '7', '07', 'GM_07', 'LG7']) {
+    for (const s of [
+      'Gm07',
+      'gm7',
+      'Chr07',
+      'chr7',
+      '7',
+      '07',
+      'GM_07',
+      'LG7',
+      'Chromosome_07',
+      'lg-7',
+      'gm 7',
+    ]) {
       expect(normalizeChromosome(s), s).toBe('Gm07');
     }
     expect(normalizeChromosome('Gm20')).toBe('Gm20');
     expect(normalizeChromosome('chr21')).toBe('chr21');
     expect(normalizeChromosome('scaffold_123')).toBe('scaffold_123');
+    expect(normalizeChromosome('ch7')).toBe('ch7');
   });
 
   it('orders nuclear chromosomes numerically before scaffolds', () => {
@@ -91,5 +106,116 @@ describe('wide CSV vocabulary', () => {
     const c = parseWideCsv(coded);
     expect(c.coded).toBe(true);
     expect(Array.from(c.genotypes.allele2)).toEqual([0, 1, 1, MISSING_ALLELE]);
+  });
+
+  it('scans every row for A/B/H detection, not a leading window', () => {
+    const header = 'marker_id,chrom,pos_bp,S1\n';
+    const rows = (n: number, cell: string): string =>
+      Array.from({ length: n }, (_, i) => `m${i},Gm01,${i + 1},${cell}`).join('\n') + '\n';
+    expect(detectWideCsvMode(header + rows(2100, 'A') + 'late,Gm01,9999,B\n')).toBe('coded');
+    expect(
+      detectWideCsvMode(header + 'h,Gm01,1,H\n' + rows(2100, 'A') + 'late,Gm01,9999,T\n'),
+    ).toBe('nucleotide');
+  });
+
+  it('treats the full nucleotide missing list as missing', () => {
+    const text = 'marker_id,chrom,pos_bp,S1,S2,S3\nm1,Gm01,100,.|.,NN,--\nm2,Gm01,200,.,,A\n';
+    const g = parseWideCsv(text, 'nucleotide').genotypes;
+    expect(Array.from(g.allele1)).toEqual([255, 255, 255, 255, 255, 0]);
+  });
+
+  it('coded mode rejects nucleotide-only missing tokens', () => {
+    const text = 'marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,100,A,B\nm2,Gm01,200,H,--\n';
+    expect(detectWideCsvMode(text)).toBe('coded');
+    expect(() => parseWideCsv(text)).toThrow(/unexpected cell "--"/);
+    expect(() =>
+      parseWideCsv('marker_id,chrom,pos_bp,S1\nm1,Gm01,100,H\nm2,Gm01,200,NN\n'),
+    ).toThrow(/unexpected cell "NN"/);
+  });
+
+  it('nucleotide mode expands IUPAC codes and rejects every other stray cell', () => {
+    // T in S1 forces nucleotide detection even when the other cell is B or H.
+    const row = (cell: string): string => `marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,100,T,${cell}\n`;
+    for (const bad of ['?', 'B', 'H', 'X', 'XX', '0', '+', 'A?', 'N?', 'RR']) {
+      expect(detectWideCsvMode(row(bad)), bad).toBe('nucleotide');
+      expect(() => parseWideCsv(row(bad)), bad).toThrow(`unexpected cell "${bad}"`);
+    }
+    const g = parseWideCsv(row('R')).genotypes;
+    expect(Array.from(g.allele1)).toEqual([0, 1]);
+    expect(Array.from(g.allele2)).toEqual([0, 2]);
+  });
+});
+
+describe('nucleotide cell vocabulary (src/io/calls.ts)', () => {
+  const wide = (cell: string) => parseNucleotideCell(cell, NUCLEOTIDE_MISSING, 'w');
+  const hapmap = (cell: string) => parseNucleotideCell(cell, HAPMAP_MISSING, 'h');
+
+  it('expands IUPAC codes to the heterozygote in both formats', () => {
+    const expected: Record<string, [string, string]> = {
+      R: ['A', 'G'],
+      Y: ['C', 'T'],
+      S: ['C', 'G'],
+      W: ['A', 'T'],
+      K: ['G', 'T'],
+      M: ['A', 'C'],
+    };
+    for (const [code, pair] of Object.entries(expected)) {
+      expect(wide(code), code).toEqual(pair);
+      expect(hapmap(code.toLowerCase()), code).toEqual(pair);
+    }
+    expect(wide(' a/t ')).toEqual(['A', 'T']);
+    expect(wide('G|C')).toEqual(['G', 'C']);
+    expect(wide('AA')).toEqual(['A', 'A']);
+    expect(wide('C')).toEqual(['C', 'C']);
+  });
+
+  it('reads the missing lists, X and XX in HapMap only', () => {
+    for (const tok of ['', 'N', 'NN', 'NA', '-', '--', '.', './.', '.|.']) {
+      expect(wide(tok), tok).toBeNull();
+      expect(hapmap(tok), tok).toBeNull();
+    }
+    expect(hapmap('X')).toBeNull();
+    expect(hapmap('XX')).toBeNull();
+    expect(() => wide('X')).toThrow('w: unexpected cell "X"');
+    expect(() => wide('XX')).toThrow('w: unexpected cell "XX"');
+  });
+
+  it('rejects every other cell in both formats', () => {
+    for (const bad of ['?', 'B', 'H', '0', '+', 'Z', 'A?', 'N?', '?/?', 'RR', 'ACG', 'A//T']) {
+      expect(() => wide(bad), bad).toThrow(`w: unexpected cell "${bad}"`);
+      expect(() => hapmap(bad), bad).toThrow(`h: unexpected cell "${bad}"`);
+    }
+  });
+
+  it('reads half-missing pairs as missing (undecided in 1.1.0; pins current behaviour)', () => {
+    for (const cell of ['AN', 'A-', '-A', 'A.', './A', 'N/A']) {
+      expect(wide(cell), cell).toBeNull();
+      expect(hapmap(cell), cell).toBeNull();
+    }
+  });
+});
+
+describe('HapMap vocabulary', () => {
+  const header =
+    'rs#\talleles\tchrom\tpos\tstrand\tassembly#\tcenter\tprotLSID\tassayLSID\tpanelLSID\tQCcode\tS1\tS2\tS3\n';
+  const fixed = '+\tNA\tNA\tNA\tNA\tNA\tNA';
+
+  it("reads the contract's missing list including .|., X and XX", () => {
+    const g = parseHapMap(
+      header +
+        `m1\tA/G\tGm01\t100\t${fixed}\t.|.\tX\tXX\n` +
+        `m2\tA/G\tGm01\t200\t${fixed}\tR\tNA\tA\n`,
+    ).genotypes;
+    expect(Array.from(g.allele1)).toEqual([255, 255, 255, 0, 255, 0]);
+    expect(Array.from(g.allele2)).toEqual([255, 255, 255, 1, 255, 0]);
+  });
+
+  it('rejects ?, +, 0 and single B or H naming the line', () => {
+    for (const bad of ['?', '+', '0', 'B', 'H']) {
+      expect(
+        () => parseHapMap(header + `m1\tA/G\tGm01\t100\t${fixed}\tAA\tGG\t${bad}\n`),
+        bad,
+      ).toThrow(`HapMap line 2: unexpected cell "${bad}"`);
+    }
   });
 });

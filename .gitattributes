@@ -12,5 +12,8 @@
 # mirrored into progeny-selector, so its text must be LF on every checkout and
 # its gzip and bgzip cases must never be normalised.
 contract/** text eol=lf
+# Case files are the generator's bytes verbatim, including the CRLF cases of 1.1.0;
+# with text unset git performs no conversion in either direction.
+contract/cases/** -text
 *.gz binary
 *.bgz binary

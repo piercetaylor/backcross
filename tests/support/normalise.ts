@@ -35,7 +35,8 @@ export type ErrorKind =
   | 'dataset.sample_missing'
   | 'genotypes.duplicate_marker'
   | 'genotypes.no_gt'
-  | 'genotypes.no_header';
+  | 'genotypes.no_header'
+  | 'genotypes.unknown_cell';
 
 /** contract/cases/<case>/expected-error.json */
 export interface ContractErrorExpect {

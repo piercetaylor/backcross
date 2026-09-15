@@ -3,37 +3,40 @@
  *
  * Responsibility: read a matrix with columns marker_id, chrom, pos_bp and one
  * column per sample. Two cell vocabularies are supported:
- *   - nucleotide: "A" (homozygous), "A/T", "A|T" or "AT" (heterozygous),
- *     "AA" (homozygous); missing = "", "N", "NA", "-", "./.".
- *   - coded: A = recurrent-parent allele, B = donor allele, H = heterozygous,
- *     N/NA/"" = missing. Allele 0 is A and allele 1 is B at every marker, so
- *     origin is defined without parent columns.
- * Mode 'auto' selects coded when every non-missing cell is in {A, B, H} and at
- * least one B or H occurs; otherwise nucleotide.
+ *   - nucleotide (calls.ts): "A" (homozygous), "A/T", "A|T" or "AT"
+ *     (heterozygous), "AA", one IUPAC code R Y S W K M (its two
+ *     nucleotides); missing = "", "N", "NN", "NA", "-", "--", ".", "./.",
+ *     ".|."; any other cell ("?", "B", "H", "X", "XX", "0", "+", "A?") is an
+ *     error naming the cell.
+ *   - coded: A = recurrent-parent allele, B = donor allele, H = heterozygous;
+ *     missing = "", "N", "NA" only, any other cell is an error. Allele 0 is A and
+ *     allele 1 is B at every marker, so origin is defined without parent columns.
+ * Mode 'auto' scans every row of the file (no row window) and selects coded when
+ * every cell outside the nucleotide missing set is in {A, B, H} and at least one
+ * B or H occurs; otherwise nucleotide.
  *
  * Interface: parseWideCsv(text, mode = 'auto') -> ParsedGenotypes.
  */
-import { MISSING_ALLELE } from '../core/types.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
+import { NUCLEOTIDE_MISSING, parseNucleotideCell, symbolIndex } from './calls.ts';
 import { forEachRow, normalizeHeader, requireColumns, sniffDelimiter } from './csv.ts';
 
 export type WideCsvMode = 'auto' | 'nucleotide' | 'coded';
 
-const MISSING_CELLS = new Set(['', 'N', 'NA', '-', '--', './.', '.', 'NN']);
+/** Coded-mode missing cells; anything else outside A, B, H is an error in coded mode. */
+const CODED_MISSING = new Set(['', 'N', 'NA']);
 const CODED_SYMBOLS = new Set(['A', 'B', 'H']);
 
 export function detectWideCsvMode(text: string): 'nucleotide' | 'coded' {
   const delimiter = sniffDelimiter(text);
   let sawBorH = false;
   let onlyCoded = true;
-  let rows = 0;
   forEachRow(text, delimiter, (f, lineNumber) => {
-    if (lineNumber === 1 || rows > 2000 || !onlyCoded) return;
-    rows++;
+    if (lineNumber === 1 || !onlyCoded) return;
     for (let i = 3; i < f.length; i++) {
       const cell = (f[i] as string).trim().toUpperCase();
-      if (MISSING_CELLS.has(cell)) continue;
+      if (NUCLEOTIDE_MISSING.has(cell)) continue;
       if (!CODED_SYMBOLS.has(cell)) {
         onlyCoded = false;
         return;
@@ -80,9 +83,10 @@ export function parseWideCsv(text: string, mode: WideCsvMode = 'auto'): ParsedGe
       alleles,
     );
     for (let s = 0; s < sampleCols.length; s++) {
-      const cell = (f[sampleCols[s] as number] as string).trim().toUpperCase();
-      if (MISSING_CELLS.has(cell)) continue;
+      const raw = f[sampleCols[s] as number] as string;
       if (resolved === 'coded') {
+        const cell = raw.trim().toUpperCase();
+        if (CODED_MISSING.has(cell)) continue;
         if (cell === 'A') builder.setCall(offset, s, 0, 0);
         else if (cell === 'B') builder.setCall(offset, s, 1, 1);
         else if (cell === 'H') builder.setCall(offset, s, 0, 1);
@@ -91,29 +95,16 @@ export function parseWideCsv(text: string, mode: WideCsvMode = 'auto'): ParsedGe
             `coded genotype CSV line ${lineNumber}: unexpected cell "${cell}" (expected A, B, H or missing)`,
           );
       } else {
-        const [x, y] = nucleotidePair(cell, lineNumber);
-        builder.setCall(offset, s, alleleIndex(alleles, x), alleleIndex(alleles, y));
+        const pair = parseNucleotideCell(
+          raw,
+          NUCLEOTIDE_MISSING,
+          `wide genotype CSV line ${lineNumber}`,
+        );
+        if (pair === null) continue;
+        builder.setCall(offset, s, symbolIndex(alleles, pair[0]), symbolIndex(alleles, pair[1]));
       }
     }
   });
   if (builder === null) throw new Error('wide genotype CSV: no header row');
   return (builder as GenotypeBuilder).finish();
-}
-
-function nucleotidePair(cell: string, lineNumber: number): [string, string] {
-  if (cell.length === 1) return [cell, cell];
-  if (cell.length === 2) return [cell[0] as string, cell[1] as string];
-  if (cell.length === 3 && (cell[1] === '/' || cell[1] === '|'))
-    return [cell[0] as string, cell[2] as string];
-  throw new Error(`wide genotype CSV line ${lineNumber}: cannot interpret genotype cell "${cell}"`);
-}
-
-function alleleIndex(alleles: string[], symbol: string): number {
-  if (symbol === 'N' || symbol === '-' || symbol === '.') return MISSING_ALLELE;
-  let i = alleles.indexOf(symbol);
-  if (i === -1) {
-    alleles.push(symbol);
-    i = alleles.length - 1;
-  }
-  return i;
 }

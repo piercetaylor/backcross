@@ -8,7 +8,9 @@
  * passes the genotype `File` as-is (the worker reads it as a stream,
  * docs/adr/0012), reads samples.csv and markers.csv as ArrayBuffers, and
  * calls `onLoad`. Shows parser
- * warnings and a one-line dataset summary once `loaded` is set. Every
+ * warnings and a one-line dataset summary once `loaded` is set. Links
+ * docs/input-coding.md (the accepted, missing and rejected codes per format)
+ * from the intro paragraph. Every
  * file picker and parameter input is disabled while `busy` is true, so
  * neither a file nor a value can be changed mid-chain. Props/callbacks only: this screen never touches the
  * worker, App does.
@@ -20,6 +22,10 @@ import { useState } from 'react';
 import './screens.css';
 import type { QcThresholds, RppParams, SegmentParams } from '../../core/types.ts';
 import type { WorkerRequest, WorkerResult } from '../../workers/protocol.ts';
+
+/** docs/input-coding.md on the repository; the static site does not serve docs/. */
+const INPUT_CODING_URL =
+  'https://github.com/piercetaylor/isoline-browser/blob/main/docs/input-coding.md';
 
 export interface AnalysisParams {
   rpp: RppParams;
@@ -125,7 +131,14 @@ export function UploadScreen({
   return (
     <section>
       <h2>Upload and validate</h2>
-      <p>Files are processed in this browser tab and never uploaded anywhere.</p>
+      <p>
+        Files are processed in this browser tab and never uploaded anywhere. Accepted, missing and
+        rejected genotype codes per format:{' '}
+        <a className="input-coding-link" href={INPUT_CODING_URL} target="_blank" rel="noreferrer">
+          input coding reference
+        </a>
+        .
+      </p>
 
       <div className="field">
         <label>

@@ -29,11 +29,11 @@ node src/cli.ts targets   ... --target rhg1=Gm18:1.6Mb-1.7Mb --out targets.csv
 
 ## Input files
 
-Genotypes as VCF, HapMap or wide CSV; samples.csv with exactly one `recurrent_parent` and one `donor_parent`; optional markers.csv with cM positions. The input contract is specified in contract/data-contract.md and is shared byte for byte with the sibling progeny-selector project so files move between the two tools unchanged.
+Genotypes as VCF, HapMap or wide CSV; samples.csv with exactly one `recurrent_parent` and one `donor_parent`; optional markers.csv with cM positions. The input contract is specified in contract/data-contract.md and is shared byte for byte with the sibling progeny-selector project so files move between the two tools unchanged. What each format accepts, reads as missing and rejects is tabulated in docs/input-coding.md.
 
 ## Documents
 
-PLAN.md (problem, algorithms, UI, milestones, verification), docs/data-formats.md, docs/reference-repos.md, docs/adr/ (MADR decision records), CHANGELOG.md, CONTRIBUTING.md.
+PLAN.md (problem, algorithms, UI, milestones, verification), docs/data-formats.md, docs/input-coding.md, docs/reference-repos.md, docs/adr/ (MADR decision records), CHANGELOG.md, CONTRIBUTING.md.
 
 ## Licence
 

@@ -7,7 +7,7 @@
  * ignored (filtering belongs upstream, e.g. bcftools). Phasing is ignored
  * (0|1 and 0/1 are the same unordered pair). Haploid calls are treated as
  * homozygous. Multiallelic ALT is supported (allele index = position in
- * REF,ALT list). Records without an ID get `${chrom}_${pos}`.
+ * REF,ALT list). Records with ID "." or empty get `${chrom}_${pos}` from CHROM as written, before normalisation (contract 1.1.0).
  *
  * The per-line body lives in VcfLineParser, which never sees more than one
  * line, so the streaming loader (loaders.ts, parseGenotypesSource) can feed
