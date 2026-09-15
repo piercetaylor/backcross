@@ -8,6 +8,8 @@ import { parseDelimited, parseLine } from '../src/io/csv.ts';
 import { parseHapMap } from '../src/io/hapmap.ts';
 import { assembleDataset } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
+import { parseMarkerMap } from '../src/io/markers.ts';
+import { parsePosition } from '../src/io/position.ts';
 import { parseVcf } from '../src/io/vcf.ts';
 import { detectWideCsvMode, parseWideCsv } from '../src/io/wide-csv.ts';
 import { readFixture } from './helpers.ts';
@@ -217,5 +219,121 @@ describe('HapMap vocabulary', () => {
         bad,
       ).toThrow(`HapMap line 2: unexpected cell "${bad}"`);
     }
+  });
+});
+
+describe('positions (src/io/position.ts, contract 1.2.0)', () => {
+  it('reads whole-valued decimal, float and exponent text as the integer', () => {
+    const ok: [string, number][] = [
+      ['1000', 1000],
+      [' 1000 ', 1000],
+      ['+1000', 1000],
+      ['1000.', 1000],
+      ['1000.0', 1000],
+      ['1e3', 1000],
+      ['1.0E3', 1000],
+      ['1.9E+07', 19000000],
+      ['1.5e3', 1500],
+      ['0', 0],
+    ];
+    for (const [text, value] of ok) expect(parsePosition(text, 'p'), text).toBe(value);
+  });
+
+  it('rejects everything else naming the value', () => {
+    const bad = [
+      '',
+      ' ',
+      '100.7',
+      '.5',
+      '1e-3',
+      '-5',
+      'NaN',
+      'Infinity',
+      '1e400',
+      '0x10',
+      '1_000',
+      '1,000',
+      'abc',
+    ];
+    for (const text of bad) {
+      expect(() => parsePosition(text, 'p'), text).toThrow(`p: invalid position "${text.trim()}"`);
+    }
+  });
+
+  it("'digits' grammar (VCF POS): decimal digits only", () => {
+    const ok: [string, number][] = [
+      ['1000', 1000],
+      ['01000', 1000],
+    ];
+    for (const [text, value] of ok) expect(parsePosition(text, 'p', 'digits'), text).toBe(value);
+    for (const text of ['+1000', '1000.0', '1e3', '', '-5']) {
+      expect(() => parsePosition(text, 'p', 'digits'), text).toThrow(
+        `p: invalid position "${text}"`,
+      );
+    }
+  });
+
+  it('wide CSV: whole floats accepted, a fraction and an empty pos_bp rejected naming the line', () => {
+    const g = parseWideCsv(
+      'marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,1000.0,A,T\nm2,Gm01,2e3,A,T\nm3,Gm01,3.0E3,A,T\nm4,Gm01,+4000,A,T\n',
+    );
+    expect(Array.from(g.markers.posBp)).toEqual([1000, 2000, 3000, 4000]);
+    expect(() =>
+      parseWideCsv('marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,1000,A,T\nm2,Gm01,100.7,A,T\n'),
+    ).toThrow('wide genotype CSV line 3: invalid position "100.7"');
+    expect(() => parseWideCsv('marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,,A,T\n')).toThrow(
+      'wide genotype CSV line 2: invalid position ""',
+    );
+  });
+
+  it('wide CSV: skips all-empty rows and rejects an empty marker_id naming the line', () => {
+    const g = parseWideCsv(
+      'marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,100,A,T\n,,,,\n , , , , \nm2,Gm01,200,A,T\n',
+    );
+    expect(g.markers.ids).toEqual(['m1', 'm2']);
+    expect(() =>
+      parseWideCsv('marker_id,chrom,pos_bp,S1,S2\nm1,Gm01,100,A,T\n,Gm01,200,A,T\n'),
+    ).toThrow('wide genotype CSV line 3: empty marker_id');
+  });
+
+  it('HapMap and VCF: whole floats accepted in HapMap, VCF POS digits only, a fraction rejected naming the line', () => {
+    const header =
+      'rs#\talleles\tchrom\tpos\tstrand\tassembly#\tcenter\tprotLSID\tassayLSID\tpanelLSID\tQCcode\tS1\tS2\n';
+    const fixed = '+\tNA\tNA\tNA\tNA\tNA\tNA';
+    const h = parseHapMap(
+      header +
+        `m1\tA/G\tGm01\t1e3\t${fixed}\tAA\tGG\n` +
+        `m2\tA/G\tGm01\t2000.0\t${fixed}\tAA\tGG\n`,
+    );
+    expect(Array.from(h.markers.posBp)).toEqual([1000, 2000]);
+    expect(() => parseHapMap(header + `m1\tA/G\tGm01\t100.7\t${fixed}\tAA\tGG\n`)).toThrow(
+      'HapMap line 2: invalid position "100.7"',
+    );
+    const vcfHead =
+      '##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tS1\n';
+    expect(() => parseVcf(vcfHead + 'Gm01\t1e3\tv1\tA\tG\t.\t.\t.\tGT\t0/1\n')).toThrow(
+      'VCF line 3: invalid position "1e3"',
+    );
+    expect(() => parseVcf(vcfHead + 'Gm01\t2000.0\tv2\tA\tG\t.\t.\t.\tGT\t0/0\n')).toThrow(
+      'VCF line 3: invalid position "2000.0"',
+    );
+    const v = parseVcf(vcfHead + 'Gm01\t01000\t.\tA\tG\t.\t.\t.\tGT\t0/1\n');
+    expect(Array.from(v.markers.posBp)).toEqual([1000]);
+    expect(v.markers.ids).toEqual(['Gm01_1000']);
+    expect(() =>
+      parseVcf(
+        vcfHead + 'Gm01\t01000\t.\tA\tG\t.\t.\t.\tGT\t0/1\nGm01\t1000\t.\tA\tG\t.\t.\t.\tGT\t0/1\n',
+      ),
+    ).toThrow('duplicate marker id: Gm01_1000');
+    expect(Object.is(parsePosition('-0.0', 'p'), 0)).toBe(true);
+  });
+
+  it('markers.csv: whole floats accepted, a fraction rejected naming the line', () => {
+    const map = parseMarkerMap('marker_id,chrom,pos_bp,cm\nm1,6,1000.0,0.5\nm2,6,2e3,1.25\n');
+    expect(map.get('m1')?.posBp).toBe(1000);
+    expect(map.get('m2')).toEqual({ chrom: 'Gm06', posBp: 2000, cm: 1.25 });
+    expect(() =>
+      parseMarkerMap('marker_id,chrom,pos_bp,cm\nm1,6,1000,0.5\nm2,6,2000.25,\n'),
+    ).toThrow('markers.csv line 3: invalid position "2000.25"');
   });
 });

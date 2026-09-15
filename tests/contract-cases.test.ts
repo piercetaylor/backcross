@@ -36,6 +36,7 @@ const ERROR_MESSAGES: Record<ErrorKind, RegExp> = {
   'genotypes.no_gt': /FORMAT has no GT field/,
   'genotypes.no_header': /no #CHROM header|no header row|"rs#" not found/,
   'genotypes.unknown_cell': /unexpected cell/,
+  'genotypes.invalid_position': /invalid position/,
 };
 
 const caseNames = readdirSync(CASES).sort();

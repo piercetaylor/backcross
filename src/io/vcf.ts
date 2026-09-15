@@ -7,7 +7,7 @@
  * ignored (filtering belongs upstream, e.g. bcftools). Phasing is ignored
  * (0|1 and 0/1 are the same unordered pair). Haploid calls are treated as
  * homozygous. Multiallelic ALT is supported (allele index = position in
- * REF,ALT list). Records with ID "." or empty get `${chrom}_${pos}` from CHROM as written, before normalisation (contract 1.1.0).
+ * REF,ALT list). Records with ID "." or empty get `${chrom}_${pos}` from CHROM as written and POS as the parsed integer (contract 1.2.0).
  *
  * The per-line body lives in VcfLineParser, which never sees more than one
  * line, so the streaming loader (loaders.ts, parseGenotypesSource) can feed
@@ -24,6 +24,7 @@
 import { MISSING_ALLELE } from '../core/types.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
+import { parsePosition } from './position.ts';
 
 export class VcfLineParser {
   private builder: GenotypeBuilder | null = null;
@@ -56,8 +57,8 @@ export class VcfLineParser {
     const f = line.split('\t');
     if (f.length < 10) throw new Error(`VCF line ${lineNo}: expected FORMAT and sample columns`);
     const chrom = f[0] as string;
-    const pos = Number(f[1]);
-    const id = f[2] === '.' || f[2] === '' ? `${chrom}_${f[1]}` : (f[2] as string);
+    const pos = parsePosition(f[1] as string, `VCF line ${lineNo}`, 'digits');
+    const id = f[2] === '.' || f[2] === '' ? `${chrom}_${pos}` : (f[2] as string);
     const ref = f[3] as string;
     const alt = f[4] as string;
     const alleles = alt === '.' || alt === '' ? [ref] : [ref, ...alt.split(',')];

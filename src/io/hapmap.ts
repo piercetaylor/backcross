@@ -7,7 +7,7 @@
  * "AT"), a slash or bar pair ("A/T"), one nucleotide, or one IUPAC code
  * (R, Y, S, W, K, M) read as its two nucleotides; missing = "", "N", "NN",
  * "NA", "-", "--", ".", "./.", ".|.", "X", "XX" (contract 1.1.0); any other
- * cell is an error naming the cell. The allele list is seeded from the
+ * cell is an error naming the cell. `pos` goes through position.ts (contract 1.2.0). The allele list is seeded from the
  * `alleles` column ("A/T") and extended when a cell carries another
  * nucleotide.
  *
@@ -16,6 +16,7 @@
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import { HAPMAP_MISSING, parseNucleotideCell, symbolIndex } from './calls.ts';
+import { parsePosition } from './position.ts';
 
 export function parseHapMap(text: string): ParsedGenotypes {
   const lines = text.split(/\r?\n/);
@@ -39,7 +40,7 @@ export function parseHapMap(text: string): ParsedGenotypes {
       .map((a) => a.trim())
       .filter((a) => a.length > 0 && a !== 'N');
     const chrom = f[2] as string;
-    const pos = Number(f[3]);
+    const pos = parsePosition(f[3] as string, `HapMap line ${i + 1}`);
     const offset = builder.push(id, chrom, pos, alleles);
     for (let s = 0; s < nSamples; s++) {
       const pair = parseNucleotideCell(f[11 + s] as string, HAPMAP_MISSING, `HapMap line ${i + 1}`);

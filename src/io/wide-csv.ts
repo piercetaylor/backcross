@@ -14,6 +14,9 @@
  * Mode 'auto' scans every row of the file (no row window) and selects coded when
  * every cell outside the nucleotide missing set is in {A, B, H} and at least one
  * B or H occurs; otherwise nucleotide.
+ * A row whose every cell is empty or whitespace is skipped; in any other row
+ * an empty marker_id or an invalid pos_bp (position.ts) is an error naming
+ * the line (contract 1.2.0).
  *
  * Interface: parseWideCsv(text, mode = 'auto') -> ParsedGenotypes.
  */
@@ -21,6 +24,7 @@ import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import { NUCLEOTIDE_MISSING, parseNucleotideCell, symbolIndex } from './calls.ts';
 import { forEachRow, normalizeHeader, requireColumns, sniffDelimiter } from './csv.ts';
+import { parsePosition } from './position.ts';
 
 export type WideCsvMode = 'auto' | 'nucleotide' | 'coded';
 
@@ -70,16 +74,19 @@ export function parseWideCsv(text: string, mode: WideCsvMode = 'auto'): ParsedGe
       );
       return;
     }
+    if (f.every((c) => c.trim() === '')) return;
     if (f.length !== sampleCols.length + 3) {
       throw new Error(
         `wide genotype CSV line ${lineNumber}: expected ${sampleCols.length + 3} fields, got ${f.length}`,
       );
     }
+    const id = (f[idCol] as string).trim();
+    if (id === '') throw new Error(`wide genotype CSV line ${lineNumber}: empty marker_id`);
     const alleles = resolved === 'coded' ? ['A', 'B'] : [];
     const offset = builder.push(
-      (f[idCol] as string).trim(),
+      id,
       f[chromCol] as string,
-      Number(f[posCol]),
+      parsePosition(f[posCol] as string, `wide genotype CSV line ${lineNumber}`),
       alleles,
     );
     for (let s = 0; s < sampleCols.length; s++) {

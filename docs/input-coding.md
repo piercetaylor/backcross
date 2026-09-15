@@ -1,6 +1,6 @@
 # Input coding reference
 
-What each genotype format accepts, reads as missing, and rejects, under contract 1.1.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are soybean-only in this version (`Gm01`..`Gm20`; any other name is kept as written).
+What each genotype format accepts, reads as missing, and rejects, under contract 1.2.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are soybean-only in this version (`Gm01`..`Gm20`; any other name is kept as written).
 
 | Format               | Accepted calls                                                                                                                               | Missing                                                          | Rejected (error naming the line and cell)                                                                             |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -13,4 +13,4 @@ A wide CSV is read as coded when every cell outside the nucleotide missing list 
 
 A pair of one nucleotide and one of `N`, `-`, `.` (`AN`, `A-`) is read as missing by both tools today but is not yet part of the contract.
 
-Crop-specific token profiles (TASSEL, SoyBase allele reports with `H`/`U`, DArT, Axiom, your own) arrive with contract 1.2.0; until then token meaning follows the file format, not the crop.
+Crop-specific token profiles (TASSEL, SoyBase allele reports with `H`/`U`, DArT, Axiom, your own) arrive with contract 1.3.0; until then token meaning follows the file format, not the crop.

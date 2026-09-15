@@ -1,7 +1,7 @@
 /**
  * markers.csv parser (contract/data-contract.md, "markers.csv"). Optional input.
  *
- * Responsibility: read marker_id, chrom, pos_bp and optional cm. Values
+ * Responsibility: read marker_id, chrom, pos_bp (position.ts, contract 1.2.0) and optional cm. Values
  * override the positions carried in the genotype file when they differ (the
  * genotype file may be positioned on another assembly); a mismatch count is
  * reported as a warning. Markers absent from the map keep their genotype-file
@@ -12,6 +12,7 @@
 import { normalizeChromosome } from '../core/chromosomes.ts';
 import type { MarkerTable } from '../core/types.ts';
 import { forEachRow, normalizeHeader, requireColumns, sniffDelimiter } from './csv.ts';
+import { parsePosition } from './position.ts';
 
 export interface MarkerMapEntry {
   chrom: string;
@@ -37,9 +38,7 @@ export function parseMarkerMap(text: string): MarkerMap {
     const id = (f[h.indexOf('marker_id')] ?? '').trim();
     if (id === '') throw new Error(`markers.csv line ${lineNumber}: empty marker_id`);
     if (map.has(id)) throw new Error(`markers.csv line ${lineNumber}: duplicate marker_id ${id}`);
-    const posBp = Number(f[h.indexOf('pos_bp')]);
-    if (!Number.isFinite(posBp))
-      throw new Error(`markers.csv line ${lineNumber}: invalid pos_bp for ${id}`);
+    const posBp = parsePosition(f[h.indexOf('pos_bp')] ?? '', `markers.csv line ${lineNumber}`);
     const cmRaw = hasCm ? (f[h.indexOf('cm')] ?? '').trim() : '';
     const cm = cmRaw === '' || cmRaw.toUpperCase() === 'NA' ? NaN : Number(cmRaw);
     map.set(id, { chrom: normalizeChromosome(f[h.indexOf('chrom')] as string), posBp, cm });

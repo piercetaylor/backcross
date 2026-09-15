@@ -1,4 +1,4 @@
-# Cross-crop genotype tokens and chromosome nomenclature (research for contract 1.2.0)
+# Cross-crop genotype tokens and chromosome nomenclature (research for contract 1.3.0)
 
 Read-only research, 2026-09-14. Local context: `isoline-browser/docs/contract-1.1-phases.md` line 47 (cross-crop decisions) and `src/core/chromosomes.ts` (soybean-only Gm01–Gm20, alias regex `(gm|chr|chromosome|lg)?[_ -]?0*N`).
 Tags: [web] = page actually fetched; [search] = search-engine snippet only, not verified against the page; [unverified] = no source reached.

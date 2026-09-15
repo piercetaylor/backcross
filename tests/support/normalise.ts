@@ -36,7 +36,8 @@ export type ErrorKind =
   | 'genotypes.duplicate_marker'
   | 'genotypes.no_gt'
   | 'genotypes.no_header'
-  | 'genotypes.unknown_cell';
+  | 'genotypes.unknown_cell'
+  | 'genotypes.invalid_position';
 
 /** contract/cases/<case>/expected-error.json */
 export interface ContractErrorExpect {

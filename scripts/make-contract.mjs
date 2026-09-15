@@ -22,6 +22,12 @@
  * whole-file-detection case, which would exceed the 4 KB limit and is
  * unit-tested in each repository instead.
  *
+ * Version 1.2.0 (docs/adr/0014, amendment of 2026-09-14): whole-valued
+ * float and exponent positions read as integers in wide CSV, markers.csv
+ * and HapMap; VCF POS decimal digits only, and an ID-less VCF record named
+ * from the parsed POS; a fractional or negative position rejected with the error kind
+ * genotypes.invalid_position; an all-empty wide-CSV row skipped.
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -1162,6 +1168,198 @@ const cases = [
       'samples.csv': SAMPLES_RP_DONOR_L1,
     },
     error: 'genotypes.unknown_cell',
+  },
+  {
+    // Whole-valued positions written as a float, in exponent notation or with a leading `+`
+    // are the integer, in the genotype file and in markers.csv (contract 1.2.0). No override:
+    // every markers.csv position equals the genotype-file one, so only cm is added.
+    name: 'wide-position-whole-float',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'f1,Gm06,1000.0,A,G,A',
+        'f2,Gm06,2e3,C,T,C/T',
+        'f3,Gm06,3.0E3,G,A,A',
+        'f4,Gm06,+4000,T,C,T',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+      'markers.csv': lines(
+        'marker_id,chrom,pos_bp,cm',
+        'f1,Gm06,1000,0.5',
+        'f2,Gm06,2000.0,1.25',
+        'f3,Gm06,3e3,2.5',
+        'f4,Gm06,4.0E3,3.75',
+      ),
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm06'],
+      markers: [
+        { id: 'f1', chrom: 'Gm06', posBp: 1000, cm: 0.5 },
+        { id: 'f2', chrom: 'Gm06', posBp: 2000, cm: 1.25 },
+        { id: 'f3', chrom: 'Gm06', posBp: 3000, cm: 2.5 },
+        { id: 'f4', chrom: 'Gm06', posBp: 4000, cm: 3.75 },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        L1: [
+          ['A', 'A'],
+          ['C', 'T'],
+          ['A', 'A'],
+          ['T', 'T'],
+        ],
+      },
+    },
+  },
+  {
+    // HapMap `pos` written as 1e3 and 2000.0 is 1000 and 2000.
+    name: 'hapmap-position-whole-float',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('g1', 'A/G', 'Gm06', '1e3', ...HAPMAP_FIXED, 'AA', 'GG', 'AG'),
+        tsv('g2', 'C/T', 'Gm06', '2000.0', ...HAPMAP_FIXED, 'CC', 'TT', 'TT'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm06'],
+      markers: [
+        { id: 'g1', chrom: 'Gm06', posBp: 1000, cm: null },
+        { id: 'g2', chrom: 'Gm06', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['T', 'T'],
+        ],
+      },
+    },
+  },
+  {
+    // A VCF record with ID `.` is named from the parsed POS, as bcftools `%CHROM\_%POS` does:
+    // POS written 01000 gives the id Gm06_1000.
+    name: 'vcf-position-digits-id',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '01000', '.', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'x2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1/1'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm06'],
+      markers: [
+        { id: 'Gm06_1000', chrom: 'Gm06', posBp: 1000, cm: null },
+        { id: 'x2', chrom: 'Gm06', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['T', 'T'],
+        ],
+      },
+    },
+  },
+  {
+    // VCF POS is an Integer: `1e3` is rejected even though HapMap and CSV accept it.
+    name: 'err-vcf-position-float',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1e3', 'x1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_position',
+  },
+  {
+    // A position with a non-zero fraction is an error naming the line and the value.
+    name: 'err-position-fraction',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'u1,Gm02,1000,A,G,A',
+        'u2,Gm02,100.7,A,G,G',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_position',
+  },
+  {
+    // A row whose every cell is empty (`,,,,,`) is skipped; the two real rows load.
+    name: 'wide-empty-row-skipped',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        ',,,,,',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [
+          ['A', 'A'],
+          ['T', 'T'],
+        ],
+      },
+    },
   },
 ];
 
