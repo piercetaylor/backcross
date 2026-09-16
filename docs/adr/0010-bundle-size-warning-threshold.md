@@ -1,6 +1,6 @@
 # Bundle size: raise the warning threshold to 600 kB, do not split the chunk
 
-Status: accepted. Date: 2026-09-12. Format: MADR 4.0.0 [web] https://adr.github.io/madr/.
+Status: superseded by docs/adr/0016 (2026-09-16). Date: 2026-09-12. Format: MADR 4.0.0 [web] https://adr.github.io/madr/.
 
 ## Context and Problem Statement
 

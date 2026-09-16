@@ -87,10 +87,23 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: 'es2022',
     sourcemap: true,
-    // Set just above the 534 kB main chunk that react-aria-components produced
-    // in M2.5, so the warning still fires on the next heavy dependency rather
-    // than being silenced. It measures parse cost, not transfer. docs/adr/0010.
-    chunkSizeWarningLimit: 600,
+    // Dependencies in their own chunks, so Vite's default 500 kB chunk warning
+    // measures this repository's code rather than React Aria's (docs/adr/0016).
+    // Group tests match module ids; [\\/] covers both path separators.
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 20,
+            },
+            { name: 'vendor', test: /[\\/]node_modules[\\/]/, priority: 10 },
+          ],
+        },
+      },
+    },
   },
   test: {
     // `npm test` is the node project alone; browser-mode tests run through
