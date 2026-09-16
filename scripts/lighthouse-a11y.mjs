@@ -65,7 +65,11 @@ async function main() {
   const url = `http://${HOST}:${PORT}/`;
   let chrome;
   try {
-    chrome = await launch({ chromePath, chromeFlags: ['--headless', '--disable-gpu'] });
+    // Ubuntu 24.04 runners forbid the unprivileged user namespaces Chromium's
+    // sandbox needs, so it exits at once and the debugging port refuses the
+    // connection. The page audited is our own build on 127.0.0.1.
+    const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : [];
+    chrome = await launch({ chromePath, chromeFlags: ['--headless', '--disable-gpu', ...sandbox] });
   } catch (error) {
     console.error(error);
     await server.close();
