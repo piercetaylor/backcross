@@ -15,7 +15,8 @@
  * splits an in-memory text and `parseVcfLines` drains an async iterable of
  * lines; both go through the same class. Callers inflate first
  * (decompress.ts). Lines arrive without their `\n`; a trailing `\r` is
- * stripped here too.
+ * stripped here too. Blank and whitespace-only lines are skipped; a `#` line
+ * after `#CHROM` is a data line and fails the field count (contract 1.3.0).
  *
  * Interface: class VcfLineParser { pushLine(line); finish() -> ParsedGenotypes },
  * parseVcf(text) -> ParsedGenotypes,
@@ -25,6 +26,9 @@ import { MISSING_ALLELE } from '../core/types.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import { parsePosition } from './position.ts';
+
+/** A line that is empty or holds only spaces and tabs (contract 1.3.0). */
+const BLANK = /^[ \t]*$/;
 
 export class VcfLineParser {
   private builder: GenotypeBuilder | null = null;
@@ -40,7 +44,11 @@ export class VcfLineParser {
     const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     this.lineNo++;
     const lineNo = this.lineNo;
-    if (line.length === 0) return;
+    if (BLANK.test(line)) return;
+    if (this.builder !== null && line.startsWith('#') && !line.startsWith('##')) {
+      // A second #CHROM line or any other single-# line after the header (contract 1.3.0).
+      throw new Error(`VCF line ${lineNo}: line beginning with "#" after the #CHROM header`);
+    }
     if (line.startsWith('##')) {
       if (line.startsWith('##fileformat=')) this.sawFileformat = true;
       return;

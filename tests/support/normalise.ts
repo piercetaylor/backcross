@@ -30,6 +30,9 @@ export interface ContractExpect {
 
 export type ErrorKind =
   | 'manifest.roles'
+  | 'genotypes.column_count'
+  | 'delimited.unterminated_quote'
+  | 'genotypes.repeated_header'
   | 'manifest.unknown_role'
   | 'manifest.duplicate_sample'
   | 'dataset.sample_missing'

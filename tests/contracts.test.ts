@@ -84,9 +84,10 @@ describe('delimited text', () => {
     expect(parseLine('a,"b,c","d ""e""",f', ',')).toEqual(['a', 'b,c', 'd "e"', 'f']);
   });
 
-  it('skips blank and comment lines and CRLF endings', () => {
+  it('skips blank lines, keeps # rows as data, and handles CRLF endings (contract 1.3.0)', () => {
     expect(parseDelimited('x,y\r\n\r\n# note\r\n1,2\r\n')).toEqual([
       ['x', 'y'],
+      ['# note'],
       ['1', '2'],
     ]);
   });

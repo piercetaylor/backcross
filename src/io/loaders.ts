@@ -18,7 +18,8 @@
  * `detectGenotypeFormat` on a head window: lines are buffered until they
  * reach HEAD_WINDOW_CHARS (4096, the window `detectGenotypeFormat` reads) or
  * the stream ends, and joined with `\n`, so both entries see the same head
- * and agree. (For a CRLF file the stripped `\r`s let the stream window reach
+ * and agree. Leading blank lines are removed from the head before the
+ * content tests (contract 1.3.0). (For a CRLF file the stripped `\r`s let the stream window reach
  * a few characters further than the text window; only a header straddling
  * character 4096 could be detected differently.) A VCF is then parsed line
  * by line, so the inflated text is never held; HapMap and wide CSV are
@@ -49,18 +50,21 @@ export type GenotypeFormat = 'vcf' | 'hapmap' | 'wide-csv';
 /** Characters of the decoded text `detectGenotypeFormat` inspects. */
 const HEAD_WINDOW_CHARS = 4096;
 
+/** Blank lines before the first content line; detection reads the first non-blank line (contract 1.3.0). */
+const LEADING_BLANK_LINES = /^(?:[ \t]*\r?\n)+/;
+
 export function detectGenotypeFormat(fileName: string, text: string): GenotypeFormat {
   const name = fileName.toLowerCase().replace(/\.(gz|bgz)$/, '');
   if (name.endsWith('.vcf')) return 'vcf';
   if (name.endsWith('.hmp.txt') || name.endsWith('.hmp') || name.endsWith('.hapmap'))
     return 'hapmap';
   if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
-    const head = text.slice(0, HEAD_WINDOW_CHARS);
+    const head = text.slice(0, HEAD_WINDOW_CHARS).replace(LEADING_BLANK_LINES, '');
     if (head.startsWith('##fileformat=VCF') || head.includes('\n#CHROM')) return 'vcf';
     if (/^rs#/i.test(head)) return 'hapmap';
     return 'wide-csv';
   }
-  const head = text.slice(0, HEAD_WINDOW_CHARS);
+  const head = text.slice(0, HEAD_WINDOW_CHARS).replace(LEADING_BLANK_LINES, '');
   if (head.startsWith('##fileformat=VCF')) return 'vcf';
   if (/^rs#/i.test(head)) return 'hapmap';
   return 'wide-csv';

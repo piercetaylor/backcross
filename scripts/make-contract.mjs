@@ -28,6 +28,14 @@
  * from the parsed POS; a fractional or negative position rejected with the error kind
  * genotypes.invalid_position; an all-empty wide-CSV row skipped.
  *
+ * Version 1.3.0 (docs/adr/0018): blank and whitespace-only lines and
+ * all-empty delimited rows skipped in every input, including before the
+ * header (so the delimiter sniff reads the first non-blank line); `#` is
+ * not a comment marker (a `#` row is data in the delimited files, an error
+ * before the HapMap header, and a wrong-field-count data line after the VCF
+ * `#CHROM` line, error kind genotypes.repeated_header); a quoted line break inside a samples.csv field; and the
+ * error kind genotypes.column_count. No case carries two faults.
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -48,7 +56,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'contract');
 const CASES = join(ROOT, 'cases');
 const VERSION = readFileSync(join(ROOT, 'VERSION'), 'utf8').trim();
 const MAX_CASE_BYTES = 4096;
-const MAX_CONTRACT_BYTES = 64 * 1024;
+// Raised from 64 KiB in contract 1.3.0 (docs/adr/0018): profiles, crop schemes and their cases follow.
+const MAX_CONTRACT_BYTES = 128 * 1024;
 
 const lines = (...rows) => rows.join('\n') + '\n';
 const tsv = (...cells) => cells.join('\t');
@@ -160,6 +169,32 @@ const COMPRESSED_VCF_EXPECT = {
       ['A', 'A'],
     ],
     L1: [['A', 'C'], null, ['A', 'A']],
+  },
+};
+
+/** Contract 1.3.0 cases: markers r1 (Gm02, 1000) and r2 (Gm02, 2000), written by hand. */
+const R1_R2_EXPECT = {
+  contractVersion: VERSION,
+  coded: false,
+  chromosomeOrder: ['Gm02'],
+  markers: [
+    { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+    { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+  ],
+  sampleIds: ['RP', 'DONOR', 'L1'],
+  calls: {
+    RP: [
+      ['A', 'A'],
+      ['C', 'C'],
+    ],
+    DONOR: [
+      ['G', 'G'],
+      ['T', 'T'],
+    ],
+    L1: [
+      ['A', 'A'],
+      ['T', 'T'],
+    ],
   },
 };
 
@@ -1357,6 +1392,399 @@ const cases = [
         L1: [
           ['A', 'A'],
           ['T', 'T'],
+        ],
+      },
+    },
+  },
+  // ---- contract 1.3.0: lines and rows (docs/adr/0018) ----
+  {
+    // Empty, space-only and tab-only lines before, inside and after the VCF header are skipped.
+    name: 'vcf-blank-lines-skipped',
+    files: {
+      'genotypes.vcf': lines(
+        '',
+        '##fileformat=VCFv4.2',
+        '   ',
+        '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tRP\tDONOR\tL1',
+        'Gm02\t1000\tr1\tA\tG\t.\t.\t.\tGT\t0/0\t1/1\t0/0',
+        '\t\t',
+        'Gm02\t2000\tr2\tC\tT\t.\t.\t.\tGT\t0/0\t1/1\t1/1',
+        ' ',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: R1_R2_EXPECT,
+  },
+  {
+    // A space-only line before the rs# header and blank lines in the body are skipped.
+    name: 'hapmap-blank-lines-skipped',
+    files: {
+      'genotypes.hmp.txt': lines(
+        '  ',
+        tsv(
+          'rs#',
+          'alleles',
+          'chrom',
+          'pos',
+          'strand',
+          'assembly#',
+          'center',
+          'protLSID',
+          'assayLSID',
+          'panelLSID',
+          'QCcode',
+          'RP',
+          'DONOR',
+          'L1',
+        ),
+        tsv('r1', 'A/G', 'Gm02', '1000', '+', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'AA', 'GG', 'AA'),
+        '\t\t\t\t\t\t\t\t\t\t\t\t\t',
+        '',
+        tsv('r2', 'C/T', 'Gm02', '2000', '+', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'CC', 'TT', 'TT'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: R1_R2_EXPECT,
+  },
+  {
+    // A space-only line before the header: the delimiter is sniffed from the header.
+    name: 'wide-blank-lines-skipped',
+    files: {
+      'genotypes.csv': lines(
+        '   ',
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        '  ',
+        'r2,Gm02,2000,C,T,T',
+        '',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: R1_R2_EXPECT,
+  },
+  {
+    // Tab-delimited with a space-only first line: a sniff that read line 1 would choose `,`.
+    name: 'wide-tab-blank-line-before-header',
+    files: {
+      'genotypes.csv': lines(
+        '   ',
+        tsv('marker_id', 'chrom', 'pos_bp', 'RP', 'DONOR', 'L1'),
+        tsv('r1', 'Gm02', '1000', 'A', 'G', 'A'),
+        '  ',
+        tsv('r2', 'Gm02', '2000', 'C', 'T', 'T'),
+        '',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: R1_R2_EXPECT,
+  },
+  {
+    // samples.csv: an empty line before the header, an all-empty row and a space-only line are skipped.
+    name: 'samples-blank-rows-skipped',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': lines(
+        '',
+        'sample_id,line_name,role,generation,family_id,notes',
+        'RP,,recurrent_parent,,,',
+        ',,,,,',
+        'DONOR,,donor_parent,,,',
+        '   ',
+        'L1,,candidate,,,',
+      ),
+    },
+    expect: R1_R2_EXPECT,
+  },
+  {
+    // markers.csv: an all-empty row and a space-only line are skipped; the map still applies.
+    name: 'markers-blank-rows-skipped',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+      'markers.csv': lines(
+        'marker_id,chrom,pos_bp,cm',
+        ',,,',
+        'r1,Gm02,1500,1.5',
+        '   ',
+        'r2,Gm02,2000,2.5',
+      ),
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1500, cm: 1.5 },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: 2.5 },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [
+          ['A', 'A'],
+          ['T', 'T'],
+        ],
+      },
+    },
+  },
+  {
+    // `#` is not a comment marker: a wide-CSV row beginning with `#` is a marker named `#r2`.
+    name: 'wide-hash-row-is-data',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        '#r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: '#r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [
+          ['A', 'A'],
+          ['T', 'T'],
+        ],
+      },
+    },
+  },
+  {
+    // A quoted notes field holding a line break is one row (RFC 4180 section 2, rule 6).
+    name: 'samples-quoted-newline',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv':
+        'sample_id,line_name,role,generation,family_id,notes\nRP,,recurrent_parent,,,\nDONOR,,donor_parent,,,\nL1,"NIL 1",candidate,BC5F3,FAM1,"first line\nsecond line"\n',
+    },
+    expect: R1_R2_EXPECT,
+  },
+  {
+    // A samples.csv row beginning with `#` is data: `#L1` names a sample with no genotype column.
+    name: 'err-samples-hash-row',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': lines(
+        'sample_id,role',
+        'RP,recurrent_parent',
+        'DONOR,donor_parent',
+        '#L1,candidate',
+      ),
+    },
+    error: 'dataset.sample_missing',
+  },
+  {
+    // HapMap has no comment lines: the first non-blank line must be the rs# header.
+    name: 'err-hapmap-hash-before-header',
+    files: {
+      'genotypes.hmp.txt': lines(
+        '# exported 2026-09-16',
+        tsv(
+          'rs#',
+          'alleles',
+          'chrom',
+          'pos',
+          'strand',
+          'assembly#',
+          'center',
+          'protLSID',
+          'assayLSID',
+          'panelLSID',
+          'QCcode',
+          'RP',
+          'DONOR',
+          'L1',
+        ),
+        tsv('r1', 'A/G', 'Gm02', '1000', '+', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'AA', 'GG', 'AA'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.no_header',
+  },
+  {
+    // A `#` line after #CHROM is a data line with one field: the wrong field count.
+    name: 'err-vcf-hash-line-after-header',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tRP\tDONOR\tL1',
+        'Gm02\t1000\tr1\tA\tG\t.\t.\t.\tGT\t0/0\t1/1\t0/0',
+        '# a note',
+        'Gm02\t2000\tr2\tC\tT\t.\t.\t.\tGT\t0/0\t1/1\t1/1',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.repeated_header',
+  },
+  {
+    // A `"` that is not at the start of a field is a literal character: `6" pot` does not open a quote.
+    name: 'samples-midfield-quote-literal',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': lines(
+        'sample_id,line_name,role,generation,family_id,notes',
+        'RP,,recurrent_parent,,,',
+        'L1,6" pot,candidate,,,',
+        'DONOR,,donor_parent,,,',
+      ),
+      'markers.csv': lines('marker_id,chrom,pos_bp,cm', 'r1,Gm02,1000,1.5', 'r2,Gm02,2000,2.5'),
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: 1.5 },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: 2.5 },
+      ],
+      sampleIds: ['RP', 'L1', 'DONOR'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        L1: [
+          ['A', 'A'],
+          ['T', 'T'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+      },
+    },
+  },
+  {
+    // A quote opened at the start of a field on line 3 and never closed is an error naming line 3.
+    name: 'err-markers-unterminated-quote',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,A',
+        'r2,Gm02,2000,C,T,T',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+      'markers.csv': lines('marker_id,chrom,pos_bp,cm', 'r1,Gm02,1000,1.5', 'r2,Gm02,"2000,2.5'),
+    },
+    error: 'delimited.unterminated_quote',
+  },
+  {
+    // A second #CHROM line after the header is an error, even with the right field count.
+    name: 'err-vcf-second-header',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tRP\tDONOR\tL1',
+        'Gm02\t1000\tr1\tA\tG\t.\t.\t.\tGT\t0/0\t1/1\t0/0',
+        '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tRP\tDONOR\tL1',
+        'Gm02\t2000\tr2\tC\tT\t.\t.\t.\tGT\t0/0\t1/1\t1/1',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.repeated_header',
+  },
+  {
+    // A no-break space (U+00A0) is not a blank character: that line is the header, and it is not rs#.
+    name: 'err-hapmap-nbsp-line-before-header',
+    files: {
+      'genotypes.hmp.txt': lines(
+        String.fromCharCode(0xa0),
+        tsv(
+          'rs#',
+          'alleles',
+          'chrom',
+          'pos',
+          'strand',
+          'assembly#',
+          'center',
+          'protLSID',
+          'assayLSID',
+          'panelLSID',
+          'QCcode',
+          'RP',
+          'DONOR',
+          'L1',
+        ),
+        tsv('r1', 'A/G', 'Gm02', '1000', '+', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'AA', 'GG', 'AA'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.no_header',
+  },
+  {
+    // A coded A/B/H file with a blank first line is still detected as coded: the header is not scanned as cells.
+    name: 'wide-coded-blank-line-before-header',
+    files: {
+      'genotypes.csv': lines(
+        '   ',
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,B,H',
+        'r2,Gm02,2000,A,B,B',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: true,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['B', 'B'],
+          ['B', 'B'],
+        ],
+        L1: [
+          ['A', 'B'],
+          ['B', 'B'],
         ],
       },
     },

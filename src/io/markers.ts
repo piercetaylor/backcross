@@ -5,7 +5,8 @@
  * override the positions carried in the genotype file when they differ (the
  * genotype file may be positioned on another assembly); a mismatch count is
  * reported as a warning. Markers absent from the map keep their genotype-file
- * position and get cm = NaN.
+ * position and get cm = NaN. Blank lines and rows whose every field is blank
+ * are skipped by csv.ts, and a `#` row is data (contract 1.3.0).
  *
  * Interface: parseMarkerMap(text) -> MarkerMap; applyMarkerMap(markers, map) -> warnings[].
  */
@@ -27,22 +28,27 @@ export function parseMarkerMap(text: string): MarkerMap {
   let header: string[] | null = null;
   let hasCm = false;
   const map: MarkerMap = new Map();
-  forEachRow(text, delimiter, (f, lineNumber) => {
-    if (header === null) {
-      header = normalizeHeader(f);
-      requireColumns(header, ['marker_id', 'chrom', 'pos_bp'], 'markers.csv');
-      hasCm = header.includes('cm');
-      return;
-    }
-    const h = header;
-    const id = (f[h.indexOf('marker_id')] ?? '').trim();
-    if (id === '') throw new Error(`markers.csv line ${lineNumber}: empty marker_id`);
-    if (map.has(id)) throw new Error(`markers.csv line ${lineNumber}: duplicate marker_id ${id}`);
-    const posBp = parsePosition(f[h.indexOf('pos_bp')] ?? '', `markers.csv line ${lineNumber}`);
-    const cmRaw = hasCm ? (f[h.indexOf('cm')] ?? '').trim() : '';
-    const cm = cmRaw === '' || cmRaw.toUpperCase() === 'NA' ? NaN : Number(cmRaw);
-    map.set(id, { chrom: normalizeChromosome(f[h.indexOf('chrom')] as string), posBp, cm });
-  });
+  forEachRow(
+    text,
+    delimiter,
+    (f, lineNumber) => {
+      if (header === null) {
+        header = normalizeHeader(f);
+        requireColumns(header, ['marker_id', 'chrom', 'pos_bp'], 'markers.csv');
+        hasCm = header.includes('cm');
+        return;
+      }
+      const h = header;
+      const id = (f[h.indexOf('marker_id')] ?? '').trim();
+      if (id === '') throw new Error(`markers.csv line ${lineNumber}: empty marker_id`);
+      if (map.has(id)) throw new Error(`markers.csv line ${lineNumber}: duplicate marker_id ${id}`);
+      const posBp = parsePosition(f[h.indexOf('pos_bp')] ?? '', `markers.csv line ${lineNumber}`);
+      const cmRaw = hasCm ? (f[h.indexOf('cm')] ?? '').trim() : '';
+      const cm = cmRaw === '' || cmRaw.toUpperCase() === 'NA' ? NaN : Number(cmRaw);
+      map.set(id, { chrom: normalizeChromosome(f[h.indexOf('chrom')] as string), posBp, cm });
+    },
+    'markers.csv',
+  );
   if (header === null) throw new Error('markers.csv: no header row');
   return map;
 }

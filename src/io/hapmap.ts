@@ -9,7 +9,9 @@
  * "NA", "-", "--", ".", "./.", ".|.", "X", "XX" (contract 1.1.0); any other
  * cell is an error naming the cell. `pos` goes through position.ts (contract 1.2.0). The allele list is seeded from the
  * `alleles` column ("A/T") and extended when a cell carries another
- * nucleotide.
+ * nucleotide. Blank and whitespace-only lines are skipped wherever they occur;
+ * the header is the first line that is not blank and must start with "rs#";
+ * there are no comment lines (contract 1.3.0).
  *
  * Interface: parseHapMap(text) -> ParsedGenotypes.
  */
@@ -18,10 +20,19 @@ import type { ParsedGenotypes } from './builder.ts';
 import { HAPMAP_MISSING, parseNucleotideCell, symbolIndex } from './calls.ts';
 import { parsePosition } from './position.ts';
 
+/** A line that is empty or holds only spaces and tabs (contract 1.3.0). */
+const BLANK_LINE = /^[ \t]*$/;
+
 export function parseHapMap(text: string): ParsedGenotypes {
   const lines = text.split(/\r?\n/);
-  const headerIdx = lines.findIndex((l) => l.toLowerCase().startsWith('rs#'));
+  const headerIdx = lines.findIndex((l) => !BLANK_LINE.test(l));
   if (headerIdx === -1) throw new Error('HapMap: header line starting with "rs#" not found');
+  const headerLine = lines[headerIdx] as string;
+  if (!headerLine.toLowerCase().startsWith('rs#')) {
+    throw new Error(
+      `HapMap: header line starting with "rs#" not found (line ${headerIdx + 1} is "${headerLine.slice(0, 40)}")`,
+    );
+  }
   const header = (lines[headerIdx] as string).split('\t');
   if (header.length < 12) throw new Error('HapMap: fewer than 12 columns (11 fixed + taxa)');
   const builder = new GenotypeBuilder(header.slice(11));
@@ -29,7 +40,7 @@ export function parseHapMap(text: string): ParsedGenotypes {
 
   for (let i = headerIdx + 1; i < lines.length; i++) {
     const line = lines[i] as string;
-    if (line.length === 0 || line.startsWith('#')) continue;
+    if (BLANK_LINE.test(line)) continue;
     const f = line.split('\t');
     if (f.length !== header.length) {
       throw new Error(`HapMap line ${i + 1}: ${f.length} columns, header has ${header.length}`);

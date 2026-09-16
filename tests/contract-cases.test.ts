@@ -37,6 +37,10 @@ const ERROR_MESSAGES: Record<ErrorKind, RegExp> = {
   'genotypes.no_header': /no #CHROM header|no header row|"rs#" not found/,
   'genotypes.unknown_cell': /unexpected cell/,
   'genotypes.invalid_position': /invalid position/,
+  'genotypes.column_count':
+    /columns, header has|sample fields, header has|expected FORMAT and sample columns|expected \d+ fields, got/,
+  'genotypes.repeated_header': /after the #CHROM header/,
+  'delimited.unterminated_quote': /unterminated quoted field/,
 };
 
 const caseNames = readdirSync(CASES).sort();
