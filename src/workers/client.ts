@@ -23,7 +23,9 @@ type PayloadFor<T extends RequestType> = Extract<WorkerRequest, { type: T }>['pa
 // The worker names the result of both 'load' and 'loadBrapi' 'loaded'; every
 // other request type names its result identically to the request. This
 // mapping expresses that one exception without making the common case unwieldy.
-type ResultTypeFor<T extends RequestType> = T extends 'load' | 'loadBrapi' ? 'loaded' : T;
+type ResultTypeFor<T extends RequestType> = T extends 'load' | 'loadBrapi' | 'loadDemo'
+  ? 'loaded'
+  : T;
 
 /** Result type for a given request type, taken from the WorkerResult union. */
 type ResultFor<T extends RequestType> = Extract<WorkerResult, { type: ResultTypeFor<T> }>;

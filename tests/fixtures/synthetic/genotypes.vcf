@@ -1,5 +1,5 @@
 ##fileformat=VCFv4.2
-##source=isoline-browser make-fixture.mjs (synthetic data, Wm82-like coordinates are fictitious)
+##source=backcross make-fixture.mjs (synthetic data, Wm82-like coordinates are fictitious)
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	RP_Williams	DONOR_PI	NIL_01	NIL_02	NIL_03	NIL_04	NIL_05	NIL_06
 Gm01	1000000	syn_Gm01_01	A	T	.	PASS	.	GT	0/0	1/1	0/0	0/0	0/0	0/0	0/0	0/0
 Gm01	3000000	syn_Gm01_02	G	T	.	PASS	.	GT	0/0	1/1	0/0	0/0	0/0	0/0	0/0	0/0

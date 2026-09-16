@@ -13,8 +13,9 @@
  * the worker streams it (docs/adr/0012). samples.csv and markers.csv are
  * transferred as ArrayBuffers.
  *
- * BrAPI (docs/adr/0015): `runLoad` takes a `LoadRequest`, either 'load' or
- * 'loadBrapi'; for 'loadBrapi' the worker fetches the variant set itself, and
+ * BrAPI (docs/adr/0015): `runLoad` takes a `LoadRequest`, 'load', 'loadBrapi'
+ * or 'loadDemo' (docs/adr/0017, whose files the worker fetches); for
+ * 'loadBrapi' the worker fetches the variant set itself, and
  * `brapiLoading` is true from dispatch until its 'loaded' or error, which is
  * what shows the Upload screen's Cancel button. `cancelBrapi` posts
  * 'cancelBrapi', which the worker handles out of band (not queued behind the
@@ -122,6 +123,7 @@ import { LineTableScreen } from './ui/screens/LineTableScreen.tsx';
 import { SummaryScreen } from './ui/screens/SummaryScreen.tsx';
 import type { AnalysisParams, LoadedState, LoadRequest } from './ui/screens/UploadScreen.tsx';
 import { UploadScreen } from './ui/screens/UploadScreen.tsx';
+import { demoLoadPayload, parseDemoParam, unknownDemoMessage } from './ui/demo.ts';
 import { AnalysisClient } from './workers/client.ts';
 import type { GenotypeClassesData } from './workers/protocol.ts';
 import type { BrapiCallSet, BrapiSource } from './io/brapi.ts';
@@ -195,6 +197,22 @@ export function App() {
     };
   }, []);
 
+  // `?demo=<name>` (docs/adr/0017): load that demo on arrival, as the Upload
+  // screen's demo button does, or report an unknown name in the alert.
+  // Declared after the worker effect so the client exists. No run-once
+  // guard: under StrictMode's effect replay the first chain's worker is
+  // terminated and the second chain, on the sequence counter, supersedes it.
+  useEffect(() => {
+    const demo = parseDemoParam(location.search);
+    if (demo.kind === 'unknown') setError(unknownDemoMessage(demo.value));
+    if (demo.kind !== 'demo') return;
+    void runLoad({
+      type: 'loadDemo',
+      payload: demoLoadPayload(demo.name, import.meta.env.BASE_URL, location.href),
+    });
+    // runLoad is recreated every render; this effect runs on mount only.
+  }, []);
+
   function getClient(): AnalysisClient {
     const client = clientRef.current;
     if (client === null) throw new Error('worker not ready');
@@ -208,17 +226,23 @@ export function App() {
     try {
       // The genotype File is cloned by reference, not transferred, and read as
       // a stream in the worker (docs/adr/0012); an ArrayBuffer is transferred.
-      const transfer: Transferable[] = [request.payload.samples];
+      // A demo load carries URLs only; the worker fetches the files.
+      const transfer: Transferable[] = [];
+      if (request.type !== 'loadDemo') {
+        transfer.push(request.payload.samples);
+        if (request.payload.markers !== undefined) transfer.push(request.payload.markers);
+      }
       if (request.type === 'load' && request.payload.genotypes instanceof ArrayBuffer) {
         transfer.push(request.payload.genotypes);
       }
-      if (request.payload.markers !== undefined) transfer.push(request.payload.markers);
       if (request.type === 'loadBrapi') setBrapiLoading(true);
       const client = getClient();
       const loadRes =
         request.type === 'load'
           ? await client.request('load', request.payload, transfer)
-          : await client.request('loadBrapi', request.payload, transfer);
+          : request.type === 'loadBrapi'
+            ? await client.request('loadBrapi', request.payload, transfer)
+            : await client.request('loadDemo', request.payload);
       if (requestSeqRef.current !== seq) return;
       setLoaded(loadRes);
       setRpp(null);

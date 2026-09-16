@@ -18,6 +18,9 @@
  * 'loadBrapi' is the BrAPI counterpart of 'load' (docs/adr/0015): the payload
  * carries a BrapiSource instead of a genotype file, the worker fetches the
  * variant set itself, and samples.csv and markers.csv travel as for 'load'.
+ * 'loadDemo' (docs/adr/0017) carries the URLs of the site's demo files; the
+ * worker fetches them and then runs the 'load' path on the bytes, so a demo
+ * is loaded exactly as the same files picked by hand would be.
  * 'brapiCallSets' pages /callsets only, so the Upload screen can offer the
  * call-set table before a samples.csv exists. 'cancelBrapi' is handled out of
  * band by the worker and aborts the in-flight BrAPI fetch, if any. 'loaded'
@@ -93,6 +96,20 @@ export type WorkerRequest =
       /** BrAPI load (docs/adr/0015): the worker fetches; samples.csv and markers.csv as for 'load'. */
       type: 'loadBrapi';
       payload: { source: BrapiSource; samples: ArrayBuffer; markers?: ArrayBuffer };
+    }
+  | {
+      id: number;
+      /**
+       * Demo load (docs/adr/0017): the worker fetches the three same-origin
+       * files, then loads them exactly as 'load' loads user-picked files.
+       */
+      type: 'loadDemo';
+      payload: {
+        genotypeFileName: string;
+        genotypesUrl: string;
+        samplesUrl: string;
+        markersUrl: string;
+      };
     }
   | {
       id: number;

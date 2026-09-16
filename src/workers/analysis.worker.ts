@@ -19,12 +19,17 @@
  * follow-up requests so the main thread never holds the genotype matrix.
  *
  * 'loadBrapi' fetches a BrAPI v2.1 variant set through `fetchBrapiGenotypes`
- * (src/io/brapi.ts, the only module that calls fetch) and assembles it with
+ * (src/io/brapi.ts; only the worker calls fetch) and assembles it with
  * samples.csv and markers.csv exactly as 'load' does; its `loaded` reports
  * `bytesInflated` 0 and the builder's `peakBuilderBytes`. 'brapiCallSets'
  * pages /callsets only. Both keep an AbortController for the in-flight fetch;
  * 'cancelBrapi' is handled out of band in onmessage, not queued, so it
  * reaches the worker while the load it cancels is still running.
+ *
+ * 'loadDemo' (docs/adr/0017) fetches the site's demo files through the same
+ * `fetchImpl`, from the page's own origin, and hands the bytes to
+ * `loadFiles`, the function 'load' runs, so a demo takes the user-picked
+ * files' path from parse to 'loaded'.
  *
  * `handle` is async because 'load' is. Requests are queued and handled one
  * at a time in arrival order, as the synchronous handler did, so a request
@@ -150,20 +155,47 @@ function loadedResult(
   };
 }
 
+/** The 'load' path: user-picked files, and the demo files once fetched. */
+async function loadFiles(
+  id: number,
+  p: Extract<WorkerRequest, { type: 'load' }>['payload'],
+): Promise<WorkerResponse> {
+  const source =
+    p.genotypes instanceof Blob ? blobBytes(p.genotypes) : bytesOf(new Uint8Array(p.genotypes));
+  const parsed = await parseGenotypesSource(p.genotypeFileName, source);
+  const samples = parseSampleManifest(decoder.decode(p.samples));
+  const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
+  const out = assembleDataset(parsed, samples, map);
+  return loadedResult(id, out, {
+    bytesInflated: parsed.bytesInflated,
+    peakBuilderBytes: parsed.peakBuilderBytes,
+    source: { kind: 'files', genotypeFileName: p.genotypeFileName },
+  });
+}
+
+/** One demo file from the site's own origin; a non-2xx status is an error naming the URL. */
+async function fetchDemoFile(url: string): Promise<Response> {
+  const res = await fetchImpl(url);
+  if (!res.ok) throw new Error(`demo dataset: ${url} returned HTTP ${res.status}`);
+  return res;
+}
+
 async function handle(req: WorkerRequest): Promise<WorkerResponse> {
   switch (req.type) {
-    case 'load': {
+    case 'load':
+      return loadFiles(req.id, req.payload);
+    case 'loadDemo': {
       const p = req.payload;
-      const source =
-        p.genotypes instanceof Blob ? blobBytes(p.genotypes) : bytesOf(new Uint8Array(p.genotypes));
-      const parsed = await parseGenotypesSource(p.genotypeFileName, source);
-      const samples = parseSampleManifest(decoder.decode(p.samples));
-      const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
-      const out = assembleDataset(parsed, samples, map);
-      return loadedResult(req.id, out, {
-        bytesInflated: parsed.bytesInflated,
-        peakBuilderBytes: parsed.peakBuilderBytes,
-        source: { kind: 'files', genotypeFileName: p.genotypeFileName },
+      const [genotypes, samples, markers] = await Promise.all([
+        fetchDemoFile(p.genotypesUrl).then((r) => r.blob()),
+        fetchDemoFile(p.samplesUrl).then((r) => r.arrayBuffer()),
+        fetchDemoFile(p.markersUrl).then((r) => r.arrayBuffer()),
+      ]);
+      return loadFiles(req.id, {
+        genotypeFileName: p.genotypeFileName,
+        genotypes,
+        samples,
+        markers,
       });
     }
     case 'loadBrapi': {

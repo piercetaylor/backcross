@@ -69,7 +69,7 @@ describe('rail before a dataset is loaded', () => {
   });
 
   it('carries the heading and the privacy sentence', () => {
-    expect(html).toContain('Isoline Browser');
+    expect(html).toContain('Backcross');
     expect(html).toContain('Files are processed in this browser tab and never uploaded.');
   });
 });
@@ -107,7 +107,7 @@ describe('collapsed rail', () => {
   });
 
   it('hides the heading and the privacy sentence from sight but keeps them', () => {
-    expect(html).toContain('Isoline Browser');
+    expect(html).toContain('Backcross');
     expect(count(html, 'visually-hidden')).toBeGreaterThanOrEqual(2);
   });
 

@@ -4,9 +4,9 @@ This document holds what is this repository's own: the platforms, target regions
 
 ## Input contract
 
-The input contract is `contract/data-contract.md`, version 1.2.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
+The input contract is `contract/data-contract.md`, version 1.2.1, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
 
-## BrAPI allele matrix (isoline-browser only, outside the shared contract)
+## BrAPI allele matrix (Backcross only, outside the shared contract)
 
 A variant set can be loaded from a BrAPI v2.1 server (Genotyping module) instead of a genotype file; `samples.csv` and `markers.csv` are supplied exactly as for a file. The worker fetches, in this order and page by page, `GET {baseUrl}/callsets?variantSetDbId=`, `GET {baseUrl}/variants?variantSetDbId=` and `GET {baseUrl}/allelematrix?variantSetDbId=&dataMatrixAbbreviations=GT` over both dimensions (variant pages outer, call-set pages inner), and joins every matrix cell to its variant and call set by `variantDbId` and `callSetDbId`, never by position in the page. Each response's `sepPhased`, `sepUnphased` and `unknownString` are honoured; phasing is ignored; a token without a separator is a haploid call read as homozygous; a token with more than two alleles is an error (calls are diploid); a token with one missing allele is a missing call.
 

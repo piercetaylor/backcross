@@ -192,7 +192,7 @@ export function* synthVcfLines(spec: SynthSpec): Generator<string> {
   const candidates = Array.from({ length: spec.nCandidates }, (_, i) => candidateId(spec, i));
 
   yield '##fileformat=VCFv4.2\n';
-  yield '##source=isoline-browser tests/support/synth-vcf.ts (synthetic data, coordinates are fictitious)\n';
+  yield '##source=backcross tests/support/synth-vcf.ts (synthetic data, coordinates are fictitious)\n';
   yield `#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${[RP_ID, DONOR_ID, ...candidates].join('\t')}\n`;
 
   for (let m = 0; m < t.n; m++) {

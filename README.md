@@ -1,8 +1,17 @@
-# Isoline Browser
+# Backcross
 
-Status: scaffold / pre-alpha (0.1.0 unreleased).
+Status: pre-alpha (0.1.0 unreleased). Open source under the MIT licence.
 
-Isoline Browser characterises finished soybean near-isogenic lines against their recurrent and donor parents from SNP genotype files, entirely inside the browser tab: parent-of-origin classification, recurrent-parent proportion (count-, bp- and cM-weighted), donor segment calling, target-region checks, pairwise comparison, QC flags, graphical genotypes across the 20 Glycine max chromosomes, and CSV/HTML exports. Nothing is uploaded to a server. The same compute core runs from the command line in Node.
+Backcross is a free, open-source web tool for plant breeders who develop near-isogenic lines by backcrossing. Given SNP genotype calls for a set of finished lines and their recurrent and donor parents, it answers the questions a breeder asks before releasing a line: where the donor introgression sits and how large it is, how much of the recurrent-parent genome has been recovered, whether each target locus carries the donor allele, and whether any line looks like a mislabelled sample, a residual heterozygote or an outcross.
+
+It classifies every call by parent of origin, estimates recurrent-parent proportion three ways (count-, bp- and cM-weighted), calls donor segments with breakpoint bounds, checks user-defined target regions, flags QC problems per line and per marker, compares lines pairwise, draws graphical genotypes for every line on one screen, and exports CSV tables and a self-contained HTML report. It reads VCF, HapMap and wide CSV files as they come, and chromosome names currently follow soybean (Glycine max). Everything runs inside your browser tab: genotype data for unreleased lines is never uploaded. The same compute core runs from the command line in Node.
+
+- **Use it:** https://piercetaylor.github.io/backcross/
+- **Try it with synthetic data:** https://piercetaylor.github.io/backcross/?demo=synthetic loads a small generated dataset (six lines, 500 markers) and opens the summary. The data are synthetic, not from any breeding program.
+- **Cite it:** there is no paper yet. Please cite the repository, https://github.com/piercetaylor/backcross, with the version or commit you used.
+- **Licence:** MIT (LICENSE).
+
+Backcross was called Isoline Browser before 2026-09-16 (docs/adr/0017).
 
 ## What exists now
 

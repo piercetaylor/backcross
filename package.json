@@ -1,5 +1,5 @@
 {
-  "name": "isoline-browser",
+  "name": "backcross",
   "version": "0.1.0",
   "private": true,
   "description": "Browser-based characterization and QC of soybean near-isogenic lines against their recurrent and donor parents from SNP genotype files.",

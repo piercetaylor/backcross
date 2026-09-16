@@ -88,6 +88,29 @@ button:disabled {
   border-color: var(--color-border-disabled);
 }
 
+/*
+ * The primary action: leaf green, with the text colour the crop palette
+ * pairs with it (docs/adr/0017). One per screen at most; every other button
+ * keeps the neutral control fill.
+ */
+.button-primary {
+  font-weight: var(--weight-medium);
+  color: var(--color-text-on-primary);
+  background: var(--color-bg-primary);
+  border-color: var(--color-bg-primary);
+}
+
+.button-primary:hover:enabled {
+  background: var(--color-bg-primary-hover);
+  border-color: var(--color-bg-primary-hover);
+}
+
+/* Links stay underlined, so colour is never their only cue. */
+a {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+
 input[type='text'],
 input[type='number'],
 input[type='search'],

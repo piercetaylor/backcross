@@ -41,6 +41,36 @@
 
 /* ---- Upload ---- */
 
+/*
+ * The intro band: the privacy sentence, the demo dataset and its share link.
+ * A parchment surface edged in wheat gold (docs/adr/0017); the gold is the
+ * edge only, never text, since it clears 3:1 on neither parchment.
+ */
+.upload-hero {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-hero);
+  border-left: var(--border-3) solid var(--color-accent);
+  border-radius: var(--radius-2);
+}
+
+.upload-hero p:last-child {
+  margin-bottom: 0;
+}
+
+.demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.demo-note {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
 .field {
   display: block;
   margin-bottom: var(--space-2);
@@ -283,7 +313,7 @@
 }
 
 .input-coding-link {
-  color: var(--color-text);
+  color: var(--color-link);
   text-decoration: underline;
 }
 

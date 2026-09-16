@@ -93,12 +93,13 @@ describe('contrast floors on the background and fill steps (1 to 5)', () => {
 });
 
 describe('no colour hides in a role alias', () => {
-  it('every hex literal is on a --neutral-N line or is the one reserved hue', () => {
+  it('every hex literal is on a --neutral-N line, a --crop-* line or is the one reserved hue', () => {
     const lines = css.split('\n');
     const offenders = lines.filter(
       (line) =>
         /#[0-9a-fA-F]{3,8}/.test(line) &&
         !/^\s*--neutral-\d+:/.test(line) &&
+        !/^\s*--crop-[\w-]+:/.test(line) &&
         !/^\s*--hue-alert:/.test(line),
     );
     expect(offenders).toEqual([]);
@@ -111,7 +112,124 @@ describe('no colour hides in a role alias', () => {
 });
 
 /*
- * ADR 0009 holds that chrome carries no hue. The maintainer reserved a single
+ * The crop palette (docs/adr/0017, amending docs/adr/0009 on 2026-09-16)
+ * colours the chrome. It is a fixed, enumerated set, none of it Okabe-Ito,
+ * and every text, control and focus pair it forms is asserted at WCAG AA
+ * through the role aliases the stylesheets actually name.
+ */
+const CROP_DECL = /^\s*--(crop-[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/gm;
+const crop = new Map<string, string>();
+for (const m of css.matchAll(CROP_DECL)) crop.set(m[1] as string, m[2] as string);
+
+/** Resolves a token to a literal value, following `var(--x)` indirection. */
+function resolveToken(name: string): string {
+  const value = token(name);
+  const varMatch = /^var\(--([\w-]+)\)$/.exec(value);
+  return varMatch !== null ? resolveToken(varMatch[1] as string) : value;
+}
+
+function ratio(fg: string, bg: string): number {
+  return contrastRatio(resolveToken(fg), resolveToken(bg));
+}
+
+/** Asserts every fg/bg pair clears `floor`, naming the failing pair. */
+function expectPairs(fgs: string[], bgs: string[], floor: number): void {
+  for (const fg of fgs) {
+    for (const bg of bgs) {
+      expect({ pair: `${fg}/${bg}`, ok: ratio(fg, bg) >= floor }).toEqual({
+        pair: `${fg}/${bg}`,
+        ok: true,
+      });
+    }
+  }
+}
+
+describe('the crop palette', () => {
+  const surfaces = ['color-bg', 'color-bg-subtle', 'color-bg-hero', 'color-bg-alert'];
+  const fills = [
+    'color-bg-control',
+    'color-bg-control-hover',
+    'color-bg-control-active',
+    'color-bg-row-hover',
+    'color-bg-row-selected',
+    'color-bg-row-selected-hover',
+    'color-bg-rail-current',
+  ];
+
+  it('is exactly the enumerated set', () => {
+    expect([...crop.keys()].sort()).toEqual(
+      [
+        'crop-leaf-100',
+        'crop-leaf-700',
+        'crop-leaf-800',
+        'crop-leaf-900',
+        'crop-parchment-100',
+        'crop-parchment-50',
+        'crop-soil-700',
+        'crop-soil-900',
+        'crop-wheat-500',
+      ].sort(),
+    );
+    expect(css.match(/^\s*--crop-[\w-]+:/gm)).toHaveLength(crop.size);
+  });
+
+  it('has no Okabe-Ito member', () => {
+    const members = Object.values(OKABE_ITO).map((h) => h.toLowerCase());
+    for (const [name, hex] of crop) {
+      expect({ name, member: members.includes(hex.toLowerCase()) }).toEqual({
+        name,
+        member: false,
+      });
+    }
+  });
+
+  it('text, secondary and tertiary text and links clear 4.5:1 on every chrome surface', () => {
+    expectPairs(
+      ['color-text', 'color-text-secondary', 'color-text-tertiary', 'color-link'],
+      surfaces,
+      4.5,
+    );
+  });
+
+  it('text and secondary text clear 4.5:1 on the control, row and rail-current fills', () => {
+    expectPairs(['color-text', 'color-text-secondary'], fills, 4.5);
+  });
+
+  it('the alert hue clears 4.5:1 on every chrome surface', () => {
+    expectPairs(['hue-alert'], surfaces, 4.5);
+  });
+
+  it('text on the primary button clears 4.5:1, at rest and hovered', () => {
+    expectPairs(['color-text-on-primary'], ['color-bg-primary', 'color-bg-primary-hover'], 4.5);
+  });
+
+  it('the primary fill, rail indicator, strong border and focus ring clear 3:1 on every chrome surface', () => {
+    expectPairs(
+      ['color-bg-primary', 'color-rail-indicator', 'color-border-strong', 'color-focus-ring'],
+      surfaces,
+      3,
+    );
+  });
+
+  it('the focus ring clears 3:1 on every control, row and rail-current fill', () => {
+    expectPairs(['color-focus-ring'], fills, 3);
+  });
+
+  it('the rail indicator clears 3:1 on the rail-current fill it edges', () => {
+    expectPairs(['color-rail-indicator'], ['color-bg-rail-current'], 3);
+  });
+
+  it('the canvas label and the legend swatch border stay on the neutral ramp (docs/adr/0007)', () => {
+    expect(token('color-canvas-label')).toMatch(/^var\(--neutral-\d+\)$/);
+    expect(token('color-swatch-border')).toMatch(/^var\(--neutral-\d+\)$/);
+    expect(token('color-overlay-fill')).not.toMatch(/crop/);
+    expect(token('color-overlay-stroke')).not.toMatch(/crop/);
+  });
+});
+
+/*
+ * ADR 0009 holds that chrome carries no hue (amended 2026-09-16, docs/adr/0017,
+ * for the crop palette). The maintainer reserved a single
  * exception on 2026-09-11 so that an error is not signalled by position and
  * weight alone. These assertions pin what that exception must satisfy: it is
  * not an Okabe-Ito member, so it cannot be mistaken for a genotype class, and

@@ -1,9 +1,55 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
+import type { Plugin } from 'vite';
 import { brapiMockPlugin } from './tests/support/brapi-mock-plugin.ts';
 import type { BrowserCommand } from 'vitest/node';
+
+// The demo dataset (docs/adr/0017): the committed synthetic fixture, served
+// as <base>demo/synthetic/<file>. The build emits the three files into the
+// site; the dev server, and so every browser-mode test, answers them from
+// tests/fixtures/synthetic directly. No copy is committed, and nothing but
+// these three generated files is ever served.
+const DEMO_SOURCE_DIR = new URL('./tests/fixtures/synthetic/', import.meta.url);
+const DEMO_FILES: Record<string, string> = {
+  'genotypes.vcf': 'text/plain; charset=utf-8',
+  'samples.csv': 'text/csv; charset=utf-8',
+  'markers.csv': 'text/csv; charset=utf-8',
+};
+
+function demoDataPlugin(): Plugin {
+  return {
+    name: 'backcross-demo-data',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const prefix = `${server.config.base}demo/synthetic/`;
+        const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+        if (!path.startsWith(prefix)) return next();
+        const file = path.slice(prefix.length);
+        const type = Object.hasOwn(DEMO_FILES, file) ? DEMO_FILES[file] : undefined;
+        if (type === undefined) {
+          res.statusCode = 404;
+          res.end('not found');
+          return;
+        }
+        res.statusCode = 200;
+        res.setHeader('content-type', type);
+        res.end(readFileSync(new URL(file, DEMO_SOURCE_DIR)));
+      });
+    },
+    generateBundle() {
+      for (const file of Object.keys(DEMO_FILES)) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `demo/synthetic/${file}`,
+          source: readFileSync(new URL(file, DEMO_SOURCE_DIR)),
+        });
+      }
+    },
+  };
+}
 
 // Cross-origin isolation for the browser-mode test server only, so that
 // performance.measureUserAgentSpecificMemory() is callable in Chromium
@@ -78,11 +124,12 @@ const BROWSER_DEPS = [
 ];
 
 // VITE_BASE_PATH lets the same build serve from "/" (custom host) or
-// "/isoline-browser/" (GitHub Pages project site). See .env.example.
+// "/backcross/" (GitHub Pages project site). See .env.example.
 export default defineConfig(({ mode }) => ({
-  base: process.env['VITE_BASE_PATH'] ?? (mode === 'production' ? '/isoline-browser/' : '/'),
+  base: process.env['VITE_BASE_PATH'] ?? (mode === 'production' ? '/backcross/' : '/'),
   // brapiMockPlugin serves tests/fixtures/brapi under /__brapi__ for browser-mode tests (no build hook).
-  plugins: [react(), brapiMockPlugin()],
+  // demoDataPlugin serves the synthetic fixture under demo/synthetic/, in dev and in the build.
+  plugins: [react(), brapiMockPlugin(), demoDataPlugin()],
   worker: { format: 'es' },
   build: {
     target: 'es2022',

@@ -25,7 +25,7 @@ const HANG_MS = 30_000;
 
 export function brapiMockPlugin(): Plugin {
   return {
-    name: 'isoline-brapi-mock',
+    name: 'backcross-brapi-mock',
     configureServer(server) {
       server.middlewares.use('/__brapi__', (req, res) => {
         const url = new URL(req.url ?? '/', 'http://localhost');

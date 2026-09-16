@@ -30,7 +30,7 @@ describe('input coding reference link', () => {
     expect(anchor).toBeDefined();
     expect(html.split('class="input-coding-link"')).toHaveLength(2);
     expect(anchor).toContain(
-      'href="https://github.com/piercetaylor/isoline-browser/blob/main/docs/input-coding.md"',
+      'href="https://github.com/piercetaylor/backcross/blob/main/docs/input-coding.md"',
     );
   });
 

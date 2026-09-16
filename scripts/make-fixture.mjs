@@ -442,7 +442,7 @@ function cell(m, s) {
 // VCF
 const vcf = [
   '##fileformat=VCFv4.2',
-  '##source=isoline-browser make-fixture.mjs (synthetic data, Wm82-like coordinates are fictitious)',
+  '##source=backcross make-fixture.mjs (synthetic data, Wm82-like coordinates are fictitious)',
 ];
 vcf.push(`#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${samples.join('\t')}`);
 for (let m = 0; m < M; m++) {

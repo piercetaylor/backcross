@@ -48,8 +48,27 @@
 }
 
 .rail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   white-space: nowrap;
+  color: var(--color-brand);
+}
+
+/* The wordmark's seed-and-leaf mark: decorative, hidden from assistive technology. */
+.rail-logo {
+  flex: none;
+  width: var(--logo-size);
+  height: var(--logo-size);
+}
+
+.rail-logo-leaf {
+  fill: var(--color-brand);
+}
+
+.rail-logo-seed {
+  fill: var(--color-accent);
 }
 
 .rail-steps {
@@ -105,8 +124,8 @@
  */
 .rail-item[data-state='current'] {
   font-weight: var(--weight-semibold);
-  background: var(--color-bg-row-selected);
-  box-shadow: inset var(--border-3) 0 0 0 var(--color-selected-indicator);
+  background: var(--color-bg-rail-current);
+  box-shadow: inset var(--border-3) 0 0 0 var(--color-rail-indicator);
 }
 
 .rail-item[data-state='done']::after {

@@ -68,6 +68,23 @@ function stepState(entry: ScreenEntry, screen: Screen, loaded: boolean): StepSta
   return 'available';
 }
 
+/**
+ * The wordmark's mark: a leaf over a seed, drawn in the brand green and wheat
+ * gold tokens through classes (docs/adr/0017). Decorative; the heading's text
+ * is the accessible name.
+ */
+function BackcrossMark() {
+  return (
+    <svg className="rail-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        className="rail-logo-leaf"
+        d="M12 2C6.5 4.5 4 9 5 14c3.5-.5 6-2.5 7-6 1 3.5 3.5 5.5 7 6 1-5-1.5-9.5-7-12Z"
+      />
+      <ellipse className="rail-logo-seed" cx="12" cy="18" rx="3.5" ry="4" />
+    </svg>
+  );
+}
+
 export function Rail({
   screen,
   loaded,
@@ -113,7 +130,10 @@ export function Rail({
 
   return (
     <div className="rail">
-      <h1 className={collapsed ? 'rail-title visually-hidden' : 'rail-title'}>Isoline Browser</h1>
+      <h1 className={collapsed ? 'rail-title visually-hidden' : 'rail-title'}>
+        <BackcrossMark />
+        Backcross
+      </h1>
 
       <nav aria-label="Steps">
         <div

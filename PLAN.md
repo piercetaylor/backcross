@@ -1,8 +1,8 @@
-# Isoline Browser: plan
+# Backcross: plan
 
 ## Problem statement
 
-A public-sector soybean breeding program that finishes backcross-derived near-isogenic lines (NILs, "isolines") needs to confirm, per line, that the donor introgression sits where it was intended, that the rest of the genome is recurrent parent, and that no line is a mislabeled sample, a residual heterozygote, or an outcross. Today this is done by exporting SoySNP50K or SoySNP6K calls into spreadsheets or ad-hoc R scripts, or by installing the desktop Java application Flapjack and reformatting files by hand. The Isoline Browser is a client-only web application that reads the program's genotype files as they are (VCF, HapMap, wide CSV), classifies every call by parent of origin against the recurrent and donor parents, computes recurrent-parent proportion (RPP) with three estimators, calls donor segments, checks user-defined target regions, compares lines pairwise, draws graphical genotypes for all lines on one screen, and exports tables and a self-contained HTML report. Genotype data for unreleased lines never leaves the user's browser tab.
+A public-sector soybean breeding program that finishes backcross-derived near-isogenic lines (NILs, "isolines") needs to confirm, per line, that the donor introgression sits where it was intended, that the rest of the genome is recurrent parent, and that no line is a mislabeled sample, a residual heterozygote, or an outcross. Today this is done by exporting SoySNP50K or SoySNP6K calls into spreadsheets or ad-hoc R scripts, or by installing the desktop Java application Flapjack and reformatting files by hand. Backcross is a client-only web application that reads the program's genotype files as they are (VCF, HapMap, wide CSV), classifies every call by parent of origin against the recurrent and donor parents, computes recurrent-parent proportion (RPP) with three estimators, calls donor segments, checks user-defined target regions, compares lines pairwise, draws graphical genotypes for all lines on one screen, and exports tables and a self-contained HTML report. Genotype data for unreleased lines never leaves the user's browser tab.
 
 ## Users and workflow today vs. target
 
@@ -79,7 +79,7 @@ Client-only TypeScript with Vite, React 19 for the shell, a Web Worker for parsi
 ## Repository layout
 
 ```
-isoline-browser/
+backcross/
 ├── PLAN.md                      this document
 ├── README.md                    what it does, quickstart, status
 ├── CHANGELOG.md                 Keep a Changelog, 0.1.0 unreleased
@@ -118,7 +118,7 @@ Unit and smoke tests run under vitest in Node (no browser needed): tests/smoke.t
 
 ## Deployment and cost
 
-Static files only. `npm run build` with `VITE_BASE_PATH=/isoline-browser/` produces dist/ for a GitHub Pages project site at zero cost; the same dist/ can be copied to any static web server inside the university network or opened from a USB stick with `npm run preview`. No server process, no database, no telemetry; files are read with the File API and processed in a Web Worker in the tab. The only recurring cost is CI minutes on a public repository, which GitHub provides free.
+Static files only. `npm run build` with `VITE_BASE_PATH=/backcross/` produces dist/ for a GitHub Pages project site at zero cost; the same dist/ can be copied to any static web server inside the university network or opened from a USB stick with `npm run preview`. No server process, no database, no telemetry; files are read with the File API and processed in a Web Worker in the tab. The only recurring cost is CI minutes on a public repository, which GitHub provides free.
 
 ## Milestones
 

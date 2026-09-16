@@ -15,6 +15,14 @@
  * Role aliases exist so a ramp step can be retuned in one place. Class
  * colours are deliberately absent: they are data owned by
  * src/core/palette.ts and imported by whoever needs them.
+ *
+ * The crop palette (docs/adr/0017, amending docs/adr/0009 on 2026-09-16)
+ * colours the chrome only: page and rail surfaces, text, links, the primary
+ * button, the focus ring and the Upload screen's intro band. Nothing drawn
+ * inside the genotype canvas reads a --crop-* token, and none of them is an
+ * Okabe-Ito member. Wheat gold is decorative only (it clears 3:1 on neither
+ * parchment surface), so it never carries text, a border that conveys state,
+ * or the focus ring. tests/tokens.test.ts re-derives every pair.
  */
 
 :root {
@@ -32,9 +40,20 @@
   --neutral-11: #454545;
   --neutral-12: #1c1c1c;
 
+  /* Crop palette: leaf green, soil brown, wheat gold, parchment */
+  --crop-parchment-50: #fbf8f1;
+  --crop-parchment-100: #f3ecdc;
+  --crop-soil-900: #2e2419;
+  --crop-soil-700: #5b4a39;
+  --crop-leaf-100: #e3eedc;
+  --crop-leaf-700: #2f6b3b;
+  --crop-leaf-800: #255a30;
+  --crop-leaf-900: #1b4424;
+  --crop-wheat-500: #c99a2e;
+
   /* Role aliases: backgrounds */
-  --color-bg: var(--neutral-1);
-  --color-bg-subtle: var(--neutral-2);
+  --color-bg: var(--crop-parchment-50);
+  --color-bg-subtle: var(--crop-parchment-100);
   --color-bg-control: var(--neutral-3);
   --color-bg-control-hover: var(--neutral-4);
   --color-bg-control-active: var(--neutral-5);
@@ -43,7 +62,12 @@
   --color-bg-row-selected-hover: var(--neutral-5);
   --color-bg-solid: var(--neutral-12);
   --color-text-on-solid: var(--neutral-1);
-  --color-bg-alert: var(--neutral-2);
+  --color-bg-alert: var(--crop-parchment-100);
+  --color-bg-hero: var(--crop-parchment-100);
+  --color-bg-rail-current: var(--crop-leaf-100);
+  --color-bg-primary: var(--crop-leaf-700);
+  --color-bg-primary-hover: var(--crop-leaf-800);
+  --color-text-on-primary: var(--neutral-1);
 
   /*
    * The one reserved hue. ADR 0009 holds that chrome carries no hue, because
@@ -52,8 +76,8 @@
    * error is not carried by position and weight alone. This crimson is not an
    * Okabe-Ito member; it is hue-shifted away from donor vermilion, which leans
    * orange, and the two never appear together because this colour is forbidden
-   * inside the genotype canvas. It is 7.75:1 on --neutral-1 and 7.24:1 on
-   * --neutral-2, so it carries text as well as the alert bar. Red rather than
+   * inside the genotype canvas. It is 7.31:1 on --crop-parchment-50 and 6.59:1
+   * on --crop-parchment-100, so it carries text as well as the alert bar. Red rather than
    * indigo or violet, which docs/design-brief.md rules out on other grounds.
    */
   --hue-alert: #a4161a;
@@ -66,12 +90,16 @@
   --color-border-alert: var(--hue-alert);
 
   /* Role aliases: text and marks */
-  --color-text: var(--neutral-12);
-  --color-text-secondary: var(--neutral-11);
+  --color-text: var(--crop-soil-900);
+  --color-text-secondary: var(--crop-soil-700);
   --color-text-tertiary: var(--neutral-10);
   --color-text-disabled: var(--neutral-8);
   --color-text-alert: var(--hue-alert);
-  --color-focus-ring: var(--neutral-12);
+  --color-focus-ring: var(--crop-leaf-900);
+  --color-link: var(--crop-leaf-800);
+  --color-brand: var(--crop-leaf-800);
+  --color-rail-indicator: var(--crop-leaf-700);
+  --color-accent: var(--crop-wheat-500);
   --color-selected-indicator: var(--neutral-12);
   --color-swatch-border: var(--neutral-12);
   --color-chart-bar: var(--neutral-10);
@@ -120,6 +148,7 @@
   --checkbox-size: 16px;
   --swatch-size: 12px;
   --rail-width: 240px;
+  --logo-size: 24px;
   --rail-width-collapsed: 48px;
   --content-padding: var(--space-4);
   --gutter-width: 120px;
