@@ -278,4 +278,12 @@ describe('dimensions', () => {
     expect(token('text-ui')).toBe('13px');
     expect(token('text-body')).toBe('14px');
   });
+
+  it('the canvas row period meets --target-min (WCAG 2.2 SC 2.5.8)', () => {
+    const rowHeight = Number.parseFloat(token('canvas-row-height'));
+    const rowGap = Number.parseFloat(token('canvas-row-gap'));
+    const targetMin = token('target-min');
+    expect(targetMin).toBe('24px');
+    expect(rowHeight + rowGap).toBeGreaterThanOrEqual(24);
+  });
 });

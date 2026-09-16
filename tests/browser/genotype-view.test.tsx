@@ -153,7 +153,13 @@ describe('graphical genotype view geometry', () => {
     expect(buttons.length).toBe(document.querySelectorAll('.geno-gutter li').length);
     buttons.forEach((button, j) => {
       const r = button.getBoundingClientRect();
-      const labelCentre = r.top + r.height / 2;
+      expect(r.height).toBeGreaterThanOrEqual(24);
+      const textNode = [...button.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+      if (textNode === undefined) throw new Error('gutter button has no text node');
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      const textRect = range.getBoundingClientRect();
+      const labelCentre = textRect.top + textRect.height / 2;
       const rowCentre = canvasTop + j * (rowHeight + rowGap) + rowHeight / 2;
       expect(Math.abs(labelCentre - rowCentre)).toBeLessThanOrEqual(1);
     });
@@ -181,7 +187,7 @@ describe('graphical genotype view geometry', () => {
     await nextFrame();
     await nextFrame();
     expect(scroller.scrollLeft).toBe(SCROLL_PX);
-    expect(scroller.getBoundingClientRect().left).toBe(scrollerLeft);
+    expect(scroller.getBoundingClientRect().left).toBeCloseTo(scrollerLeft, 0);
     // Sub-pixel tolerance: sticky positioning can snap by a fraction of a pixel
     // in Chromium; a gutter that scrolled with the canvas moves 400 px.
     expect(gutter.getBoundingClientRect().left).toBeCloseTo(before, 0);

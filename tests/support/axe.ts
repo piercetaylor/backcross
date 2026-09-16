@@ -15,8 +15,8 @@ import axe from 'axe-core';
 import type { Result } from 'axe-core';
 import { expect } from 'vitest';
 
-/** WCAG 2.0 and 2.1, A and AA. wcag22aa is one axe rule, target-size, disabled by axe until 2.2 is widely required; it fails .geno-gutter button (14 px at an 18 px pitch). Deferred, PLAN.md M3 block. */
-export const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] as const;
+/** WCAG 2.0, 2.1 and 2.2, A and AA. wcag22aa is one axe rule, target-size, disabled by axe's defaults and enabled below (M4 phase 2). */
+export const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] as const;
 
 export interface A11yException {
   ruleId: string;
@@ -59,6 +59,7 @@ export async function expectNoAxeViolations(state: string): Promise<void> {
   );
   const results = await axe.run([root, ...overlays] as unknown as Element, {
     runOnly: { type: 'tag', values: [...AXE_TAGS] },
+    rules: { 'target-size': { enabled: true } },
     resultTypes: ['violations'],
   });
   const violations = results.violations.filter((v) => !isExcepted(v));

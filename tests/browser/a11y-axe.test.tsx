@@ -17,9 +17,9 @@ import { AXE_TAGS, KNOWN_A11Y_EXCEPTIONS, expectNoAxeViolations } from '../suppo
 const MOCK_BASE = `${location.origin}/__brapi__`;
 
 describe('accessibility: axe', () => {
-  it('the exceptions list is empty and the tag set is WCAG A and AA', () => {
+  it('the exceptions list is empty and the tag set is WCAG A and AA through 2.2', () => {
     expect(KNOWN_A11Y_EXCEPTIONS).toEqual([]);
-    expect([...AXE_TAGS]).toEqual(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+    expect([...AXE_TAGS]).toEqual(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']);
   });
 
   it('Upload, empty', async () => {

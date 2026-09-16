@@ -232,15 +232,21 @@
 }
 
 /*
- * One button per row, the height of the drawn row rather than of the row
- * period, so the text box covers the bar beside it and not the gap under
- * it. Names are shrunk to fit, as in Flapjack.
+ * One button per row, the full row period tall so it is a 24 px pointer
+ * target (WCAG 2.2 SC 2.5.8, --target-min); box-sizing: border-box plus a
+ * bottom padding equal to the row gap keeps the content box the height of
+ * the drawn row alone, so line-height centres the label on the bar rather
+ * than on the whole period, and the pressed background still covers the
+ * gap under the row. Names are shrunk to fit, as in Flapjack.
  */
 .geno-gutter button {
   display: block;
+  box-sizing: border-box;
   width: 100%;
-  height: var(--canvas-row-height);
+  height: calc(var(--canvas-row-height) + var(--canvas-row-gap));
+  min-height: var(--target-min);
   padding: 0 var(--space-1);
+  padding-block-end: var(--canvas-row-gap);
   overflow: hidden;
   text-align: left;
   text-overflow: ellipsis;

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The line gutter's buttons beside the graphical genotype canvas are 24 px tall (WCAG 2.2 SC 2.5.8); the canvas rows are 20 px with a 4 px gap, up from 14 and 4. The accessibility tests now include the WCAG 2.2 target-size rule.
 - The tool is renamed from Isoline Browser to Backcross (docs/adr/0017). The page title, rail heading, HTML report title and footer, package name and repository links use the new name, and the GitHub Pages site moves to https://piercetaylor.github.io/backcross/. Export file names are unchanged.
 - The interface chrome uses a crop colour palette: parchment page and rail surfaces, soil-brown text, leaf-green links, primary button, current-step marker and focus ring, and a wheat-gold edge on the Upload screen's intro band. The rail heading has a leaf-and-seed mark, and the site has an SVG favicon. The genotype class colours, textures and everything drawn in the genotype view are unchanged (docs/adr/0009, amended 2026-09-16).
 - Data contract 1.2.1: wording only. The contract names the canonical repository `backcross`; no input is read differently.

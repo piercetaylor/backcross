@@ -147,6 +147,8 @@
   --control-padding-x: var(--space-3);
   --checkbox-size: 16px;
   --swatch-size: 12px;
+  /* WCAG 2.2 SC 2.5.8 minimum pointer target; the canvas row period must reach it (tests/tokens.test.ts). */
+  --target-min: 24px;
   --rail-width: 240px;
   --logo-size: 24px;
   --rail-width-collapsed: 48px;
@@ -157,7 +159,7 @@
   --geno-scroll-max-height: 60vh;
   --chromosome-strip-height: 20px;
   --chart-height: 120px;
-  --canvas-row-height: 14px;
+  --canvas-row-height: 20px;
   --canvas-row-gap: 4px;
   --canvas-chrom-gap: 6px;
 

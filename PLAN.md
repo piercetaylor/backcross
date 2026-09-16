@@ -352,4 +352,4 @@ Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://
 
 **Not verified.** Screen readers (no assistive technology in the environment; in particular whether a browse-mode user can reach the canvas keys); paper output (print media is emulated, not printed); Lighthouse on any screen that needs a dataset (it cannot load files; axe covers those); Safari; a real SoySNP50K or BARCSoySNP6K file; `readr` on the browser-only CSVs; the Lighthouse script's exit code on CI's Linux runner, which has not run yet.
 
-Deferred past M3, in rough order of value: WCAG 2.2 target-size on the gutter buttons (2.5.8; the Equivalent exception arguably applies through the Lines rows, which axe cannot see); the contract items PLAN.md lists under "Deferred, 2026-09-14"; contract 1.3.0.
+Deferred past M3, in rough order of value: the contract items PLAN.md lists under "Deferred, 2026-09-14"; contract 1.3.0.
