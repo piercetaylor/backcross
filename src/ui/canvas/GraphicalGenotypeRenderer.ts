@@ -44,6 +44,7 @@
  *   getViewport(): Viewport
  *   setSize(cssWidth) — called by the screen from a ResizeObserver
  *   setSelection(range: { x0, x1 } | null) — drag-selection overlay, CSS px
+ *   setRowWindow({ first, count } | null) — draw and hit-test only these rows; null (the default) is every row
  *   draw() — with no data, clears the canvas to a minimal empty frame
  *   toDataUrl() for the HTML report
  *   hitTest(x, y) — nearest marker under a CSS-pixel point, or null
@@ -61,6 +62,7 @@ import type { GenotypeClassesData } from '../../workers/protocol.ts';
 import { binClassesWithMinority } from './binning.ts';
 import { buildClassPatterns } from './textures.ts';
 import type { ClassPatterns } from './textures.ts';
+import type { RowWindow } from './row-window.ts';
 
 export interface RendererLayout {
   rowHeight: number;
@@ -173,6 +175,7 @@ export class GraphicalGenotypeRenderer {
   private selection: { x0: number; x1: number } | null = null;
   private patterns: ClassPatterns | null = null;
   private patternsDpr: number | null = null;
+  private rowWindow: RowWindow | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -218,6 +221,23 @@ export class GraphicalGenotypeRenderer {
   /** Sets or clears the drag-selection overlay, in CSS pixels relative to the canvas. */
   setSelection(range: { x0: number; x1: number } | null): void {
     this.selection = range;
+  }
+
+  /**
+   * Draw and hit-test only rows [first, first + count) of the data's lines;
+   * null (the default) is every row. setData does not reset it: the screen
+   * sets both before each draw.
+   */
+  setRowWindow(rowWindow: RowWindow | null): void {
+    this.rowWindow = rowWindow;
+  }
+
+  /** The drawn rows: the row window clamped to the data, or every line when there is no window. */
+  private drawnRows(nLines: number): { first: number; count: number } {
+    const rw = this.rowWindow;
+    const first = rw?.first ?? 0;
+    const count = rw === null ? nLines : Math.min(rw.count, Math.max(0, nLines - first));
+    return { first, count };
   }
 
   /** Resolves the viewport's requested bp window against one chromosome's length; whole-chromosome on no window or an invalid one. */
@@ -282,7 +302,8 @@ export class GraphicalGenotypeRenderer {
     const { rowHeight, rowGap, labelWidth } = this.layout;
     const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
     const nLines = data === null ? 0 : data.lines.length;
-    const cssHeight = Math.max(rowHeight, nLines * (rowHeight + rowGap));
+    const { first, count } = this.drawnRows(nLines);
+    const cssHeight = Math.max(rowHeight, count * (rowHeight + rowGap));
     this.canvas.width = Math.round(this.cssWidth * dpr);
     this.canvas.height = Math.round(cssHeight * dpr);
     this.canvas.style.width = `${this.cssWidth}px`;
@@ -305,8 +326,10 @@ export class GraphicalGenotypeRenderer {
     ctx.font = this.theme.font;
     ctx.textBaseline = 'middle';
 
-    data.lines.forEach((line, row) => {
-      const y = row * (rowHeight + rowGap);
+    for (let r = 0; r < count; r++) {
+      const line = data.lines[first + r];
+      if (line === undefined) continue;
+      const y = r * (rowHeight + rowGap);
       // labelWidth is 0 on screen from phase 5 (the line names are the HTML
       // gutter beside the canvas); the report still draws them in-canvas.
       if (labelWidth > 0) {
@@ -375,7 +398,7 @@ export class GraphicalGenotypeRenderer {
           runStart = col;
         }
       }
-    });
+    }
 
     if (this.selection !== null) {
       const { x0, x1 } = this.selection;
@@ -495,7 +518,8 @@ export class GraphicalGenotypeRenderer {
     if (y < 0) return null;
     const rowPeriod = rowHeight + rowGap;
     const row = Math.floor(y / rowPeriod);
-    if (row < 0 || row >= data.lines.length) return null;
+    const { first, count } = this.drawnRows(data.lines.length);
+    if (row < 0 || row >= count) return null;
     const yInRow = y - row * rowPeriod;
     if (yInRow >= rowHeight) return null; // the gap between rows
 
@@ -517,7 +541,7 @@ export class GraphicalGenotypeRenderer {
     const distPx = Math.abs(markerPos - targetBp) * pxPerBp;
     if (distPx > HIT_TEST_TOLERANCE_PX) return null;
 
-    const line = data.lines[row];
+    const line = data.lines[first + row];
     if (line === undefined) return null;
     return { sampleId: line.sampleId, markerIndex: m };
   }

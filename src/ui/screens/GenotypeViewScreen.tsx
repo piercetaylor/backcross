@@ -56,11 +56,14 @@
  * chromosome, a whole-chromosome overview canvas marks the current window,
  * and a click on it recentres that window (the keyboard equivalent is the
  * main canvas's own arrow keys, which pan the same window). The overview is
- * bounded by --overview-height: a row cannot be thinner than a pixel, so
- * past that many lines it draws an evenly spaced subsample rather than
- * growing the canvas. It answers a horizontal question -- where the window
- * sits along the chromosome -- so a subsample is honest there, but with more
- * lines than it has pixels not every line is represented in it. Colours, font and geometry come
+ * bounded by --overview-height: past that many lines it bins lines into its
+ * pixel rows (ui/canvas/line-binning.ts), each row the per-marker majority
+ * of the lines it covers, so every line is represented. The main canvas and
+ * the gutter draw only the rows inside the scroll container's viewport plus
+ * OVERSCAN_ROWS each side (ui/canvas/row-window.ts); the <ol> and the canvas
+ * host are full-height spacers and the drawn rows are offset inside them, so
+ * scrollbars, the sticky gutter and hit testing keep their geometry. Under
+ * print media every row is drawn. Colours, font and geometry come
  * from the stylesheet through ui/canvas/read-theme.ts, read once when the
  * renderer is created; the renderer holds no literal that reaches this
  * screen, and this screen holds no dimension of its own. Both canvases are
@@ -90,11 +93,19 @@
  * onSelectNone, onRequestMarkerDetail?.
  */
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 
-import { GraphicalGenotypeRenderer } from '../canvas/GraphicalGenotypeRenderer.ts';
-import type { RendererTheme, Viewport } from '../canvas/GraphicalGenotypeRenderer.ts';
+import { DEFAULT_LAYOUT, GraphicalGenotypeRenderer } from '../canvas/GraphicalGenotypeRenderer.ts';
+import type {
+  RendererLayout,
+  RendererTheme,
+  Viewport,
+} from '../canvas/GraphicalGenotypeRenderer.ts';
+import { binLinesIntoRows } from '../canvas/line-binning.ts';
 import { readOverviewHeight, readRendererLayout, readRendererTheme } from '../canvas/read-theme.ts';
+import { visibleRowWindow } from '../canvas/row-window.ts';
+import type { RowWindow } from '../canvas/row-window.ts';
 import '../canvas/legend.css';
 import './screens.css';
 import { classSwatchCss } from '../../core/index.ts';
@@ -103,7 +114,6 @@ import { CALL_CLASS_LABEL, CallClass } from '../../core/types.ts';
 import type { CallClassValue, TargetRegion } from '../../core/types.ts';
 import { LineActionBar } from '../lines/LineActionBar.tsx';
 import type { LineFilter, LineSort } from '../lines/line-order.ts';
-import { permuteClassesData } from '../lines/classes-order.ts';
 import type { GenotypeClassesData, MarkerDetailResult } from '../../workers/protocol.ts';
 import type { LoadedState } from './UploadScreen.tsx';
 
@@ -225,6 +235,20 @@ export function GenotypeViewScreen({
   const detailSeqRef = useRef(0);
   /** Pending requestAnimationFrame id for a coalesced resize redraw, or null when none is scheduled. */
   const resizeRafRef = useRef<number | null>(null);
+  /** The renderer layout read from the tokens at mount; the row period the gutter and the row window use. */
+  const layoutRef = useRef<RendererLayout | null>(null);
+  /** The .geno-scroll element, which owns vertical scrolling and whose viewport the row window follows. */
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  /** Pending requestAnimationFrame id for a coalesced scroll update of the row window, or null. */
+  const windowRafRef = useRef<number | null>(null);
+  /** The overview's last line-binning result, reused while classesData and the row count are unchanged (a pan or zoom does not rebin). */
+  const overviewBinRef = useRef<{
+    data: GenotypeClassesData;
+    rows: number;
+    lines: GenotypeClassesData['lines'];
+  } | null>(null);
+  /** The current row count, for the print listener, which is set up once. */
+  const nRowsRef = useRef(0);
 
   const [viewport, setViewport] = useState<Viewport>({});
   /** CSS width of the canvas host, from the ResizeObserver; 0 until it first reports. */
@@ -238,6 +262,55 @@ export function GenotypeViewScreen({
   const [detailNote, setDetailNote] = useState<string | null>(null);
   /** Text for the aria-live region: written only when a hover settles (see header comment). */
   const [settledText, setSettledText] = useState(NO_HOVER_MESSAGE);
+  /** The rows the main canvas and the gutter lay out and draw (ui/canvas/row-window.ts). */
+  const [rowWindow, setRowWindow] = useState<RowWindow>({ first: 0, count: 0 });
+  /** True under print media, where every row is drawn. */
+  const [printing, setPrinting] = useState(false);
+
+  /**
+   * Recomputes the row window from the scroller's viewport and sets it only
+   * when it changed. Called from the scroll handler, the ResizeObserver and
+   * the draw effect.
+   */
+  function updateRowWindow() {
+    const scroller = scrollerRef.current;
+    const layout = layoutRef.current ?? DEFAULT_LAYOUT;
+    const nRows = classesData?.lines.length ?? 0;
+    const period = layout.rowHeight + layout.rowGap;
+    let next: RowWindow;
+    if (printing || scroller === null) {
+      next = { first: 0, count: nRows };
+    } else {
+      // When the list shrank below the scroll position, bring the scroller
+      // back to the last full viewport of rows rather than leaving it past them.
+      const maxTop = Math.max(0, nRows * period - scroller.clientHeight);
+      if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+      next = visibleRowWindow(
+        Math.min(scroller.scrollTop, maxTop),
+        scroller.clientHeight,
+        period,
+        nRows,
+      );
+    }
+    setRowWindow((prev) => (prev.first === next.first && prev.count === next.count ? prev : next));
+  }
+  // The ResizeObserver and a pending scroll frame outlive the render that set
+  // them up, so they call the latest render's updateRowWindow through this
+  // ref rather than a stale one whose classesData and printing are old.
+  const updateRowWindowRef = useRef(updateRowWindow);
+  useEffect(() => {
+    updateRowWindowRef.current = updateRowWindow;
+    nRowsRef.current = classesData?.lines.length ?? 0;
+  });
+
+  /** Coalesces scroll events into one row-window update per frame, as the resize handler does. */
+  function handleScroll() {
+    if (windowRafRef.current !== null) cancelAnimationFrame(windowRafRef.current);
+    windowRafRef.current = requestAnimationFrame(() => {
+      windowRafRef.current = null;
+      updateRowWindowRef.current();
+    });
+  }
 
   // The canvas learns the design tokens once, here. labelWidth is overridden
   // to 0 because this screen draws the line names in HTML beside the canvas;
@@ -248,6 +321,7 @@ export function GenotypeViewScreen({
     if (canvas === null || host === null) return;
     const theme = readRendererTheme(host);
     themeRef.current = theme;
+    layoutRef.current = readRendererLayout(host);
     overviewHeightRef.current = readOverviewHeight(host);
     rendererRef.current = new GraphicalGenotypeRenderer(
       canvas,
@@ -262,29 +336,70 @@ export function GenotypeViewScreen({
   // window-resize drag would visibly thrash. A new callback cancels any
   // frame still pending from the previous one, so only the last size in a
   // burst is ever drawn.
+  //
+  // The scroller is observed too: its clientHeight follows the
+  // --geno-scroll-max-height vh token on a window resize, and the row window
+  // follows its clientHeight. Nothing reads the scroller's width.
   useEffect(() => {
     const container = containerRef.current;
+    const scroller = scrollerRef.current;
     if (container === null) return;
     const ro = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (width === undefined) return;
-      if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
-      resizeRafRef.current = requestAnimationFrame(() => {
-        resizeRafRef.current = null;
-        // The draw effect below owns every draw, so a resize, a data change
-        // and a viewport change all go through one path and the chromosome
-        // strip is never left describing a width that is no longer on
-        // screen.
-        setPlotWidth(width);
-      });
+      for (const entry of entries) {
+        if (entry.target === scroller) {
+          updateRowWindowRef.current();
+          continue;
+        }
+        const width = entry.contentRect.width;
+        if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = requestAnimationFrame(() => {
+          resizeRafRef.current = null;
+          // The draw effect below owns every draw, so a resize, a data change
+          // and a viewport change all go through one path and the chromosome
+          // strip is never left describing a width that is no longer on
+          // screen.
+          setPlotWidth(width);
+        });
+      }
     });
     ro.observe(container);
+    if (scroller !== null) ro.observe(scroller);
     return () => {
       ro.disconnect();
       if (resizeRafRef.current !== null) {
         cancelAnimationFrame(resizeRafRef.current);
         resizeRafRef.current = null;
       }
+      if (windowRafRef.current !== null) {
+        cancelAnimationFrame(windowRafRef.current);
+        windowRafRef.current = null;
+      }
+    };
+  }, []);
+
+  // Print media draws every row (the stylesheet lifts the scroller's bound).
+  // Entering print commits the full row window synchronously (flushSync), on
+  // beforeprint and on the print media change, so the print snapshot never
+  // catches the screen's row window; leaving print recomputes the window
+  // through the draw effect.
+  useEffect(() => {
+    const mq = window.matchMedia('print');
+    const enterPrint = () => {
+      flushSync(() => {
+        setPrinting(true);
+        setRowWindow({ first: 0, count: nRowsRef.current });
+      });
+    };
+    const leavePrint = () => setPrinting(false);
+    const onChange = (e: MediaQueryListEvent) => (e.matches ? enterPrint() : leavePrint());
+    if (mq.matches) enterPrint();
+    mq.addEventListener('change', onChange);
+    window.addEventListener('beforeprint', enterPrint);
+    window.addEventListener('afterprint', leavePrint);
+    return () => {
+      mq.removeEventListener('change', onChange);
+      window.removeEventListener('beforeprint', enterPrint);
+      window.removeEventListener('afterprint', leavePrint);
     };
   }, []);
 
@@ -296,9 +411,18 @@ export function GenotypeViewScreen({
     if (plotWidth > 0) renderer.setSize(plotWidth);
     renderer.setData(classesData);
     renderer.setViewport(viewport);
+    renderer.setRowWindow(rowWindow);
     renderer.draw();
     setTracks(renderer.trackLayouts());
+    // A dataset change or a print flip recomputes the window for the new row
+    // count; the state update re-runs this effect once and the comparison
+    // guard in updateRowWindow stops it there.
+    updateRowWindow();
+  }, [classesData, viewport, plotWidth, printing, rowWindow]);
 
+  // The overview is drawn by its own effect, which does not depend on the row
+  // window: scrolling redraws only the main canvas.
+  useEffect(() => {
     // The overview is a second renderer over the whole chromosome, one line
     // per row at whatever height divides --overview-height, with the current
     // window drawn as the same overlay a drag uses. Its layout depends on
@@ -314,24 +438,22 @@ export function GenotypeViewScreen({
     // only be bounded by --overview-height here: a row cannot be thinner than
     // one pixel, and past that many lines the canvas would grow instead of
     // the rows shrinking, pushing the page around. Beyond that point the
-    // overview draws an evenly spaced subsample. That is honest for what this
-    // canvas is for -- locating the current window along the chromosome, which
-    // is a horizontal question -- but it does mean that with more lines than
-    // the overview has pixels, not every line is represented in it. Drawing
-    // all of them at this size is the virtualisation problem M3 owns.
+    // overview bins lines into its pixel rows (ui/canvas/line-binning.ts),
+    // each row the per-marker majority of the lines it covers, so every line
+    // is represented.
     const overviewHeight = Math.max(1, overviewHeightRef.current);
     const allLines = classesData.lines.length;
     const shownLines = Math.max(1, Math.min(allLines, overviewHeight));
-    const overviewData =
-      shownLines < allLines
-        ? permuteClassesData(
-            classesData,
-            Array.from(
-              { length: shownLines },
-              (_, i) => classesData.lines[Math.floor((i * allLines) / shownLines)]!.sampleId,
-            ),
-          )
-        : classesData;
+    let overviewData = classesData;
+    if (shownLines < allLines) {
+      const cached = overviewBinRef.current;
+      const lines =
+        cached !== null && cached.data === classesData && cached.rows === shownLines
+          ? cached.lines
+          : binLinesIntoRows(classesData.lines, shownLines);
+      overviewBinRef.current = { data: classesData, rows: shownLines, lines };
+      overviewData = { ...classesData, lines };
+    }
     const overview = new GraphicalGenotypeRenderer(
       overviewCanvas,
       {
@@ -667,6 +789,16 @@ export function GenotypeViewScreen({
     }
   }
 
+  // The row window's geometry: every row's height is laid out, only the
+  // window's rows are rendered.
+  const nRows = classesData?.lines.length ?? 0;
+  const rowLayout = layoutRef.current ?? DEFAULT_LAYOUT;
+  const rowPeriod = rowLayout.rowHeight + rowLayout.rowGap;
+  const windowLines =
+    classesData === null
+      ? []
+      : classesData.lines.slice(rowWindow.first, rowWindow.first + rowWindow.count);
+
   // The strip's window edges: only meaningful on a single chromosome.
   const windowChrom = viewport.chrom;
   const windowLength = windowChrom === undefined ? null : chromLengthBp(classesData, windowChrom);
@@ -775,12 +907,20 @@ export function GenotypeViewScreen({
             ))}
           </div>
 
-          <div className="geno-scroll">
-            {/* The line names, one per canvas row. Each <li> is one row
+          <div ref={scrollerRef} className="geno-scroll" onScroll={handleScroll}>
+            {/* The line names, one per drawn canvas row. Each <li> is one row
                 period tall by the same tokens the canvas bins rows with, so
-                the two stay in step at any density or zoom. */}
-            <ol className="geno-gutter" aria-label="Lines">
-              {(classesData?.lines ?? []).map((line) => (
+                the two stay in step at any density or zoom. The <ol> is the
+                full height of every row and the drawn rows are offset inside
+                it by the row window; both are measurements from the tokens. */}
+            <ol
+              className="geno-gutter"
+              aria-label="Lines"
+              data-rows={nRows}
+              data-first-row={rowWindow.first}
+              style={{ height: nRows * rowPeriod, paddingTop: rowWindow.first * rowPeriod }}
+            >
+              {windowLines.map((line) => (
                 <li key={line.sampleId}>
                   <button
                     type="button"
@@ -794,10 +934,15 @@ export function GenotypeViewScreen({
               ))}
             </ol>
 
-            <div ref={containerRef} className="geno-canvas-host">
+            <div
+              ref={containerRef}
+              className="geno-canvas-host"
+              style={{ height: Math.max(rowPeriod, nRows * rowPeriod) }}
+            >
               <canvas
                 ref={canvasRef}
                 className="geno-canvas"
+                style={{ marginTop: rowWindow.first * rowPeriod }}
                 role="img"
                 tabIndex={0}
                 onMouseDown={handleMouseDown}
@@ -809,21 +954,22 @@ export function GenotypeViewScreen({
               >
                 Graphical genotype rendering is not supported in this browser.
               </canvas>
-
-              {/* The whole chromosome at a glance, with the current window
-                  marked; clicking recentres it. Panning by keyboard is the
-                  main canvas's arrow keys, which move the same window. */}
-              {viewport.chrom !== undefined && (
-                <canvas
-                  ref={overviewRef}
-                  className="geno-overview"
-                  role="img"
-                  onClick={handleOverviewClick}
-                  aria-label={`Overview of the whole of ${viewport.chrom}, with the shown window marked. Click to recentre the window.`}
-                />
-              )}
             </div>
           </div>
+
+          {/* The whole chromosome at a glance, with the current window
+              marked; clicking recentres it. Panning by keyboard is the
+              main canvas's arrow keys, which move the same window. Outside
+              the scroller, so it stays visible while the rows scroll. */}
+          {viewport.chrom !== undefined && (
+            <canvas
+              ref={overviewRef}
+              className="geno-overview"
+              role="img"
+              onClick={handleOverviewClick}
+              aria-label={`Overview of the whole of ${viewport.chrom}, with the shown window marked. Click to recentre the window.`}
+            />
+          )}
         </div>
 
         <div className="marker-detail">

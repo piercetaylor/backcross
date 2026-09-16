@@ -4,7 +4,11 @@
  * Three claims M2.5 made from markup and arithmetic, now measured: every
  * gutter label sits beside the canvas row it names; the gutter stays put
  * while the canvas scrolls horizontally; and a click on the overview
- * recentres the window where it landed.
+ * recentres the window where it landed. M4 phase 1 adds the row window: only
+ * the rows in the scroll container's viewport are laid out and drawn, the
+ * window follows a vertical scroll, the hover hit test names the line under
+ * the pointer after one, and the overview stays its bounded size when there
+ * are more lines than it has pixels.
  *
  * The dataset is 40 lines by 5,000 markers from tests/support/synth-vcf.ts,
  * generated in the page. Two things the test has to arrange, both reported
@@ -18,7 +22,8 @@
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { readRendererLayout } from '../../src/ui/canvas/read-theme.ts';
+import { readOverviewHeight, readRendererLayout } from '../../src/ui/canvas/read-theme.ts';
+import { visibleRowWindow } from '../../src/ui/canvas/row-window.ts';
 import { goTo, loadFiles, mountApp, nextFrame, waitFor } from '../support/app-harness.tsx';
 import {
   BENCH_SPEC,
@@ -56,29 +61,57 @@ function chromPositions(): number[] {
     .map((f) => Number(f[2]));
 }
 
-async function loadSynthetic(): Promise<void> {
+async function loadSynthetic(spec: typeof SPEC = SPEC): Promise<void> {
   await mountApp();
   await loadFiles({
-    genotypes: new File([Array.from(synthVcfLines(SPEC)).join('')], 'synthetic.vcf'),
-    samples: new File([synthSamplesCsv(SPEC)], 'samples.csv'),
-    markers: new File([synthMarkersCsv(SPEC)], 'markers.csv'),
+    genotypes: new File([Array.from(synthVcfLines(spec)).join('')], 'synthetic.vcf'),
+    samples: new File([synthSamplesCsv(spec)], 'samples.csv'),
+    markers: new File([synthMarkersCsv(spec)], 'markers.csv'),
   });
   await goTo('4. Graphical genotypes');
-  await waitForDraw();
+  await waitForDraw(spec.nCandidates);
 }
 
-/** Waits until the canvas has been drawn with every line and the strip describes it. */
-async function waitForDraw(): Promise<HTMLCanvasElement> {
+/**
+ * Waits until the gutter describes every line, the canvas has been drawn
+ * with the rows the gutter renders (the row window), and the strip
+ * describes it.
+ */
+async function waitForDraw(nLines: number = N_LINES): Promise<HTMLCanvasElement> {
   return waitFor(() => {
     const canvas = document.querySelector<HTMLCanvasElement>('canvas.geno-canvas');
     const host = document.querySelector('.geno-canvas-host');
-    if (canvas === null || host === null) return null;
+    const gutter = document.querySelector<HTMLElement>('.geno-gutter');
+    if (canvas === null || host === null || gutter === null) return null;
     const { rowHeight, rowGap } = readRendererLayout(host);
-    const drawnHeight = Number.parseFloat(canvas.style.height) === N_LINES * (rowHeight + rowGap);
-    const gutter = document.querySelectorAll('.geno-gutter li').length === N_LINES;
+    const rows = gutter.dataset.rows === String(nLines);
+    const li = document.querySelectorAll('.geno-gutter li').length;
+    const windowed = li >= 1 && li <= nLines;
+    const drawnHeight = Number.parseFloat(canvas.style.height) === li * (rowHeight + rowGap);
     const strip = document.querySelectorAll('.geno-strip-track').length > 0;
-    return drawnHeight && gutter && strip ? canvas : null;
+    return rows && windowed && drawnHeight && strip ? canvas : null;
   });
+}
+
+/** The candidate sample ids in samples.csv order, which is the default display order. */
+function candidateIds(spec: typeof SPEC = SPEC): string[] {
+  return synthSamplesCsv(spec)
+    .trim()
+    .split('\n')
+    .slice(1)
+    .map((row) => row.split(','))
+    .filter((f) => f[2] === 'candidate')
+    .map((f) => f[0] as string);
+}
+
+/** Scrolls the genotype container to its bottom and waits for the row window to follow. */
+async function scrollToBottom(): Promise<void> {
+  const scroller = el<HTMLElement>('.geno-scroll');
+  const gutter = el<HTMLElement>('.geno-gutter');
+  scroller.scrollTop = scroller.scrollHeight;
+  await waitFor(() => gutter.dataset.firstRow !== '0');
+  await waitForDraw();
+  await nextFrame();
 }
 
 /**
@@ -117,11 +150,11 @@ describe('graphical genotype view geometry', () => {
     const canvasTop = el('canvas.geno-canvas').getBoundingClientRect().top;
     const { rowHeight, rowGap } = readRendererLayout(el('.geno-canvas-host'));
     const buttons = [...document.querySelectorAll('.geno-gutter li button')];
-    expect(buttons).toHaveLength(N_LINES);
-    buttons.forEach((button, i) => {
+    expect(buttons.length).toBe(document.querySelectorAll('.geno-gutter li').length);
+    buttons.forEach((button, j) => {
       const r = button.getBoundingClientRect();
       const labelCentre = r.top + r.height / 2;
-      const rowCentre = canvasTop + i * (rowHeight + rowGap) + rowHeight / 2;
+      const rowCentre = canvasTop + j * (rowHeight + rowGap) + rowHeight / 2;
       expect(Math.abs(labelCentre - rowCentre)).toBeLessThanOrEqual(1);
     });
   });
@@ -149,7 +182,105 @@ describe('graphical genotype view geometry', () => {
     await nextFrame();
     expect(scroller.scrollLeft).toBe(SCROLL_PX);
     expect(scroller.getBoundingClientRect().left).toBe(scrollerLeft);
-    expect(gutter.getBoundingClientRect().left).toBe(before);
+    // Sub-pixel tolerance: sticky positioning can snap by a fraction of a pixel
+    // in Chromium; a gutter that scrolled with the canvas moves 400 px.
+    expect(gutter.getBoundingClientRect().left).toBeCloseTo(before, 0);
+  });
+
+  it('draws a row window and moves it on scroll', async () => {
+    await loadSynthetic();
+    const scroller = el<HTMLElement>('.geno-scroll');
+    const gutter = el<HTMLElement>('.geno-gutter');
+    const { rowHeight, rowGap } = readRendererLayout(el('.geno-canvas-host'));
+    const period = rowHeight + rowGap;
+    const ids = candidateIds();
+
+    // 40 rows at the row period exceed the 60vh bound of a 720 px viewport.
+    expect(scroller.clientHeight).toBeLessThanOrEqual(0.6 * window.innerHeight);
+    const liBefore = document.querySelectorAll('.geno-gutter li').length;
+    expect(liBefore).toBeLessThan(N_LINES);
+    expect(liBefore).toBe(visibleRowWindow(0, scroller.clientHeight, period, N_LINES).count);
+    expect(el('.geno-gutter li button').textContent).toBe(ids[0]);
+    expect(gutter.getBoundingClientRect().height).toBe(N_LINES * period);
+
+    await scrollToBottom();
+    const buttons = [...document.querySelectorAll('.geno-gutter li button')];
+    expect(buttons[buttons.length - 1]?.textContent).toBe(ids[N_LINES - 1]);
+    expect(Number(gutter.dataset.firstRow)).toBe(
+      visibleRowWindow(scroller.scrollTop, scroller.clientHeight, period, N_LINES).first,
+    );
+    expect(gutter.getBoundingClientRect().height).toBe(N_LINES * period);
+  });
+
+  it('clamps the scroll position and draws the rows when a filter shrinks the list below it', async () => {
+    await loadSynthetic();
+    const scroller = el<HTMLElement>('.geno-scroll');
+    const gutter = el<HTMLElement>('.geno-gutter');
+    await scrollToBottom();
+    expect(scroller.scrollTop).toBeGreaterThan(0);
+
+    // SYN_030..SYN_039: ten rows, fewer than the viewport holds.
+    await userEvent.fill(page.getByLabelText('Filter'), 'SYN_03');
+    await waitForDraw(10);
+    const { rowHeight, rowGap } = readRendererLayout(el('.geno-canvas-host'));
+    const maxTop = Math.max(0, 10 * (rowHeight + rowGap) - scroller.clientHeight);
+    await waitFor(() => scroller.scrollTop <= maxTop);
+    await waitFor(() => document.querySelectorAll('.geno-gutter li').length === 10);
+    expect(gutter.dataset.firstRow).toBe('0');
+    expect(el('.geno-gutter li button').textContent).toBe('SYN_030');
+  });
+
+  it('the hover panel names the line under the pointer after scrolling', async () => {
+    await loadSynthetic();
+    const ids = candidateIds();
+    await scrollToBottom();
+    const { rowHeight, rowGap } = readRendererLayout(el('.geno-canvas-host'));
+    const period = rowHeight + rowGap;
+    const count = document.querySelectorAll('.geno-gutter li').length;
+    const canvas = el<HTMLCanvasElement>('canvas.geno-canvas');
+    const text = el('.marker-detail-text');
+    const expected = ids[N_LINES - 1] as string;
+    // Sweep x until the hit test lands within tolerance of a marker; y is the
+    // vertical centre of the last rendered row.
+    let found = false;
+    for (let d = 0; d <= 40 && !found; d++) {
+      for (const dx of d === 0 ? [0] : [d, -d]) {
+        const rect = canvas.getBoundingClientRect();
+        canvas.dispatchEvent(
+          new MouseEvent('mousemove', {
+            bubbles: true,
+            clientX: rect.left + rect.width / 2 + dx,
+            clientY: rect.top + (count - 1) * period + rowHeight / 2,
+          }),
+        );
+        await nextFrame();
+        await nextFrame();
+        if ((text.textContent ?? '').includes(' bp ')) {
+          found = true;
+          break;
+        }
+      }
+    }
+    expect(found).toBe(true);
+    // Contains rather than starts with: the marker id is prefixed once the
+    // debounced detail request resolves.
+    expect(text.textContent ?? '').toContain(expected);
+  });
+
+  it('the overview draws every line when there are more lines than overview pixels', async () => {
+    const spec = { ...SPEC, nCandidates: 60 };
+    await loadSynthetic(spec);
+    await userEvent.fill(page.getByLabelText('Region'), `${CHROM}:1-2000000`);
+    await userEvent.keyboard('{Enter}');
+    const overview = await waitFor(() =>
+      document.querySelector<HTMLCanvasElement>('canvas.geno-overview'),
+    );
+    await waitForDraw(spec.nCandidates);
+    const overviewHeightPx = readOverviewHeight(el('.geno-canvas-host'));
+    await waitFor(() => overview.style.height !== '');
+    expect(Number.parseFloat(overview.style.height)).toBe(
+      48 * Math.max(1, Math.floor(overviewHeightPx / 48)),
+    );
   });
 
   it('recentres the window at 25 % of the chromosome when the overview is clicked there', async () => {

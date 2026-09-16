@@ -21,25 +21,49 @@
  * 5). MISSING and UNINFORMATIVE never compete for the minority, for the same
  * reason they never compete for the majority.
  *
+ * M4 phase 1 exposes the same majority rule for the overview's line stage
+ * (ui/canvas/line-binning.ts): majorityClass takes one set of per-class
+ * counts and returns the class a column with those counts would be drawn,
+ * with the same CALLED_CLASSES tie order. The column path below still uses
+ * pickBest directly and is unchanged.
+ *
  * Interface:
+ *   N_CLASSES — the length of a per-class counts vector
+ *   CALLED_CLASSES — the classes that compete for a majority, in tie-break order
+ *   majorityClass(counts: Int32Array) -> CallClassValue
  *   binClassesWithMinority(positions, classes, markerIndices, startBp, endBp, widthPx) -> BinnedColumns
  *   binMajorityClasses(...same args...) -> Uint8Array (unchanged signature and behaviour; now binClassesWithMinority(...).majority)
  */
 import { CallClass } from '../../core/types.ts';
 import type { CallClassValue } from '../../core/types.ts';
 
-const N_CLASSES = 6;
+/** Number of class codes (CallClass 0..5); the length of a per-class counts vector. */
+export const N_CLASSES = 6;
 
 // The classes that compete for a column's majority. Order here is also the
 // tie-break order (RP_HOM > DONOR_HOM > HET > NONPARENTAL), which happens to
 // coincide with ascending class code. MISSING and UNINFORMATIVE are excluded:
 // neither is a "call" a majority should be won by.
-const CALLED_CLASSES: readonly CallClassValue[] = [
+export const CALLED_CLASSES: readonly CallClassValue[] = [
   CallClass.RP_HOM,
   CallClass.DONOR_HOM,
   CallClass.HET,
   CallClass.NONPARENTAL,
 ];
+
+/**
+ * The majority class for one set of counts indexed by class code (length at
+ * least 6): the best of CALLED_CLASSES by count, ties to the earlier class in
+ * CALLED_CLASSES order; CallClass.MISSING when no called class has a count
+ * and counts[CallClass.MISSING] > 0; else CallClass.UNINFORMATIVE. The same
+ * rule binClassesWithMinority applies per column, exposed for the line stage.
+ */
+export function majorityClass(counts: Int32Array): CallClassValue {
+  const { bestClass } = pickBest(counts, 0, -1);
+  if (bestClass >= 0) return bestClass as CallClassValue;
+  if ((counts[CallClass.MISSING] as number) > 0) return CallClass.MISSING;
+  return CallClass.UNINFORMATIVE;
+}
 
 /** Per-column majority and minority classes; see the module comment. */
 export interface BinnedColumns {

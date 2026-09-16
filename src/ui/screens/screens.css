@@ -164,14 +164,21 @@
 }
 
 /*
- * The gutter scrolls with the canvas vertically and sticks to the left
- * horizontally, so a line name stays readable at any horizontal scroll
- * offset. Both children sit on the same top edge.
+ * The container scrolls both ways, bounded vertically by
+ * --geno-scroll-max-height, and the screen draws only a row window: the rows
+ * inside this element's viewport plus a few either side
+ * (ui/canvas/row-window.ts). The gutter <ol> and the canvas host are
+ * full-height spacers, and the drawn rows are offset inside them by an
+ * inline measurement. The gutter sticks to the left horizontally, so a line
+ * name stays readable at any horizontal scroll offset. Both children sit on
+ * the same top edge.
  */
 .geno-scroll {
   display: flex;
   align-items: flex-start;
+  max-height: var(--geno-scroll-max-height);
   overflow-x: auto;
+  overflow-y: auto;
   background: var(--color-bg);
 }
 
@@ -180,9 +187,12 @@
   left: 0;
   z-index: var(--z-sticky);
   flex: none;
+  box-sizing: border-box;
   width: var(--gutter-width);
   margin: 0;
-  padding: 0;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
   list-style: none;
   background: var(--color-bg);
 }
@@ -233,6 +243,7 @@
  * never subtracted twice.
  */
 .geno-canvas-host {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -245,6 +256,7 @@
 
 .geno-overview {
   margin-top: var(--space-1);
+  margin-left: var(--gutter-width);
   border-top: var(--border-1) solid var(--color-border-subtle);
 }
 
@@ -310,6 +322,7 @@
   }
 
   .geno-scroll {
-    overflow-x: visible;
+    max-height: none;
+    overflow: visible;
   }
 }

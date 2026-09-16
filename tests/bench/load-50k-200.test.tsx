@@ -177,9 +177,13 @@ describe('50K x 200 load', () => {
     const drawnAt = await waitFor(() => {
       const failed = alertText();
       if (failed !== null) throw new Error(`draw failed: ${failed}`);
+      const gutter = document.querySelector<HTMLElement>('.geno-gutter');
       const lines = document.querySelectorAll('.geno-gutter li').length;
       const tracks = document.querySelectorAll('.geno-strip-track').length;
-      return lines === counts.nSamples - 2 && tracks === BENCH_SPEC.nChrom
+      return gutter !== null &&
+        gutter.dataset.rows === String(counts.nSamples - 2) &&
+        lines >= 1 &&
+        tracks === BENCH_SPEC.nChrom
         ? performance.now()
         : null;
     }, TIMEOUT_MS);

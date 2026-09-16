@@ -1,8 +1,13 @@
 /** Per-pixel-column binning (docs/adr/0007): hand-built cases, no fixture files. */
 import { describe, expect, it } from 'vitest';
 
-import { binClassesWithMinority, binMajorityClasses } from '../src/ui/canvas/binning.ts';
+import {
+  binClassesWithMinority,
+  binMajorityClasses,
+  majorityClass,
+} from '../src/ui/canvas/binning.ts';
 import { CallClass } from '../src/core/types.ts';
+import type { CallClassValue } from '../src/core/types.ts';
 
 describe('binMajorityClasses', () => {
   it('picks the majority class in a column', () => {
@@ -231,5 +236,58 @@ describe('binClassesWithMinority', () => {
     expect(binMajorityClasses(positions, classes, markerIndices, 0, 100, 10)).toEqual(
       binClassesWithMinority(positions, classes, markerIndices, 0, 100, 10).majority,
     );
+  });
+});
+
+describe('majorityClass', () => {
+  /** A counts vector indexed by class code, one count per listed class occurrence. */
+  function countsOf(classes: CallClassValue[]): Int32Array {
+    const counts = new Int32Array(6);
+    for (const c of classes) counts[c] = (counts[c] as number) + 1;
+    return counts;
+  }
+
+  it('picks the class with the higher count', () => {
+    expect(
+      majorityClass(countsOf([CallClass.RP_HOM, CallClass.DONOR_HOM, CallClass.DONOR_HOM])),
+    ).toBe(CallClass.DONOR_HOM);
+  });
+
+  it('resolves an RP_HOM / DONOR_HOM tie to RP_HOM', () => {
+    expect(majorityClass(countsOf([CallClass.RP_HOM, CallClass.DONOR_HOM]))).toBe(CallClass.RP_HOM);
+  });
+
+  it('is MISSING when only missing calls are counted', () => {
+    expect(majorityClass(countsOf([CallClass.MISSING, CallClass.MISSING]))).toBe(CallClass.MISSING);
+  });
+
+  it('is UNINFORMATIVE when only uninformative markers are counted', () => {
+    expect(majorityClass(countsOf([CallClass.UNINFORMATIVE, CallClass.UNINFORMATIVE]))).toBe(
+      CallClass.UNINFORMATIVE,
+    );
+  });
+
+  it('never lets MISSING compete with a call', () => {
+    expect(majorityClass(countsOf([CallClass.MISSING, CallClass.HET]))).toBe(CallClass.HET);
+  });
+
+  it('resolves a NONPARENTAL / HET tie to HET', () => {
+    expect(majorityClass(countsOf([CallClass.NONPARENTAL, CallClass.HET]))).toBe(CallClass.HET);
+  });
+
+  it('is MISSING for [MISSING, UNINFORMATIVE]', () => {
+    expect(majorityClass(countsOf([CallClass.MISSING, CallClass.UNINFORMATIVE]))).toBe(
+      CallClass.MISSING,
+    );
+  });
+
+  it('is RP_HOM for [UNINFORMATIVE, RP_HOM]', () => {
+    expect(majorityClass(countsOf([CallClass.UNINFORMATIVE, CallClass.RP_HOM]))).toBe(
+      CallClass.RP_HOM,
+    );
+  });
+
+  it('is UNINFORMATIVE when every count is 0', () => {
+    expect(majorityClass(new Int32Array(6))).toBe(CallClass.UNINFORMATIVE);
   });
 });

@@ -8,7 +8,14 @@
 import { commands, page } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { readRendererLayout } from '../../src/ui/canvas/read-theme.ts';
 import { fixtureFiles, goTo, loadFiles, mountApp, waitFor } from '../support/app-harness.tsx';
+import {
+  BENCH_SPEC,
+  synthMarkersCsv,
+  synthSamplesCsv,
+  synthVcfLines,
+} from '../support/synth-vcf.ts';
 
 afterEach(async () => {
   // Not null: the installed vitest browser RPC does `typeof arg === 'object'`
@@ -84,6 +91,8 @@ describe('print media', () => {
     expect(display('.geno-toolbar')).toBe('none');
     expect(display('.marker-detail')).toBe('none');
     expect(display('.keyboard-help')).toBe('none');
+    expect(getComputedStyle(document.querySelector('.geno-scroll')!).maxHeight).toBe('none');
+    expect(getComputedStyle(document.querySelector('.geno-scroll')!).overflowY).toBe('visible');
 
     await expect.poll(() => canvas.getBoundingClientRect().height).toBe(before.height);
     await expect.poll(() => canvas.getBoundingClientRect().width >= before.width).toBe(true);
@@ -109,5 +118,39 @@ describe('print media', () => {
       return bg.includes('gradient');
     });
     expect(textured.length).toBe(4);
+  });
+
+  it('Graphical genotypes: print draws every row when there are more lines than the row window', async () => {
+    const spec = { ...BENCH_SPEC, markersPerChrom: 250, nCandidates: 40 };
+    await mountApp();
+    await loadFiles({
+      genotypes: new File([Array.from(synthVcfLines(spec)).join('')], 'synthetic.vcf'),
+      samples: new File([synthSamplesCsv(spec)], 'samples.csv'),
+      markers: new File([synthMarkersCsv(spec)], 'markers.csv'),
+    });
+    await goTo('4. Graphical genotypes');
+    await waitFor(() => document.querySelectorAll('.geno-strip-track').length > 0);
+    const gutter = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>('.geno-gutter');
+      return el !== null && el.dataset.rows === String(spec.nCandidates) ? el : null;
+    });
+    // On screen the 40 rows exceed the scroll container's bound, so a window is drawn.
+    await waitFor(() => {
+      const n = document.querySelectorAll('.geno-gutter li').length;
+      return n >= 1 && n < spec.nCandidates;
+    });
+
+    await printMedia();
+    // A real print fires beforeprint just before the snapshot; media emulation
+    // does not, and its media-change event may arrive after matchMedia already
+    // matches. Dispatching beforeprint and asserting with no await in between
+    // checks that every row is committed synchronously.
+    window.dispatchEvent(new Event('beforeprint'));
+
+    expect(gutter.querySelectorAll('li').length).toBe(spec.nCandidates);
+    expect(gutter.dataset.firstRow).toBe('0');
+    const { rowHeight, rowGap } = readRendererLayout(document.querySelector('.geno-canvas-host')!);
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas.geno-canvas')!;
+    expect(Number.parseFloat(canvas.style.height)).toBe(spec.nCandidates * (rowHeight + rowGap));
   });
 });

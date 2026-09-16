@@ -125,6 +125,7 @@
   --gutter-width: 120px;
   --detail-panel-width: 240px;
   --overview-height: 48px;
+  --geno-scroll-max-height: 60vh;
   --chromosome-strip-height: 20px;
   --chart-height: 120px;
   --canvas-row-height: 14px;
