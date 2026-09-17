@@ -11,6 +11,7 @@ import { callSegments, segmentGapCriterion } from '../src/core/segments.ts';
 import { checkTargets, parseTargetSpec } from '../src/core/targets.ts';
 import type { SampleRecord } from '../src/core/types.ts';
 import { callSetsCsv } from '../src/export/callsets-csv.ts';
+import type { ExportProvenance } from '../src/export/provenance.ts';
 import { discordantMarkersCsv, pairwiseCsv } from '../src/export/pairwise-csv.ts';
 import { segmentsCsv } from '../src/export/segments-csv.ts';
 import { lineSummaryCsv } from '../src/export/summary-csv.ts';
@@ -35,18 +36,19 @@ const withIds: SampleRecord[] = dataset.samples.map((s, i) => ({
   sampleDbId: `smp${i}`,
 }));
 const plain = dataset.samples;
+const DEFAULT_PROVENANCE: ExportProvenance = { tokenProfile: 'default' };
 
 const header = (csv: string): string => csv.split('\n')[0] as string;
 const rowFor = (csv: string, prefix: string): string | undefined =>
   csv.split('\n').find((l) => l.startsWith(prefix));
 
-function allCsvs(samples: SampleRecord[]) {
+function allCsvs(samples: SampleRecord[], provenance: ExportProvenance = DEFAULT_PROVENANCE) {
   return {
-    summary: lineSummaryCsv(rpp, dataset.chromosomeOrder, samples),
-    segments: segmentsCsv(segments.flat(), criterion, samples),
-    targets: targetsCsv(checks, samples),
-    pairwise: pairwiseCsv([diff], dataset.chromosomeOrder, samples),
-    discordant: discordantMarkersCsv([diff], { ...dataset, samples }, cls),
+    summary: lineSummaryCsv(rpp, dataset.chromosomeOrder, samples, provenance),
+    segments: segmentsCsv(segments.flat(), criterion, samples, provenance),
+    targets: targetsCsv(checks, samples, provenance),
+    pairwise: pairwiseCsv([diff], dataset.chromosomeOrder, samples, provenance),
+    discordant: discordantMarkersCsv([diff], { ...dataset, samples }, cls, provenance),
   };
 }
 
@@ -56,18 +58,18 @@ describe('external id columns', () => {
     expect(
       header(csv.summary).startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,'),
     ).toBe(true);
-    expect(header(csv.summary).endsWith('rpp_count_Gm20')).toBe(true);
+    expect(header(csv.summary).endsWith('rpp_count_Gm20,token_profile')).toBe(true);
     expect(header(csv.segments)).toBe(
-      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion',
+      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion,token_profile',
     );
     expect(header(csv.targets)).toBe(
-      'sample_id,call_set_db_id,sample_db_id,target,chrom,start_bp,end_bp,status,n_informative_in_region,segment_start_bp,segment_end_bp,drag_min_bp,drag_max_bp',
+      'sample_id,call_set_db_id,sample_db_id,target,chrom,start_bp,end_bp,status,n_informative_in_region,segment_start_bp,segment_end_bp,drag_min_bp,drag_max_bp,token_profile',
     );
     expect(header(csv.pairwise)).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile',
     );
     expect(header(csv.discordant)).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile',
     );
   });
 
@@ -96,8 +98,20 @@ describe('external id columns', () => {
 
   it('quotes ids that need it', () => {
     const quoted = withIds.map((s) => (s.sampleId === 'NIL_01' ? { ...s, callSetDbId: 'a,b' } : s));
-    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, quoted);
+    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, quoted, DEFAULT_PROVENANCE);
     expect(rowFor(csv, 'NIL_01,')?.startsWith('NIL_01,"a,b",smp2,')).toBe(true);
+  });
+});
+
+describe('token_profile column', () => {
+  it('ends every CSV header with token_profile and every row with the given profile', () => {
+    const csv = allCsvs(plain, { tokenProfile: 'custom:mylab' });
+    for (const [name, text] of Object.entries(csv)) {
+      const lines = text.trimEnd().split('\n');
+      expect(lines[0]?.endsWith(',token_profile'), name).toBe(true);
+      expect(lines.length, name).toBeGreaterThan(1);
+      for (const row of lines.slice(1)) expect(row.endsWith(',custom:mylab'), name).toBe(true);
+    }
   });
 });
 

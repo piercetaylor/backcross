@@ -29,7 +29,7 @@ npm run typecheck             # tsc --noEmit
 npm run dev                   # Vite dev server; open http://localhost:5173 and load the fixture files
 node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf \
   --samples tests/fixtures/synthetic/samples.csv \
-  --markers tests/fixtures/synthetic/markers.csv --out summary.csv
+  --markers tests/fixtures/synthetic/markers.csv [--profile ID|FILE] --out summary.csv
 node src/cli.ts segments  ... --out segments.csv        # same inputs; donor segments per line
 node src/cli.ts targets   ... --target rhg1=Gm18:1.6Mb-1.7Mb --out targets.csv
 ```
@@ -38,7 +38,7 @@ node src/cli.ts targets   ... --target rhg1=Gm18:1.6Mb-1.7Mb --out targets.csv
 
 ## Input files
 
-Genotypes as VCF, HapMap or wide CSV; samples.csv with exactly one `recurrent_parent` and one `donor_parent`; optional markers.csv with cM positions. The input contract is specified in contract/data-contract.md and is shared byte for byte with the sibling progeny-selector project so files move between the two tools unchanged. What each format accepts, reads as missing and rejects is tabulated in docs/input-coding.md.
+Genotypes as VCF, HapMap or wide CSV; samples.csv with exactly one `recurrent_parent` and one `donor_parent`; optional markers.csv with cM positions; an optional token profile (TASSEL, SoyBase report, DArT, Axiom, KASP, or your own JSON). The input contract is specified in contract/data-contract.md and is shared byte for byte with the sibling progeny-selector project so files move between the two tools unchanged. What each format accepts, reads as missing and rejects is tabulated in docs/input-coding.md.
 
 ## Documents
 

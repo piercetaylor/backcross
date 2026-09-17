@@ -17,14 +17,32 @@
  * Blank and all-empty rows are skipped by csv.ts (contract 1.3.0); in any
  * other row an empty marker_id or an invalid pos_bp (position.ts) is an error naming
  * the line (contract 1.2.0).
+ * Under a token profile (options.profile, contract 1.4.0) nucleotide cells go
+ * through the profile first, and a heterozygote token that names no alleles
+ * resolves after the row to the two alleles the row's cells show (any other
+ * number is an error naming the cell). Detection is skipped (nucleotide) under
+ * a base "none" profile; under a base "nucleotide" profile the profile's
+ * missing, homozygous and heterozygous tokens do not vote. A profile on a file
+ * whose coding is coded A/B/H, requested or detected, is an error naming the
+ * profile and how the coding was reached.
  *
- * Interface: parseWideCsv(text, mode = 'auto') -> ParsedGenotypes.
+ * Interface: parseWideCsv(text, options?: ParseOptions) -> ParsedGenotypes,
+ * detectWideCsvMode(text, profile?: CompiledProfile) -> 'nucleotide' | 'coded'.
  */
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
-import { NUCLEOTIDE_MISSING, parseNucleotideCell, symbolIndex } from './calls.ts';
+import {
+  HET_OF_MARKER,
+  NUCLEOTIDE_MISSING,
+  parseNucleotideCell,
+  resolveHetOfMarker,
+  symbolIndex,
+} from './calls.ts';
 import { forEachRow, normalizeHeader, requireColumns, sniffDelimiter } from './csv.ts';
+import type { ParseOptions } from './loaders.ts';
 import { parsePosition } from './position.ts';
+import { compileProfile } from './profiles.ts';
+import type { CompiledProfile } from './profiles.ts';
 
 export type WideCsvMode = 'auto' | 'nucleotide' | 'coded';
 
@@ -32,7 +50,8 @@ export type WideCsvMode = 'auto' | 'nucleotide' | 'coded';
 const CODED_MISSING = new Set(['', 'N', 'NA']);
 const CODED_SYMBOLS = new Set(['A', 'B', 'H']);
 
-export function detectWideCsvMode(text: string): 'nucleotide' | 'coded' {
+export function detectWideCsvMode(text: string, profile?: CompiledProfile): 'nucleotide' | 'coded' {
+  if (profile?.base === 'none') return 'nucleotide';
   const delimiter = sniffDelimiter(text);
   let sawBorH = false;
   let onlyCoded = true;
@@ -50,6 +69,13 @@ export function detectWideCsvMode(text: string): 'nucleotide' | 'coded' {
       for (let i = 3; i < f.length; i++) {
         const cell = (f[i] as string).trim().toUpperCase();
         if (NUCLEOTIDE_MISSING.has(cell)) continue;
+        if (
+          profile !== undefined &&
+          (profile.missing.has(cell) ||
+            profile.homozygous.has(cell) ||
+            profile.heterozygous.has(cell))
+        )
+          continue;
         if (!CODED_SYMBOLS.has(cell)) {
           onlyCoded = false;
           return;
@@ -62,8 +88,16 @@ export function detectWideCsvMode(text: string): 'nucleotide' | 'coded' {
   return onlyCoded && sawBorH ? 'coded' : 'nucleotide';
 }
 
-export function parseWideCsv(text: string, mode: WideCsvMode = 'auto'): ParsedGenotypes {
-  const resolved = mode === 'auto' ? detectWideCsvMode(text) : mode;
+export function parseWideCsv(text: string, options?: ParseOptions): ParsedGenotypes {
+  const mode: WideCsvMode = options?.mode ?? 'auto';
+  const profileRaw = options?.profile ?? null;
+  const profile = profileRaw === null ? undefined : compileProfile(profileRaw);
+  const resolved = mode === 'auto' ? detectWideCsvMode(text, profile) : mode;
+  if (profileRaw !== null && resolved === 'coded') {
+    throw new Error(
+      `token profile "${profileRaw.id}" applies to HapMap and wide CSV nucleotide calls; the genotype file is coded A/B/H (${mode === 'coded' ? 'requested' : 'detected'})`,
+    );
+  }
   const delimiter = sniffDelimiter(text);
   let builder: GenotypeBuilder | null = null;
   let idCol = 0;
@@ -104,6 +138,8 @@ export function parseWideCsv(text: string, mode: WideCsvMode = 'auto'): ParsedGe
         parsePosition(f[posCol] as string, `wide genotype CSV line ${lineNumber}`),
         alleles,
       );
+      const where = `wide genotype CSV line ${lineNumber}`;
+      const pending: number[] = [];
       for (let s = 0; s < sampleCols.length; s++) {
         const raw = f[sampleCols[s] as number] as string;
         if (resolved === 'coded') {
@@ -117,14 +153,19 @@ export function parseWideCsv(text: string, mode: WideCsvMode = 'auto'): ParsedGe
               `coded genotype CSV line ${lineNumber}: unexpected cell "${cell}" (expected A, B, H or missing)`,
             );
         } else {
-          const pair = parseNucleotideCell(
-            raw,
-            NUCLEOTIDE_MISSING,
-            `wide genotype CSV line ${lineNumber}`,
-          );
+          const pair = parseNucleotideCell(raw, NUCLEOTIDE_MISSING, where, profile);
           if (pair === null) continue;
+          if (pair === HET_OF_MARKER) {
+            pending.push(s);
+            continue;
+          }
           builder.setCall(offset, s, symbolIndex(alleles, pair[0]), symbolIndex(alleles, pair[1]));
         }
+      }
+      for (const s of pending) {
+        const cell = (f[sampleCols[s] as number] as string).trim().toUpperCase();
+        const pair = resolveHetOfMarker(alleles, where, cell);
+        builder.setCall(offset, s, symbolIndex(alleles, pair[0]), symbolIndex(alleles, pair[1]));
       }
     },
     'wide genotype CSV',

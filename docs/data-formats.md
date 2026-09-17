@@ -4,7 +4,7 @@ This document holds what is this repository's own: the platforms, target regions
 
 ## Input contract
 
-The input contract is `contract/data-contract.md`, version 1.3.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
+The input contract is `contract/data-contract.md`, version 1.4.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
 
 ## BrAPI allele matrix (Backcross only, outside the shared contract)
 
@@ -44,23 +44,23 @@ Typed in the UI or passed to the CLI as `name=Gm13:28,500,000-29,100,000` or `na
 
 ## Outputs
 
-Every table below carries `call_set_db_id` and `sample_db_id` (the BrAPI call set behind the sample; empty for a dataset loaded from a file) immediately after its sample id column(s); the pairwise tables carry them for both samples, suffixed `_a` and `_b`.
+Every table below carries `call_set_db_id` and `sample_db_id` (the BrAPI call set behind the sample; empty for a dataset loaded from a file) immediately after its sample id column(s); the pairwise tables carry them for both samples, suffixed `_a` and `_b`; and a trailing `token_profile` column (the token profile the genotype file was read with; `default` when none).
 
 ### Per-line summary CSV (implemented)
 
-One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20` (one wide column per chromosome in display order). Numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
+One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20, token_profile` (one wide column per chromosome in display order). Numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
 
 ### Segments CSV (implemented)
 
-`sample_id, call_set_db_id, sample_db_id, chrom, start_bp, end_bp, left_flank_bp, right_flank_bp, n_markers, n_donor_hom, n_het, class, start_cm, end_cm, length_bp, length_cm, gap_criterion`; class is `donor`, `het` or `mixed`; flank columns are `NA` at chromosome ends; cM columns are `NA` without a map; `gap_criterion` is `cm` or `bp`, the dataset-level test (docs/adr/0008): `cm` when markers.csv supplied cM, in which case any step where either marker lacks a cM value was tested in bp instead (the loader warns how many markers that affects).
+`sample_id, call_set_db_id, sample_db_id, chrom, start_bp, end_bp, left_flank_bp, right_flank_bp, n_markers, n_donor_hom, n_het, class, start_cm, end_cm, length_bp, length_cm, gap_criterion, token_profile`; class is `donor`, `het` or `mixed`; flank columns are `NA` at chromosome ends; cM columns are `NA` without a map; `gap_criterion` is `cm` or `bp`, the dataset-level test (docs/adr/0008): `cm` when markers.csv supplied cM, in which case any step where either marker lacks a cM value was tested in bp instead (the loader warns how many markers that affects).
 
 ### Target check CSV (implemented)
 
-`sample_id, call_set_db_id, sample_db_id, target, chrom, start_bp, end_bp, status, n_informative_in_region, segment_start_bp, segment_end_bp, drag_min_bp, drag_max_bp`; status is `donor`, `het`, `rp`, `recombinant` (any mixture of classes, including donor with het) or `no_data`. `drag_min_bp` and `drag_max_bp` sum, over the two sides of the region, the donor DNA outside it: at least to the outermost non-RP marker of the overlapping segment, at most to its flanking RP marker; a side where the region extends past the segment contributes 0. Both are `NA` when no segment overlaps the region; `drag_max_bp` is `NA` when a flank is missing.
+`sample_id, call_set_db_id, sample_db_id, target, chrom, start_bp, end_bp, status, n_informative_in_region, segment_start_bp, segment_end_bp, drag_min_bp, drag_max_bp, token_profile`; status is `donor`, `het`, `rp`, `recombinant` (any mixture of classes, including donor with het) or `no_data`. `drag_min_bp` and `drag_max_bp` sum, over the two sides of the region, the donor DNA outside it: at least to the outermost non-RP marker of the overlapping segment, at most to its flanking RP marker; a side where the region extends past the segment contributes 0. Both are `NA` when no segment overlaps the region; `drag_max_bp` is `NA` when a flank is missing.
 
 ### Pairwise comparison CSV (implemented)
 
-`sample_a, sample_b, call_set_db_id_a, sample_db_id_a, call_set_db_id_b, sample_db_id_b, mode, chrom, n_compared, n_discordant` per chromosome plus an overall row with chrom `ALL`, and a second file listing discordant markers `sample_a, sample_b, call_set_db_id_a, sample_db_id_a, call_set_db_id_b, sample_db_id_b, marker_id, chrom, pos_bp, class_a, class_b`. Every chromosome in the dataset gets a row, including those where nothing was compared. In mode `all` a difference can fall on an uninformative marker, where both class columns read `uninformative`; the class columns carry parent-of-origin, which is undefined there, and the marker id and position identify the site.
+`sample_a, sample_b, call_set_db_id_a, sample_db_id_a, call_set_db_id_b, sample_db_id_b, mode, chrom, n_compared, n_discordant, token_profile` per chromosome plus an overall row with chrom `ALL`, and a second file listing discordant markers `sample_a, sample_b, call_set_db_id_a, sample_db_id_a, call_set_db_id_b, sample_db_id_b, marker_id, chrom, pos_bp, class_a, class_b, token_profile`. Every chromosome in the dataset gets a row, including those where nothing was compared. In mode `all` a difference can fall on an uninformative marker, where both class columns read `uninformative`; the class columns carry parent-of-origin, which is undefined there, and the marker id and position identify the site.
 
 ### Call-set table CSV (implemented)
 
@@ -68,4 +68,4 @@ One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_info
 
 ### HTML report (implemented)
 
-A single self-contained HTML file (no external resources, no scripts) with the dataset summary, loader warnings, the analysis parameters every number was computed with (docs/adr/0006 requires the coverage cap to be stated), the QC table, the per-line table, donor segments, target checks, and a graphical genotype image, as a PNG data URI with the class legend, for each line rendered into the report. The set of lines with a figure need not match the set in the tables (for example, only the lines selected in the genotype view at export time); the report itself states how many lines have a figure out of the total in the tables and lists the sample ids without one. PDF via the browser print dialog, using the report's own print stylesheet. When the dataset came from a BrAPI server, the dataset summary names the variant set and server, and the per-line tables carry `call_set_db_id` and `sample_db_id`.
+A single self-contained HTML file (no external resources, no scripts) with the dataset summary, loader warnings, the analysis parameters every number was computed with (docs/adr/0006 requires the coverage cap to be stated), the QC table, the per-line table, donor segments, target checks, and a graphical genotype image, as a PNG data URI with the class legend, for each line rendered into the report. The set of lines with a figure need not match the set in the tables (for example, only the lines selected in the genotype view at export time); the report itself states how many lines have a figure out of the total in the tables and lists the sample ids without one. PDF via the browser print dialog, using the report's own print stylesheet. When the dataset came from a BrAPI server, the dataset summary names the variant set and server, and the per-line tables carry `call_set_db_id` and `sample_db_id`. The dataset summary always has a Token profile row (`default`, a built-in id, or `custom:<id>`).

@@ -22,14 +22,19 @@
  * show it because classAt reports UNINFORMATIVE for every sample at an
  * uninformative marker.
  *
- * Interface: pairwiseCsv(diffs, chromosomeOrder, samples) -> string.
- *            discordantMarkersCsv(diffs, dataset, cls) -> string (ids from dataset.samples).
+ * Both tables append the provenance columns (provenance.ts, `token_profile`)
+ * last on every row.
+ *
+ * Interface: pairwiseCsv(diffs, chromosomeOrder, samples, provenance) -> string.
+ *            discordantMarkersCsv(diffs, dataset, cls, provenance) -> string (ids from dataset.samples).
  */
 import { classAt, resolveSample } from '../core/compare.ts';
 import { CALL_CLASS_LABEL } from '../core/types.ts';
 import type { Classification, Dataset, PairwiseDiff, SampleRecord } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
 import { externalIdCells } from './sample-ids.ts';
+import type { ExportProvenance } from './provenance.ts';
+import { provenanceCells, provenanceHeader } from './provenance.ts';
 
 export const PAIRWISE_CSV_HEADER = [
   'sample_a',
@@ -62,6 +67,7 @@ export function pairwiseCsv(
   diffs: PairwiseDiff[],
   chromosomeOrder: string[],
   samples: SampleRecord[],
+  provenance: ExportProvenance,
 ): string {
   const ids = externalIdCells(samples);
   const rows: string[] = [];
@@ -79,6 +85,7 @@ export function pairwiseCsv(
           csvField(chrom),
           r === undefined ? 0 : r.nCompared,
           r === undefined ? 0 : r.nDiscordant,
+          ...provenanceCells(provenance),
         ].join(','),
       );
     }
@@ -91,16 +98,20 @@ export function pairwiseCsv(
         'ALL',
         diff.nCompared,
         diff.nDiscordant,
+        ...provenanceCells(provenance),
       ].join(','),
     );
   }
-  return [PAIRWISE_CSV_HEADER.join(','), ...rows].join('\n') + '\n';
+  return (
+    [[...PAIRWISE_CSV_HEADER, ...provenanceHeader(provenance)].join(','), ...rows].join('\n') + '\n'
+  );
 }
 
 export function discordantMarkersCsv(
   diffs: PairwiseDiff[],
   dataset: Dataset,
   cls: Classification,
+  provenance: ExportProvenance,
 ): string {
   const { ids, chrom, posBp } = dataset.markers;
   const externalIds = externalIdCells(dataset.samples);
@@ -121,9 +132,14 @@ export function discordantMarkersCsv(
           Math.round(posBp[m] as number),
           CALL_CLASS_LABEL[classAt(dataset, cls, a, m)],
           CALL_CLASS_LABEL[classAt(dataset, cls, b, m)],
+          ...provenanceCells(provenance),
         ].join(','),
       );
     }
   }
-  return [DISCORDANT_MARKERS_CSV_HEADER.join(','), ...rows].join('\n') + '\n';
+  return (
+    [[...DISCORDANT_MARKERS_CSV_HEADER, ...provenanceHeader(provenance)].join(','), ...rows].join(
+      '\n',
+    ) + '\n'
+  );
 }

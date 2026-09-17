@@ -95,18 +95,20 @@ describe('compareLines against the fixture generator', () => {
       compareLines(dataset, cls, c.sampleA, c.sampleB, c.mode),
     );
 
-    const summary = pairwiseCsv(diffs, dataset.chromosomeOrder, dataset.samples);
+    const summary = pairwiseCsv(diffs, dataset.chromosomeOrder, dataset.samples, {
+      tokenProfile: 'default',
+    });
     const summaryLines = summary.trimEnd().split('\n');
     expect(summaryLines[0]).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile',
     );
     const expectedSummaryRows = diffs.length * (dataset.chromosomeOrder.length + 1);
     expect(summaryLines).toHaveLength(expectedSummaryRows + 1);
 
-    const markersCsv = discordantMarkersCsv(diffs, dataset, cls);
+    const markersCsv = discordantMarkersCsv(diffs, dataset, cls, { tokenProfile: 'default' });
     const markerLines = markersCsv.trimEnd().split('\n');
     expect(markerLines[0]).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile',
     );
     const expectedMarkerRows = diffs.reduce((n, d) => n + d.discordantMarkers.length, 0);
     expect(markerLines).toHaveLength(expectedMarkerRows + 1);

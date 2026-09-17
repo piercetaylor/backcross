@@ -19,6 +19,8 @@
  * summary starts with a Source row naming the variant set and server, and the
  * Per-line quality control and Lines tables carry call_set_db_id and
  * sample_db_id after sample_id; both appear only when their data is present.
+ * The dataset summary always carries a Token profile row (contract 1.4.0,
+ * `input.provenance`), after the Source row when there is one.
  *
  * Every value in the report was computed with the parameters carried in
  * `input.params`; ADR 0006 requires the RPP coverage cap to be stated because
@@ -27,6 +29,7 @@
  * Interface: buildHtmlReport(input: ReportInput) -> string.
  */
 import { CallClass } from '../core/types.ts';
+import type { ExportProvenance } from './provenance.ts';
 import type {
   CallClassValue,
   DonorSegment,
@@ -82,6 +85,8 @@ export interface ReportInput {
    * places it could be read from (a QC report, a line's RPP row) are optional.
    */
   nInformative: number;
+  /** How the input was read (provenance.ts): the token profile, recorded in the dataset summary. */
+  provenance: ExportProvenance;
   /** Optional free-text title; defaults to "Backcross report". */
   title?: string;
 }
@@ -208,6 +213,7 @@ browser and is not included in this file except as the summary figures and image
     ...(dataset.source === undefined
       ? []
       : ([['Source', escapeHtml(dataset.source)]] as [string, string][])),
+    ['Token profile', escapeHtml(input.provenance.tokenProfile)],
     ['Marker count', String(dataset.nMarkers)],
     ['Informative markers', int(nInformative)],
     ['Recurrent parent samples', String(roleCounts.recurrent_parent)],

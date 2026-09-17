@@ -87,6 +87,7 @@ function makeCase(
     chromosomeOrder,
     chromIndex: Int32Array.from(chromIndexArr),
     sortedMarkerOrder: Int32Array.from({ length: nMarkers }, (_, i) => i),
+    tokenProfile: 'default',
   };
 
   const candidateSamples = sampleSpecs.filter((s) => s.classes !== undefined);

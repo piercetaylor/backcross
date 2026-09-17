@@ -15,6 +15,9 @@
  * accounting (0 for HapMap and wide CSV); and `residentMatrixBytes`, the
  * assembled dataset's allele1 plus allele2 bytes.
  *
+ * 'load' and 'loadBrapi' carry an optional token `profile` (a built-in id or a
+ * validated custom object, contract 1.4.0), and 'loaded' reports its label as
+ * `tokenProfile`.
  * 'loadBrapi' is the BrAPI counterpart of 'load' (docs/adr/0015): the payload
  * carries a BrapiSource instead of a genotype file, the worker fetches the
  * variant set itself, and samples.csv and markers.csv travel as for 'load'.
@@ -52,6 +55,7 @@ import type {
   TargetRegion,
 } from '../core/types.ts';
 import type { BrapiCallSet, BrapiSource } from '../io/brapi.ts';
+import type { TokenProfile } from '../io/profiles.ts';
 
 export type WorkerRequest =
   | {
@@ -62,6 +66,8 @@ export type WorkerRequest =
         genotypes: ArrayBuffer | Blob;
         samples: ArrayBuffer;
         markers?: ArrayBuffer;
+        /** Token profile (contract 1.4.0): a built-in id or a validated custom object; absent means default. */
+        profile?: string | TokenProfile;
       };
     }
   | { id: number; type: 'rpp'; payload: RppParams }
@@ -95,7 +101,13 @@ export type WorkerRequest =
       id: number;
       /** BrAPI load (docs/adr/0015): the worker fetches; samples.csv and markers.csv as for 'load'. */
       type: 'loadBrapi';
-      payload: { source: BrapiSource; samples: ArrayBuffer; markers?: ArrayBuffer };
+      payload: {
+        source: BrapiSource;
+        samples: ArrayBuffer;
+        markers?: ArrayBuffer;
+        /** Anything other than the default is rejected before any network (contract 1.4.0). */
+        profile?: string | TokenProfile;
+      };
     }
   | {
       id: number;
@@ -197,6 +209,8 @@ export type WorkerResult =
       peakBuilderBytes: number;
       residentMatrixBytes: number;
       source: DatasetSource;
+      /** The token profile the genotypes were read with: 'default', a built-in id, or `custom:<id>`. */
+      tokenProfile: string;
     }
   | { type: 'rpp'; lines: LineRpp[] }
   | { type: 'qc'; report: QcReport }

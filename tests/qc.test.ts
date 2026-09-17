@@ -95,6 +95,7 @@ function makeCase(rows: QcMarkerRow[], candidateNames?: string[]): { dataset: Da
     chromosomeOrder: ['Gm01'],
     chromIndex: new Int32Array(nMarkers),
     sortedMarkerOrder: Int32Array.from({ length: nMarkers }, (_, i) => i),
+    tokenProfile: 'default',
   };
 
   return { dataset };
@@ -331,6 +332,7 @@ describe('computeQc: edge cases from review', () => {
       chromosomeOrder: ['Gm01'],
       chromIndex: new Int32Array(nMarkers),
       sortedMarkerOrder: Int32Array.from({ length: nMarkers }, (_, i) => i),
+      tokenProfile: 'default',
     };
     const cls = classifyDataset(dataset);
     const rpp = computeRpp(dataset, cls);

@@ -2,11 +2,13 @@
  * The Upload screen's BrAPI source (docs/m3-phase4-brapi.md section 9.4):
  * the Source switch, an end-to-end load through the worker's real fetch
  * against the mock server (tests/support/brapi-mock-plugin.ts, same origin,
- * serving tests/fixtures/brapi), and a failure reported in the alert.
+ * serving tests/fixtures/brapi), and a failure reported in the alert. The
+ * worker itself rejects a loadBrapi payload carrying a token profile (contract 1.4.0).
  */
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 
+import { AnalysisClient } from '../../src/workers/client.ts';
 import { fixtureFiles, goTo, loadBrapi, mountApp } from '../support/app-harness.tsx';
 
 const MOCK_BASE = `${location.origin}/__brapi__`;
@@ -85,5 +87,28 @@ describe('BrAPI upload', () => {
     await expect
       .element(page.getByRole('heading', { name: 'Upload and validate' }))
       .toBeInTheDocument();
+  });
+
+  it('rejects a loadBrapi payload carrying a token profile in the worker', async () => {
+    const worker = new Worker(new URL('../../src/workers/analysis.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    const client = new AnalysisClient(worker);
+    try {
+      const samples = new TextEncoder().encode(
+        'sample_id,role\nRP,recurrent_parent\nDONOR,donor_parent\nL1,candidate\n',
+      ).buffer;
+      await expect(
+        client.request('loadBrapi', {
+          source: { baseUrl: MOCK_BASE, variantSetDbId: 'vs1' },
+          samples,
+          profile: 'dart',
+        }),
+      ).rejects.toThrow(
+        'token profile "dart" applies to HapMap and wide CSV; a BrAPI source carries allele indices',
+      );
+    } finally {
+      client.terminate();
+    }
   });
 });

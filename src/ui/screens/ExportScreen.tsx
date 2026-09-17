@@ -23,7 +23,9 @@
  * exactly those facts, taken from `loaded`, so no genotype matrix is needed
  * here. Its optional `source` is `describeSource(loaded.source)`: the genotype
  * file name, or the BrAPI variant set and server with the URL scheme dropped.
- * Every CSV gets `loaded.samples`, which carries the BrAPI call-set ids.
+ * Every CSV gets `loaded.samples`, which carries the BrAPI call-set ids, and
+ * the provenance `{ tokenProfile: loaded.tokenProfile }` (its trailing
+ * token_profile column); the report gets the same provenance.
  *
  * Graphical genotype figures for the report are rendered here, offscreen,
  * from `classesData` -- the same class data the genotype view screen draws,
@@ -191,6 +193,7 @@ export function ExportScreen({
       gapCriterion: effectiveGapCriterion,
       warnings: loaded.warnings,
       nInformative: loaded.nInformative,
+      provenance: { tokenProfile: loaded.tokenProfile },
     });
   }
 
@@ -208,7 +211,9 @@ export function ExportScreen({
               if (rpp === null) return;
               downloadText(
                 'isoline-summary.csv',
-                lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples),
+                lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples, {
+                  tokenProfile: loaded.tokenProfile,
+                }),
                 'text/csv',
               );
             }}
@@ -226,7 +231,9 @@ export function ExportScreen({
               if (segmentsByCandidate === null) return;
               downloadText(
                 'isoline-segments.csv',
-                segmentsCsv(segmentsByCandidate.flat(), effectiveGapCriterion, loaded.samples),
+                segmentsCsv(segmentsByCandidate.flat(), effectiveGapCriterion, loaded.samples, {
+                  tokenProfile: loaded.tokenProfile,
+                }),
                 'text/csv',
               );
             }}
@@ -244,7 +251,7 @@ export function ExportScreen({
               if (targets === null) return;
               downloadText(
                 'isoline-targets.csv',
-                targetsCsv(targets.checks, loaded.samples),
+                targetsCsv(targets.checks, loaded.samples, { tokenProfile: loaded.tokenProfile }),
                 'text/csv',
               );
             }}
@@ -261,7 +268,9 @@ export function ExportScreen({
             onClick={() => {
               downloadText(
                 'isoline-pairwise.csv',
-                pairwiseCsv(diffs, loaded.chromosomeOrder, loaded.samples),
+                pairwiseCsv(diffs, loaded.chromosomeOrder, loaded.samples, {
+                  tokenProfile: loaded.tokenProfile,
+                }),
                 'text/csv',
               );
             }}

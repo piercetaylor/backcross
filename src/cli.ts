@@ -7,14 +7,17 @@
  *
  * Usage:
  *   node src/cli.ts summarize --genotypes <vcf|hmp|csv[.gz]> --samples samples.csv
- *                             [--markers markers.csv] [--max-gap-bp N] [--max-gap-cm N] [--out file.csv]
+ *                             [--markers markers.csv] [--profile ID|FILE] [--max-gap-bp N] [--max-gap-cm N] [--out file.csv]
  *   node src/cli.ts segments  ... [--max-segment-gap-bp N] [--max-segment-gap-cm N]
  *                             [--min-markers N] [--max-missing-span N] [--include-short] [--out file.csv]
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
  *
  * The genotype file is read as a stream (parseGenotypesSource), so a
  * bgzipped VCF is never held inflated. Warnings from the loaders and the
- * segment gap criterion go to stderr.
+ * segment gap criterion go to stderr. `--profile` names a built-in token
+ * profile or a JSON file of the same shape (a value containing / or \ or
+ * ending .json is read as a path and validated); every CSV records it in its
+ * trailing token_profile column (contract 1.4.0).
  */
 import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -31,10 +34,12 @@ import { targetsCsv } from './export/targets-csv.ts';
 import { assembleDataset, parseGenotypesSource } from './io/loaders.ts';
 import { parseSampleManifest } from './io/manifest.ts';
 import { parseMarkerMap } from './io/markers.ts';
+import { profileLabel, resolveProfile, validateProfile } from './io/profiles.ts';
+import type { TokenProfile } from './io/profiles.ts';
 
 const USAGE = [
   'usage: node src/cli.ts <summarize|segments|targets> --genotypes FILE --samples samples.csv',
-  '         [--markers markers.csv] [--out FILE]',
+  '         [--markers markers.csv] [--profile ID|FILE] [--out FILE]',
   '  summarize: [--max-gap-bp N] [--max-gap-cm N]',
   '  segments:  [--max-segment-gap-bp N] [--max-segment-gap-cm N] [--min-markers N]',
   '             [--max-missing-span N] [--include-short]',
@@ -48,17 +53,39 @@ function numberOr(raw: string | undefined, fallback: number): number {
   return v;
 }
 
+/** A built-in id, or a path (contains / or \, or ends .json) to a profile JSON file. */
+function readProfile(ref: string | undefined): TokenProfile | null {
+  if (ref === undefined) return null;
+  if (ref.includes('/') || ref.includes('\\') || ref.toLowerCase().endsWith('.json')) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(readFileSync(ref, 'utf8')) as unknown;
+    } catch (e) {
+      throw new Error(`token profile file ${ref}: ${e instanceof Error ? e.message : String(e)}`, {
+        cause: e,
+      });
+    }
+    return validateProfile(parsed);
+  }
+  return resolveProfile(ref);
+}
+
 async function load(
   genotypes: string,
   samplesPath: string,
   markersPath: string | undefined,
+  profile: TokenProfile | null,
 ): Promise<Dataset> {
   // A Node Readable is async-iterable over Buffer chunks, which are Uint8Arrays.
-  const parsed = await parseGenotypesSource(basename(genotypes), createReadStream(genotypes));
+  const parsed = await parseGenotypesSource(basename(genotypes), createReadStream(genotypes), {
+    profile,
+  });
   const samples = parseSampleManifest(readFileSync(samplesPath, 'utf8'));
   const markerMap =
     markersPath === undefined ? undefined : parseMarkerMap(readFileSync(markersPath, 'utf8'));
-  const { dataset, warnings } = assembleDataset(parsed, samples, markerMap);
+  const { dataset, warnings } = assembleDataset(parsed, samples, markerMap, {
+    tokenProfile: profileLabel(profile),
+  });
   for (const w of warnings) console.error(`warning: ${w}`);
   return dataset;
 }
@@ -82,6 +109,7 @@ async function main(argv: string[]): Promise<number> {
       genotypes: { type: 'string' },
       samples: { type: 'string' },
       markers: { type: 'string' },
+      profile: { type: 'string' },
       out: { type: 'string' },
       target: { type: 'string', multiple: true },
       'include-short': { type: 'boolean' },
@@ -123,7 +151,13 @@ ${USAGE}`);
 ${USAGE}`);
     return 2;
   }
-  const dataset = await load(values.genotypes, values.samples, values.markers);
+  const dataset = await load(
+    values.genotypes,
+    values.samples,
+    values.markers,
+    readProfile(values.profile),
+  );
+  const provenance = { tokenProfile: dataset.tokenProfile };
   const cls = classifyDataset(dataset);
 
   let csv: string;
@@ -136,6 +170,7 @@ ${USAGE}`);
       computeRpp(dataset, cls, params),
       dataset.chromosomeOrder,
       dataset.samples,
+      provenance,
     );
   } else {
     const params: SegmentParams = {
@@ -156,10 +191,10 @@ ${USAGE}`);
     );
     const segments = allSegments(dataset, cls, params, values['include-short'] === true);
     if (command === 'segments') {
-      csv = segmentsCsv(segments.flat(), criterion, dataset.samples);
+      csv = segmentsCsv(segments.flat(), criterion, dataset.samples, provenance);
     } else {
       const regions = (values.target ?? []).map((s) => parseTargetSpec(s, dataset));
-      csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples);
+      csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples, provenance);
     }
   }
   if (values.out === undefined) process.stdout.write(csv);

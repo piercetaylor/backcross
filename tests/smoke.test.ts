@@ -103,11 +103,13 @@ describe('VCF fixture end to end', () => {
   });
 
   it('writes a per-line summary CSV with one row per candidate', () => {
-    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples);
+    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, {
+      tokenProfile: 'default',
+    });
     const lines = csv.trim().split('\n');
     expect(lines).toHaveLength(CANDIDATES.length + 1);
     expect(lines[0]?.startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,')).toBe(true);
-    expect(lines[0]?.endsWith('rpp_count_Gm20')).toBe(true);
+    expect(lines[0]?.endsWith('rpp_count_Gm20,token_profile')).toBe(true);
   });
 });
 

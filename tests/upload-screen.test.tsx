@@ -1,7 +1,8 @@
 /**
  * The Upload screen's markup from renderToString (environment: 'node', as
  * tests/rail.test.tsx): the input-coding link opens a new tab, says so for
- * assistive technology, and keeps rel="noreferrer". Behaviour (focus, the
+ * assistive technology, and keeps rel="noreferrer"; the token profile
+ * controls are present (contract 1.4.0). Behaviour (focus, the
  * BrAPI form) is in tests/browser/.
  */
 import { renderToString } from 'react-dom/server';
@@ -39,6 +40,18 @@ describe('input coding reference link', () => {
     expect(anchor).toContain('rel="noreferrer"');
     expect(anchor).toMatch(
       /input coding reference<span class="visually-hidden"> \(opens in a new tab\)<\/span>/,
+    );
+  });
+});
+
+describe('token profile controls', () => {
+  it('renders a control labelled Token profile and a file input labelled Custom token profile', () => {
+    const label = /<span class="react-aria-Label" id="([^"]+)">Token profile<\/span>/.exec(html);
+    expect(label).not.toBeNull();
+    expect(html).toContain(`${label?.[1]}" aria-describedby`);
+    expect(html).toMatch(/<button[^>]*aria-labelledby="[^"]*"[^>]*aria-haspopup="listbox"/);
+    expect(html).toMatch(
+      /<label>Custom token profile \(JSON, optional\)(?:<!-- -->)? <input type="file" accept=".json,application\/json"/,
     );
   });
 });

@@ -8,14 +8,17 @@
  * integers, cM values have six decimals, NaN is written as NA. The last
  * column is the dataset-level gap criterion (docs/adr/0008): cm when a map
  * was loaded, in which case steps touching a marker without cM were tested
- * in bp; bp otherwise.
+ * in bp; bp otherwise. The provenance columns (provenance.ts,
+ * `token_profile`) follow it, last on every row.
  *
- * Interface: segmentsCsv(segments, gapCriterion, samples) -> string.
+ * Interface: segmentsCsv(segments, gapCriterion, samples, provenance) -> string.
  */
 import type { GapCriterion } from '../core/segments.ts';
 import type { DonorSegment, SampleRecord } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
 import { externalIdCells } from './sample-ids.ts';
+import type { ExportProvenance } from './provenance.ts';
+import { provenanceCells, provenanceHeader } from './provenance.ts';
 
 function int(x: number): string {
   return Number.isNaN(x) ? 'NA' : String(Math.round(x));
@@ -49,6 +52,7 @@ export function segmentsCsv(
   segments: DonorSegment[],
   gapCriterion: GapCriterion,
   samples: SampleRecord[],
+  provenance: ExportProvenance,
 ): string {
   const ids = externalIdCells(samples);
   const rows = segments.map((s) =>
@@ -69,7 +73,10 @@ export function segmentsCsv(
       int(s.endBp - s.startBp),
       dec(s.endCm - s.startCm),
       gapCriterion,
+      ...provenanceCells(provenance),
     ].join(','),
   );
-  return [SEGMENTS_CSV_HEADER.join(','), ...rows].join('\n') + '\n';
+  return (
+    [[...SEGMENTS_CSV_HEADER, ...provenanceHeader(provenance)].join(','), ...rows].join('\n') + '\n'
+  );
 }

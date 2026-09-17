@@ -1,6 +1,6 @@
 # Input coding reference
 
-What each genotype format accepts, reads as missing, and rejects, under contract 1.3.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are soybean-only in this version (`Gm01`..`Gm20`; any other name is kept as written).
+What each genotype format accepts, reads as missing, and rejects, under contract 1.4.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are soybean-only in this version (`Gm01`..`Gm20`; any other name is kept as written).
 
 | Format               | Accepted calls                                                                                                                               | Missing                                                          | Rejected (error naming the line and cell)                                                                             |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -15,4 +15,16 @@ Blank and whitespace-only lines, and rows whose every field is empty, are skippe
 
 A pair of one nucleotide and one of `N`, `-`, `.` (`AN`, `A-`) is read as missing by both tools today but is not yet part of the contract.
 
-Token profiles (TASSEL, SoyBase allele reports with `H`/`U`, DArT, Axiom, your own) arrive with contract 1.4.0 and crop chromosome schemes with 1.5.0; until then token meaning follows the file format, not the crop.
+Crop chromosome schemes arrive with contract 1.5.0.
+
+## Token profiles
+
+A token profile (contract 1.4.0, `contract/profiles/`, docs/adr/0019) changes how HapMap and wide-CSV cells are read. Choose one on the Upload screen, with `--profile` on the command line, or supply a JSON file of the same shape. Under `base` nucleotide the format's own vocabulary stays underneath the profile's tokens; under `none` the profile is the whole vocabulary. A heterozygote written `*` is the two alleles the marker shows on that row (HapMap's `alleles` column included), and is an error when the row shows any other number or an indel `-`; HapMap's `alleles` column is upper-cased first. A profile with a VCF, a BrAPI source, or a wide CSV that is coded A/B/H (requested or detected) is an error. A profile file is recorded as `custom:<id>` even when its id is a built-in's; unknown keys, a token listed twice and a heterozygote pair of identical symbols are rejected. Every CSV export records the profile in a trailing `token_profile` column.
+
+| profile          | homozygous                               | heterozygous                | missing                                                         | base       |
+| ---------------- | ---------------------------------------- | --------------------------- | --------------------------------------------------------------- | ---------- |
+| `tassel`         | (format)                                 | (format)                    | `X`, `XX`                                                       | nucleotide |
+| `soybase-report` | (format)                                 | `H` (the row's two alleles) | `U`                                                             | nucleotide |
+| `dart`           | `0` -> 0, `1` -> 1                       | `2` -> 0/1                  | empty, `-`, `NA`                                                | none       |
+| `axiom`          | `AA` -> A, `BB` -> B, `0` -> A, `2` -> B | `AB`, `BA`, `1` -> A/B      | empty, `NoCall`, `OTV`, `-1`, `-2`, `--`, `NA`                  | none       |
+| `kasp`           | `X:X` -> X, `Y:Y` -> Y                   | `X:Y`, `Y:X` -> X/Y         | empty, `?`, `Uncallable`, `Missing`, `NTC`, `Dupe`, `Bad`, `NA` | none       |

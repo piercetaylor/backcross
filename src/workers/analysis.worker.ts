@@ -18,6 +18,9 @@
  * and the last computed `LineRpp[]` stay resident in the worker for
  * follow-up requests so the main thread never holds the genotype matrix.
  *
+ * 'load' resolves the payload's token profile (resolveProfile) and parses and
+ * labels the dataset with it; 'loadBrapi' rejects any profile but the default
+ * before any network (contract 1.4.0).
  * 'loadBrapi' fetches a BrAPI v2.1 variant set through `fetchBrapiGenotypes`
  * (src/io/brapi.ts; only the worker calls fetch) and assembles it with
  * samples.csv and markers.csv exactly as 'load' does; its `loaded` reports
@@ -63,6 +66,7 @@ import {
 } from '../io/brapi.ts';
 import type { BrapiGenotypes, FetchLike } from '../io/brapi.ts';
 import { assembleDataset, parseGenotypesSource } from '../io/loaders.ts';
+import { DEFAULT_PROFILE_ID, profileLabel, resolveProfile } from '../io/profiles.ts';
 import { blobBytes, bytesOf } from '../io/stream.ts';
 import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
@@ -151,6 +155,7 @@ function loadedResult(
       residentMatrixBytes:
         dataset.genotypes.allele1.byteLength + dataset.genotypes.allele2.byteLength,
       source: extra.source,
+      tokenProfile: dataset.tokenProfile,
     },
   };
 }
@@ -162,10 +167,11 @@ async function loadFiles(
 ): Promise<WorkerResponse> {
   const source =
     p.genotypes instanceof Blob ? blobBytes(p.genotypes) : bytesOf(new Uint8Array(p.genotypes));
-  const parsed = await parseGenotypesSource(p.genotypeFileName, source);
+  const profile = resolveProfile(p.profile);
+  const parsed = await parseGenotypesSource(p.genotypeFileName, source, { profile });
   const samples = parseSampleManifest(decoder.decode(p.samples));
   const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
-  const out = assembleDataset(parsed, samples, map);
+  const out = assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile) });
   return loadedResult(id, out, {
     bytesInflated: parsed.bytesInflated,
     peakBuilderBytes: parsed.peakBuilderBytes,
@@ -200,6 +206,12 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
     }
     case 'loadBrapi': {
       const p = req.payload;
+      const brapiProfile = resolveProfile(p.profile);
+      if (brapiProfile !== null) {
+        throw new Error(
+          `token profile "${brapiProfile.id}" applies to HapMap and wide CSV; a BrAPI source carries allele indices`,
+        );
+      }
       const samples = parseSampleManifest(decoder.decode(p.samples)); // before any network
       const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
       brapiAbort = new AbortController();
@@ -211,7 +223,9 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
       }
       let out: { dataset: Dataset; warnings: string[] };
       try {
-        out = assembleDataset(parsed, attachCallSetIds(samples, parsed.callSets), map);
+        out = assembleDataset(parsed, attachCallSetIds(samples, parsed.callSets), map, {
+          tokenProfile: DEFAULT_PROFILE_ID,
+        });
       } catch (e) {
         // A samples.csv id missing from the variant set may be a call set renamed to its DbId.
         throw explainAssembleError(e, parsed.warnings);
@@ -386,7 +400,10 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
       return {
         id: req.id,
         ok: true,
-        result: { type: 'discordantMarkersCsv', csv: discordantMarkersCsv([diff], ds, cls) },
+        result: {
+          type: 'discordantMarkersCsv',
+          csv: discordantMarkersCsv([diff], ds, cls, { tokenProfile: ds.tokenProfile }),
+        },
       };
     }
   }

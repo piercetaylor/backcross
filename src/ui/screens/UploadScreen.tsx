@@ -32,16 +32,39 @@
  * and reports the outcome in a polite status line, and a note that the demo
  * data are synthetic. The input-coding link stays the band's first tab stop.
  *
+ * Under the genotype-file input (contract 1.4.0, docs/adr/0019) a React Aria
+ * `Select` labelled "Token profile" offers "Contract default (by format)" and
+ * each built-in profile's name (BUILTIN_PROFILES order), and a file input
+ * labelled "Custom token profile (JSON, optional)" takes a profile JSON: it is
+ * read, parsed and validated (validateProfile) on selection; an invalid file
+ * shows the validation message in a role="alert" and blocks Load, and a valid
+ * one disables the select and is sent as the `profile` object. For a BrAPI
+ * source the select is disabled at the default with a help text. Both load
+ * payloads carry `profile`.
+ *
  * Props: params, onParamsChange, busy, loaded, onLoad, onFetchCallSets,
  * onCancelBrapi, brapiLoading.
  */
 import { useRef, useState } from 'react';
-import { Input, Label, RadioGroup, TextField } from 'react-aria-components';
+import {
+  Button,
+  Input,
+  Label,
+  ListBox,
+  ListBoxItem,
+  Popover,
+  RadioGroup,
+  Select,
+  SelectValue,
+  TextField,
+} from 'react-aria-components';
 
 import './screens.css';
 import type { QcThresholds, RppParams, SegmentParams } from '../../core/types.ts';
 import { callSetsCsv } from '../../export/callsets-csv.ts';
 import type { BrapiCallSet, BrapiSource } from '../../io/brapi.ts';
+import { BUILTIN_PROFILES, DEFAULT_PROFILE_ID, validateProfile } from '../../io/profiles.ts';
+import type { TokenProfile } from '../../io/profiles.ts';
 import type { WorkerRequest, WorkerResult } from '../../workers/protocol.ts';
 import { demoLoadPayload, demoShareLink } from '../demo.ts';
 import type { DemoLoadPayload } from '../demo.ts';
@@ -50,6 +73,11 @@ import { LineRadio } from '../lines/LineActionBar.tsx';
 
 /** docs/input-coding.md on the repository; the static site does not serve docs/. */
 const INPUT_CODING_URL = 'https://github.com/piercetaylor/backcross/blob/main/docs/input-coding.md';
+
+const PROFILE_OPTIONS = [
+  { id: DEFAULT_PROFILE_ID, label: 'Contract default (by format)' },
+  ...[...BUILTIN_PROFILES.values()].map((p) => ({ id: p.id, label: p.name })),
+];
 
 export interface AnalysisParams {
   rpp: RppParams;
@@ -156,6 +184,23 @@ export function UploadScreen({
   const [callSetsError, setCallSetsError] = useState<string | null>(null);
   const [callSetsWarnings, setCallSetsWarnings] = useState<string[]>([]);
   const [copyStatus, setCopyStatus] = useState('');
+  const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID);
+  const [customProfile, setCustomProfile] = useState<TokenProfile | null>(null);
+  const [customProfileError, setCustomProfileError] = useState<string | null>(null);
+
+  async function handleCustomProfile(file: File | null) {
+    setCustomProfile(null);
+    setCustomProfileError(null);
+    if (file === null) return;
+    try {
+      setCustomProfile(validateProfile(JSON.parse(await file.text()) as unknown));
+    } catch (e) {
+      setCustomProfileError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** The profile a files load sends: the custom object, else the selected id. */
+  const fileProfile: string | TokenProfile = customProfile ?? profileId;
 
   function handleLoadDemo() {
     onLoad({
@@ -184,6 +229,7 @@ export function UploadScreen({
   const canLoad =
     samplesFile !== null &&
     !busy &&
+    customProfileError === null &&
     (source === 'files'
       ? genotypeFile !== null
       : baseUrl.trim() !== '' && variantSetDbId.trim() !== '');
@@ -212,6 +258,7 @@ export function UploadScreen({
           source: brapiSource(),
           samples,
           ...(markers === undefined ? {} : { markers }),
+          profile: DEFAULT_PROFILE_ID,
         },
       });
       return;
@@ -225,6 +272,7 @@ export function UploadScreen({
         genotypes,
         samples,
         ...(markers === undefined ? {} : { markers }),
+        profile: fileProfile,
       },
     });
   }
@@ -305,6 +353,36 @@ export function UploadScreen({
           </TextField>
         </>
       )}
+      <div className="field">
+        <Select
+          selectedKey={source === 'brapi' ? DEFAULT_PROFILE_ID : profileId}
+          isDisabled={busy || source === 'brapi' || customProfile !== null}
+          onSelectionChange={(key) => setProfileId(String(key))}
+        >
+          <Label>Token profile</Label>
+          <Button className="line-select-button">
+            <SelectValue />
+          </Button>
+          <Popover>
+            <ListBox items={PROFILE_OPTIONS}>{(o) => <ListBoxItem>{o.label}</ListBoxItem>}</ListBox>
+          </Popover>
+        </Select>
+        {source === 'brapi' && (
+          <span>BrAPI sources carry allele indices; profiles apply to files.</span>
+        )}
+      </div>
+      <div className="field">
+        <label>
+          Custom token profile (JSON, optional){' '}
+          <input
+            type="file"
+            accept=".json,application/json"
+            disabled={busy || source === 'brapi'}
+            onChange={(e) => void handleCustomProfile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        {customProfileError !== null && <span role="alert"> {customProfileError}</span>}
+      </div>
       <div className="field">
         <label>
           samples.csv{' '}

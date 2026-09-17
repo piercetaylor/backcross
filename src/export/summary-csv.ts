@@ -6,13 +6,16 @@
  * per-chromosome RPP as wide columns rpp_count_Gm01.. so the file opens
  * directly in R (`readr::read_csv`) without reshaping. Numeric NaN is written
  * as NA. `call_set_db_id` and `sample_db_id` follow `sample_id`
- * (sample-ids.ts); they are empty for a file-loaded dataset.
+ * (sample-ids.ts); they are empty for a file-loaded dataset. The provenance
+ * columns (provenance.ts, `token_profile`) are appended last.
  *
- * Interface: lineSummaryCsv(lineRpp, chromosomeOrder, samples) -> string.
+ * Interface: lineSummaryCsv(lineRpp, chromosomeOrder, samples, provenance) -> string.
  */
 import type { LineRpp, SampleRecord } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
 import { externalIdCells } from './sample-ids.ts';
+import type { ExportProvenance } from './provenance.ts';
+import { provenanceCells, provenanceHeader } from './provenance.ts';
 
 function num(x: number, digits = 6): string {
   return Number.isNaN(x) ? 'NA' : x.toFixed(digits);
@@ -22,6 +25,7 @@ export function lineSummaryCsv(
   lines: LineRpp[],
   chromosomeOrder: string[],
   samples: SampleRecord[],
+  provenance: ExportProvenance,
 ): string {
   const ids = externalIdCells(samples);
   const header = [
@@ -39,6 +43,7 @@ export function lineSummaryCsv(
     'rpp_bp',
     'rpp_cm',
     ...chromosomeOrder.map((c) => `rpp_count_${c}`),
+    ...provenanceHeader(provenance),
   ];
   const rows = lines.map((l) => {
     const o = l.overall;
@@ -60,6 +65,7 @@ export function lineSummaryCsv(
       num(o.rppBp),
       num(o.rppCm),
       ...perChrom,
+      ...provenanceCells(provenance),
     ].join(',');
   });
   return [header.join(','), ...rows].join('\n') + '\n';

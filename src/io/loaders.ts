@@ -27,16 +27,23 @@
  * `bytesInflated` and, for VCF, `peakBuilderBytes` (0 for the text formats,
  * whose peak is not accounted).
  *
- * Interface: detectGenotypeFormat(name, text), parseGenotypesText(text, format, mode?),
- * parseGenotypesBytes(name, bytes, mode?),
- * parseGenotypesSource(name, source, mode?) -> Promise<StreamedGenotypes>,
- * assembleDataset(parsed, samples, markerMap?) -> { dataset, warnings }.
+ * `ParseOptions` carries the wide-CSV mode and the token profile
+ * (profiles.ts, contract 1.4.0); a profile with a VCF is an error in both
+ * entries, before any record is read. `assembleDataset` records the profile's
+ * label (`default`, a built-in id or `custom:<id>`) on the Dataset.
+ *
+ * Interface: ParseOptions, detectGenotypeFormat(name, text),
+ * parseGenotypesText(text, format, options?), parseGenotypesBytes(name, bytes, options?),
+ * parseGenotypesSource(name, source, options?) -> Promise<StreamedGenotypes>,
+ * assembleDataset(parsed, samples, markerMap?, meta?) -> { dataset, warnings }.
  */
 import { buildChromosomeOrder, compareChromosomes } from '../core/chromosomes.ts';
 import type { Dataset, GenotypeMatrix, SampleRecord } from '../core/types.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import { bytesToText, inflateIfGzip } from './decompress.ts';
 import { parseHapMap } from './hapmap.ts';
+import { DEFAULT_PROFILE_ID } from './profiles.ts';
+import type { TokenProfile } from './profiles.ts';
 import { applyMarkerMap } from './markers.ts';
 import type { MarkerMap } from './markers.ts';
 import { countBytes, lines } from './stream.ts';
@@ -46,6 +53,20 @@ import { parseWideCsv } from './wide-csv.ts';
 import type { WideCsvMode } from './wide-csv.ts';
 
 export type GenotypeFormat = 'vcf' | 'hapmap' | 'wide-csv';
+
+export interface ParseOptions {
+  mode?: WideCsvMode;
+  profile?: TokenProfile | null;
+}
+
+function rejectProfileForVcf(options: ParseOptions | undefined): void {
+  const profile = options?.profile ?? null;
+  if (profile !== null) {
+    throw new Error(
+      `token profile "${profile.id}" applies to HapMap and wide CSV; the genotype file is VCF`,
+    );
+  }
+}
 
 /** Characters of the decoded text `detectGenotypeFormat` inspects. */
 const HEAD_WINDOW_CHARS = 4096;
@@ -73,25 +94,26 @@ export function detectGenotypeFormat(fileName: string, text: string): GenotypeFo
 export function parseGenotypesText(
   text: string,
   format: GenotypeFormat,
-  mode: WideCsvMode = 'auto',
+  options?: ParseOptions,
 ): ParsedGenotypes {
   switch (format) {
     case 'vcf':
+      rejectProfileForVcf(options);
       return parseVcf(text);
     case 'hapmap':
-      return parseHapMap(text);
+      return parseHapMap(text, options);
     case 'wide-csv':
-      return parseWideCsv(text, mode);
+      return parseWideCsv(text, options);
   }
 }
 
 export function parseGenotypesBytes(
   fileName: string,
   bytes: Uint8Array,
-  mode: WideCsvMode = 'auto',
+  options?: ParseOptions,
 ): ParsedGenotypes {
   const text = bytesToText(bytes);
-  return parseGenotypesText(text, detectGenotypeFormat(fileName, text), mode);
+  return parseGenotypesText(text, detectGenotypeFormat(fileName, text), options);
 }
 
 export interface StreamedGenotypes extends ParsedGenotypes {
@@ -104,7 +126,7 @@ export interface StreamedGenotypes extends ParsedGenotypes {
 export async function parseGenotypesSource(
   fileName: string,
   source: ByteSource,
-  mode: WideCsvMode = 'auto',
+  options?: ParseOptions,
 ): Promise<StreamedGenotypes> {
   const counter = { bytes: 0 };
   const iterator = lines(countBytes(inflateIfGzip(source), counter))[Symbol.asyncIterator]();
@@ -125,12 +147,13 @@ export async function parseGenotypesSource(
     },
   };
   if (format === 'vcf') {
+    rejectProfileForVcf(options);
     const { parsed, peakBuilderBytes } = await parseVcfLines(all);
     return { ...parsed, bytesInflated: counter.bytes, peakBuilderBytes };
   }
   const collected: string[] = [];
   for await (const line of all) collected.push(line);
-  const parsed = parseGenotypesText(collected.join('\n'), format, mode);
+  const parsed = parseGenotypesText(collected.join('\n'), format, options);
   return { ...parsed, bytesInflated: counter.bytes, peakBuilderBytes: 0 };
 }
 
@@ -160,6 +183,7 @@ export function assembleDataset(
   parsed: ParsedGenotypes,
   samples: SampleRecord[],
   markerMap?: MarkerMap,
+  meta: { tokenProfile: string } = { tokenProfile: DEFAULT_PROFILE_ID },
 ): { dataset: Dataset; warnings: string[] } {
   const warnings = [...parsed.warnings];
   const { markers } = parsed;
@@ -226,6 +250,7 @@ export function assembleDataset(
       chromosomeOrder,
       chromIndex,
       sortedMarkerOrder,
+      tokenProfile: meta.tokenProfile,
     },
     warnings,
   };

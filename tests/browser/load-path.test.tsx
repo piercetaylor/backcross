@@ -6,9 +6,10 @@
  * and streamed there (docs/adr/0012), the worker's
  * load-rpp-qc-segments chain and App's navigation. The QC expectations are
  * the ones tests/qc.test.ts asserts from the same fixture in Node, read here
- * off the rendered Summary table.
+ * off the rendered Summary table. A wide CSV with a SoyBase `H` loads under
+ * the SoyBase token profile chosen in the Upload screen's select (contract 1.4.0).
  */
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 
 import { fixtureFiles, goTo, loadFiles, mountApp } from '../support/app-harness.tsx';
@@ -50,5 +51,27 @@ describe('load path', () => {
     expect(nil06).not.toContain('high_het');
 
     expect(qcFlags('NIL_01')).toEqual([]);
+  });
+
+  it('loads a wide CSV with an H cell under the SoyBase token profile', async () => {
+    await mountApp();
+    await userEvent.click(page.getByRole('button', { name: /Token profile/ }));
+    await userEvent.click(page.getByRole('option', { name: 'SoyBase SNP allele report' }));
+    const genotypes = new File(
+      ['marker_id,chrom,pos_bp,RP,DONOR,L1\nr1,Gm02,1000,A,G,H\nr2,Gm02,2000,C,T,C\n'],
+      'genotypes.csv',
+      { type: 'text/csv' },
+    );
+    const samples = new File(
+      [
+        'sample_id,line_name,role,generation,family_id,notes\n' +
+          'RP,Recurrent,recurrent_parent,,,\nDONOR,Donor,donor_parent,,,\nL1,Line 1,candidate,,,\n',
+      ],
+      'samples.csv',
+      { type: 'text/csv' },
+    );
+    await loadFiles({ genotypes, samples });
+    await goTo('3. Lines');
+    await expect.element(page.getByText(/^Lines: 1,/)).toBeInTheDocument();
   });
 });

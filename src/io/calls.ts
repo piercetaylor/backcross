@@ -18,10 +18,22 @@
  *     ("A?", "N?", "RR") -> error;
  *   - anything else -> error.
  *
- * Interface: NUCLEOTIDE_MISSING, HAPMAP_MISSING, IUPAC_HET,
- * parseNucleotideCell(raw, missing, where) -> [string, string] | null,
+ * Under a token profile (profiles.ts, contract 1.4.0) a cell is resolved in
+ * this order: the profile's missing tokens; the format's `missing` when the
+ * profile's base is nucleotide; the profile's homozygous tokens; its
+ * heterozygous tokens (a `*` token returns HET_OF_MARKER, resolved by the
+ * parser once the row's alleles are known); the grammar above when the base
+ * is nucleotide; otherwise the unexpected-cell error.
+ *
+ * Interface: NUCLEOTIDE_MISSING, HAPMAP_MISSING, IUPAC_HET, HET_OF_MARKER,
+ * parseNucleotideCell(raw, missing, where, profile?) -> [string, string] | null | typeof HET_OF_MARKER,
+ * resolveHetOfMarker(alleles, where, cell) -> [string, string] (throws unless two alleles, neither `-`),
  * symbolIndex(alleles, symbol) -> number (appends an unseen symbol).
  */
+import type { CompiledProfile } from './profiles.ts';
+
+/** Returned for a profile heterozygote token that names no alleles (`*`). */
+export const HET_OF_MARKER: unique symbol = Symbol('het-of-marker');
 
 export const NUCLEOTIDE_MISSING: ReadonlySet<string> = new Set([
   '',
@@ -53,9 +65,23 @@ export function parseNucleotideCell(
   raw: string,
   missing: ReadonlySet<string>,
   where: string,
-): [string, string] | null {
+  profile?: CompiledProfile,
+): [string, string] | null | typeof HET_OF_MARKER {
   const cell = raw.trim().toUpperCase();
-  if (missing.has(cell)) return null;
+  if (profile !== undefined) {
+    if (profile.missing.has(cell)) return null;
+    if (profile.base === 'nucleotide' && missing.has(cell)) return null;
+    const hom = profile.homozygous.get(cell);
+    if (hom !== undefined) return [hom, hom];
+    const het = profile.heterozygous.get(cell);
+    if (het === '*') return HET_OF_MARKER;
+    if (het !== undefined) return [het[0], het[1]];
+    if (profile.base === 'none') {
+      throw new Error(
+        `${where}: unexpected cell "${cell}" (not a token of the "${profile.label}" token profile)`,
+      );
+    }
+  } else if (missing.has(cell)) return null;
   const fail = (): never => {
     throw new Error(
       `${where}: unexpected cell "${cell}" (expected A, C, G, T, an IUPAC code R Y S W K M, a pair such as A/T or AT, or a missing token)`,
@@ -74,6 +100,24 @@ export function parseNucleotideCell(
   for (const c of pair) if (!NUCLEOTIDES.has(c) && !HALF_MISSING.has(c)) return fail();
   if (HALF_MISSING.has(pair[0]) || HALF_MISSING.has(pair[1])) return null;
   return pair;
+}
+
+export function resolveHetOfMarker(
+  alleles: readonly string[],
+  where: string,
+  cell: string,
+): [string, string] {
+  if (alleles.length !== 2) {
+    throw new Error(
+      `${where}: "${cell}" is a heterozygote token but the marker shows ${alleles.length} allele(s) (${alleles.join(', ')}); it needs exactly two`,
+    );
+  }
+  if (alleles.includes('-')) {
+    throw new Error(
+      `${where}: "${cell}" is a heterozygote token but the marker shows an indel allele (${alleles.join(', ')}); it needs two nucleotides`,
+    );
+  }
+  return [alleles[0] as string, alleles[1] as string];
 }
 
 export function symbolIndex(alleles: string[], symbol: string): number {

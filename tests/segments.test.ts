@@ -73,6 +73,7 @@ function makeCase(chroms: ChromSpec[]): { dataset: Dataset; cls: Classification 
     chromosomeOrder,
     chromIndex: Int32Array.from(chromIndexArr),
     sortedMarkerOrder,
+    tokenProfile: 'default',
   };
 
   const cls: Classification = {

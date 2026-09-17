@@ -61,6 +61,7 @@ const baseInput: ReportInput = {
   gapCriterion,
   nInformative: countInformative(cls),
   warnings: ['3 marker positions overridden by markers.csv.'],
+  provenance: { tokenProfile: 'soybase-report' },
 };
 
 describe('buildHtmlReport', () => {
@@ -118,6 +119,17 @@ describe('buildHtmlReport', () => {
     expect(html).toContain('<dt>Source</dt>');
     expect(html).not.toContain('http://');
     expect(html).not.toContain('https://');
+  });
+
+  it('records the token profile in the dataset summary, after the Source row', () => {
+    const html = buildHtmlReport({
+      ...baseInput,
+      dataset: { ...reportDataset, source: 'Genotype file x.csv' },
+      provenance: { tokenProfile: 'custom:<lab>' },
+    });
+    expect(html).toContain('<dt>Token profile</dt><dd>custom:&lt;lab&gt;</dd>');
+    expect(html.indexOf('<dt>Source</dt>')).toBeLessThan(html.indexOf('<dt>Token profile</dt>'));
+    expect(buildHtmlReport(baseInput)).toContain('<dt>Token profile</dt><dd>soybase-report</dd>');
   });
 
   it('escapes an untrusted line name instead of emitting it raw', () => {

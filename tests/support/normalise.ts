@@ -40,7 +40,9 @@ export type ErrorKind =
   | 'genotypes.no_gt'
   | 'genotypes.no_header'
   | 'genotypes.unknown_cell'
-  | 'genotypes.invalid_position';
+  | 'genotypes.invalid_position'
+  | 'genotypes.ambiguous_heterozygote'
+  | 'genotypes.profile_format';
 
 /** contract/cases/<case>/expected-error.json */
 export interface ContractErrorExpect {

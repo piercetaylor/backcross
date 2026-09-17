@@ -17,5 +17,14 @@ export {
   parseGenotypesSource,
   parseGenotypesText,
 } from './loaders.ts';
-export type { GenotypeFormat, StreamedGenotypes } from './loaders.ts';
+export type { GenotypeFormat, ParseOptions, StreamedGenotypes } from './loaders.ts';
+export {
+  BUILTIN_PROFILES,
+  DEFAULT_PROFILE_ID,
+  compileProfile,
+  profileLabel,
+  resolveProfile,
+  validateProfile,
+} from './profiles.ts';
+export type { CompiledProfile, TokenProfile } from './profiles.ts';
 export type { ParsedGenotypes } from './builder.ts';

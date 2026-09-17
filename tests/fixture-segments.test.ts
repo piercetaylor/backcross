@@ -89,15 +89,18 @@ describe.each([
 
   it('writes the segments CSV with the documented columns and the criterion', () => {
     const all = CANDIDATES.flatMap((_, c) => callSegments(dataset, cls, c, expected.segmentParams));
-    const csv = segmentsCsv(all, segmentGapCriterion(dataset), dataset.samples);
+    const csv = segmentsCsv(all, segmentGapCriterion(dataset), dataset.samples, {
+      tokenProfile: 'default',
+    });
     const lines = csv.trim().split('\n');
     expect(lines[0]).toBe(
-      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion',
+      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion,token_profile',
     );
     expect(lines).toHaveLength(all.length + 1);
-    for (const row of lines.slice(1)) expect(row.endsWith(`,${criterion}`)).toBe(true);
+    for (const row of lines.slice(1)) expect(row.endsWith(`,${criterion},default`)).toBe(true);
     const nil01 = lines.find((l) => l.startsWith('NIL_01,'));
-    if (withMarkers) expect(nil01).toMatch(/,donor,50\.400000,64\.800000,6000000,14\.400000,cm$/);
-    else expect(nil01).toMatch(/,donor,NA,NA,6000000,NA,bp$/);
+    if (withMarkers)
+      expect(nil01).toMatch(/,donor,50\.400000,64\.800000,6000000,14\.400000,cm,default$/);
+    else expect(nil01).toMatch(/,donor,NA,NA,6000000,NA,bp,default$/);
   });
 });

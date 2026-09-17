@@ -123,7 +123,7 @@ describe('wide CSV vocabulary', () => {
 
   it('treats the full nucleotide missing list as missing', () => {
     const text = 'marker_id,chrom,pos_bp,S1,S2,S3\nm1,Gm01,100,.|.,NN,--\nm2,Gm01,200,.,,A\n';
-    const g = parseWideCsv(text, 'nucleotide').genotypes;
+    const g = parseWideCsv(text, { mode: 'nucleotide' }).genotypes;
     expect(Array.from(g.allele1)).toEqual([255, 255, 255, 255, 255, 0]);
   });
 

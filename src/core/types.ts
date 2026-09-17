@@ -69,6 +69,8 @@ export interface Dataset {
   chromIndex: Int32Array;
   /** Markers sorted by (chromosome order, position); index into marker arrays. */
   sortedMarkerOrder: Int32Array;
+  /** The token profile the genotype file was read with: 'default', a built-in id, or `custom:<id>` (contract 1.4.0). */
+  tokenProfile: string;
 }
 
 /**

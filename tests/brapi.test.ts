@@ -751,7 +751,9 @@ describe('review fixes', () => {
     const { dataset } = await loadBrapi('pos', true);
     const cls = classifyDataset(dataset);
     const rpp = computeRpp(dataset, cls, { maxGapBp: 2_000_000, maxGapCm: 10 });
-    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples);
+    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, {
+      tokenProfile: 'default',
+    });
     const row = csv.split('\n').find((l) => l.startsWith('NIL_01,'));
     expect(row?.startsWith('NIL_01,callset3,sample3,')).toBe(true);
   });

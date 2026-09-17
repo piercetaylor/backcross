@@ -36,6 +36,16 @@
  * `#CHROM` line, error kind genotypes.repeated_header); a quoted line break inside a samples.csv field; and the
  * error kind genotypes.column_count. No case carries two faults.
  *
+ * Version 1.4.0 (docs/adr/0019): named token profiles. The profile files
+ * under contract/profiles/ are committed, not written here; the manifest
+ * hashes them with everything else. A case may carry
+ * `options: { profile: '<id>' }`, written as options.json beside its files.
+ * Cases read wide CSV and HapMap under soybase-report (H resolved to the
+ * row's two alleles, the HapMap `alleles` column included; U missing), dart,
+ * axiom, kasp and tassel, and two error kinds: genotypes.ambiguous_heterozygote
+ * (an H at a marker showing one allele) and genotypes.profile_format (a
+ * profile with a VCF, or with a wide CSV detected as coded A/B/H).
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -210,62 +220,37 @@ const WIDE_SIMPLE = lines(
  * Each case: `files` maps a file name to its text or bytes; exactly one of
  * `expect` (ContractExpect) or `error` (an ErrorKind) is given.
  */
+/** vcf-basic's genotype file, reused by err-profile-with-vcf. */
+const VCF_BASIC_GENOTYPES = lines(
+  '##fileformat=VCFv4.2',
+  '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
+  tsv(VCF_HEADER, 'RP', 'DONOR', 'L1', 'L2'),
+  tsv('Gm07', '1000', 'v_phase', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0|1', '1|0'),
+  tsv('Gm07', '2000', '.', 'C', 'T', '.', 'PASS', '.', 'GT', '0', '1', './.', '.'),
+  tsv('Gm07', '3000', 'v_multi', 'G', 'A,T', '.', 'PASS', '.', 'GT', '0/0', '2/2', '0/2', '1/2'),
+  tsv(
+    'Gm07',
+    '4000',
+    'v_gtlast',
+    'T',
+    'C',
+    '.',
+    'PASS',
+    '.',
+    'DP:GT',
+    '11:0/0',
+    '9:1/1',
+    '8:0/1',
+    '7:.|.',
+  ),
+);
+
 const cases = [
   {
     // Phased and unphased GT, haploid GT, multiallelic ALT, ID `.`, GT not first in FORMAT.
     name: 'vcf-basic',
     files: {
-      'genotypes.vcf': lines(
-        '##fileformat=VCFv4.2',
-        '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
-        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1', 'L2'),
-        tsv(
-          'Gm07',
-          '1000',
-          'v_phase',
-          'A',
-          'G',
-          '.',
-          'PASS',
-          '.',
-          'GT',
-          '0/0',
-          '1/1',
-          '0|1',
-          '1|0',
-        ),
-        tsv('Gm07', '2000', '.', 'C', 'T', '.', 'PASS', '.', 'GT', '0', '1', './.', '.'),
-        tsv(
-          'Gm07',
-          '3000',
-          'v_multi',
-          'G',
-          'A,T',
-          '.',
-          'PASS',
-          '.',
-          'GT',
-          '0/0',
-          '2/2',
-          '0/2',
-          '1/2',
-        ),
-        tsv(
-          'Gm07',
-          '4000',
-          'v_gtlast',
-          'T',
-          'C',
-          '.',
-          'PASS',
-          '.',
-          'DP:GT',
-          '11:0/0',
-          '9:1/1',
-          '8:0/1',
-          '7:.|.',
-        ),
-      ),
+      'genotypes.vcf': VCF_BASIC_GENOTYPES,
       'samples.csv': SAMPLES_RP_DONOR_L1_L2,
     },
     expect: {
@@ -1789,6 +1774,248 @@ const cases = [
       },
     },
   },
+  {
+    // H is the heterozygote of the row's two alleles; U is missing (contract 1.4.0).
+    name: 'profile-soybase-report-wide',
+    options: { profile: 'soybase-report' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,H',
+        'r2,Gm02,2000,C,T,U',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [['A', 'G'], null],
+      },
+    },
+  },
+  {
+    // r3: both parents AA, so the alleles column supplies the second allele of H.
+    name: 'profile-soybase-report-hapmap',
+    options: { profile: 'soybase-report' },
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('r1', 'A/G', 'Gm02', '1000', ...HAPMAP_FIXED, 'AA', 'GG', 'H'),
+        tsv('r2', 'C/T', 'Gm02', '2000', ...HAPMAP_FIXED, 'CC', 'TT', 'U'),
+        tsv('r3', 'A/G', 'Gm02', '3000', ...HAPMAP_FIXED, 'AA', 'AA', 'H'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+        { id: 'r3', chrom: 'Gm02', posBp: 3000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['A', 'A'],
+        ],
+        L1: [['A', 'G'], null, ['A', 'G']],
+      },
+    },
+  },
+  {
+    // DArT 0/1/2/-: allele symbols 0 and 1; never tested for A/B/H coding.
+    name: 'profile-dart-wide',
+    options: { profile: 'dart' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,0,1,2',
+        'r2,Gm02,2000,0,1,-',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['0', '0'],
+          ['0', '0'],
+        ],
+        DONOR: [
+          ['1', '1'],
+          ['1', '1'],
+        ],
+        L1: [['0', '1'], null],
+      },
+    },
+  },
+  {
+    // Axiom AA/BB/AB and the numeric form 0/2 with NoCall.
+    name: 'profile-axiom-wide',
+    options: { profile: 'axiom' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,AA,BB,AB',
+        'r2,Gm02,2000,0,2,NoCall',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['B', 'B'],
+          ['B', 'B'],
+        ],
+        L1: [['A', 'B'], null],
+      },
+    },
+  },
+  {
+    // KASP SNPviewer X:X/Y:Y/X:Y with ? missing.
+    name: 'profile-kasp-wide',
+    options: { profile: 'kasp' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,X:X,Y:Y,X:Y',
+        'r2,Gm02,2000,X:X,Y:Y,?',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['X', 'X'],
+          ['X', 'X'],
+        ],
+        DONOR: [
+          ['Y', 'Y'],
+          ['Y', 'Y'],
+        ],
+        L1: [['X', 'Y'], null],
+      },
+    },
+  },
+  {
+    // X and XX are missing in a wide CSV under tassel (an error without it: err-nucleotide-xx).
+    name: 'profile-tassel-wide',
+    options: { profile: 'tassel' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,G,X',
+        'r2,Gm02,2000,C,T,XX',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm02'],
+      markers: [
+        { id: 'r1', chrom: 'Gm02', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm02', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [null, null],
+      },
+    },
+  },
+  {
+    // H at a marker whose row shows one allele: the second allele is unknown.
+    name: 'err-profile-ambiguous-het',
+    options: { profile: 'soybase-report' },
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'r1,Gm02,1000,A,A,H'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.ambiguous_heterozygote',
+  },
+  {
+    // GT indices carry no tokens, so a chosen profile with a VCF is an error.
+    name: 'err-profile-with-vcf',
+    options: { profile: 'dart' },
+    files: {
+      'genotypes.vcf': VCF_BASIC_GENOTYPES,
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.profile_format',
+  },
+  {
+    // H is claimed by the profile and does not vote; A and B make the file coded, which a profile cannot read.
+    name: 'err-profile-nucleotide-on-coded',
+    options: { profile: 'soybase-report' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm02,1000,A,B,H',
+        'r2,Gm02,2000,A,B,B',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.profile_format',
+  },
 ];
 
 // ---- write ------------------------------------------------------------------
@@ -1798,6 +2025,7 @@ for (const c of cases) {
   const dir = join(CASES, c.name);
   mkdirSync(dir, { recursive: true });
   const files = { ...c.files };
+  if (c.options !== undefined) files['options.json'] = JSON.stringify(c.options, null, 2) + '\n';
   if ((c.expect === undefined) === (c.error === undefined)) {
     throw new Error(`${c.name}: give exactly one of expect or error`);
   }
