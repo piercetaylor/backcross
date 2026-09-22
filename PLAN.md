@@ -352,7 +352,7 @@ Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://
 
 ### M4 run, 2026-09-22
 
-Same laptop as the M1, M2, M2.5 and M3 runs. Node v24.13.1, npm 11.8.0, vitest 5.0.0, Playwright 1.63.0 (Chromium 153.0.8010.12, Firefox 155.0), axe-core 4.13.0, Lighthouse 13.4.1, all browser runs headless (`CI=true`). Six phase commits from docs/m4-phases.md (`0847003`, `fea4bf7`, `0ce4587`, `db7b34f`, `a951911`, `d4ad0e8`), the rename at `8473292`, the export names at `41e1afd`, the S6 corrections at `0d306ba` and `33245c0`, and a browser-test fix at `68eed50`; every gate passes at each, and the figures below are from `68eed50`.
+Same laptop as the M1, M2, M2.5 and M3 runs. Node v24.13.1, npm 11.8.0, vitest 5.0.0, Playwright 1.63.0 (Chromium 153.0.8010.12, Firefox 155.0), axe-core 4.13.0, Lighthouse 13.4.1, all browser runs headless (`CI=true`). Six phase commits from docs/m4-phases.md (`0847003`, `fea4bf7`, `0ce4587`, `db7b34f`, `a951911`, `d4ad0e8`), the rename at `8473292`, the export names at `41e1afd`, the S6 corrections at `0d306ba` and `33245c0`, and a browser-test fix at `68eed50`; the figures below are from `68eed50`, where every gate passes. CI is green on each of those commits but `0d306ba`, a documentation commit that failed `prettier --check` on its own new text and was green again at `d4ad0e8`; the gates for phases 1 to 5 are attested by `docs/handoff-m4-phase6.md`, and this session re-ran the full set at `41e1afd` and `68eed50`.
 
 ```
 $ npm run lint && npm run typecheck
