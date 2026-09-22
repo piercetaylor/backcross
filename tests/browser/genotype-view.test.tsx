@@ -70,6 +70,35 @@ async function loadSynthetic(spec: typeof SPEC = SPEC): Promise<void> {
   });
   await goTo('4. Graphical genotypes');
   await waitForDraw(spec.nCandidates);
+  await waitForRailCollapse();
+}
+
+/**
+ * Entering this screen collapses the rail, and the shell animates its grid
+ * track over --duration-1 (src/ui/shell/shell.css). An absolute x read while
+ * that track is still moving is a transient, and a sticky gutter can trail
+ * its scroll container by a frame, because Chromium refreshes sticky offsets
+ * in a post-layout pass and not in the layout that getBoundingClientRect
+ * forces. Both conditions are waited for: the track has reached its collapsed
+ * width, and the gutter sits flush with the scroller it sticks to. Slowing
+ * --duration-1 to 2s makes the geometry cases here fail without this wait, in
+ * both Chromium and Firefox.
+ */
+async function waitForRailCollapse(): Promise<void> {
+  const shell = el<HTMLElement>('.app-shell');
+  const collapsed = getComputedStyle(shell).getPropertyValue('--rail-width-collapsed').trim();
+  await expect
+    .poll(
+      () => {
+        const track = getComputedStyle(shell).gridTemplateColumns.split(' ')[0];
+        const gutter = el('.geno-gutter').getBoundingClientRect().left;
+        const scroller = el('.geno-scroll').getBoundingClientRect().left;
+        return track === collapsed && Math.abs(gutter - scroller) < 0.5;
+      },
+      { message: `the rail did not settle at ${collapsed} with the gutter flush to its scroller` },
+    )
+    .toBe(true);
+  await nextFrame();
 }
 
 /**

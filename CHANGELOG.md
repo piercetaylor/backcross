@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The genotype view's browser geometry tests wait for the rail-collapse animation before reading an absolute x. Entering that screen collapses the rail and the shell animates its grid track, so a measurement taken while the track was still moving was a transient, and the gutter case failed intermittently in CI against a settled scroller.
+
 ### Added
 
 - Crop selector (contract 1.5.0, docs/adr/0020): soybean (default), maize, rice, sorghum, wheat, barley, oat, common bean and cotton chromosome schemes; a chosen crop normalises and orders chromosome names by that crop's convention, so a maize `chr1` is no longer displayed as `Gm01`. Every CSV export gains a trailing `crop` column and the report a Crop row.
