@@ -42,9 +42,12 @@ session before every commit, and CI green on the pushed commit.
 
 ## Open questions for the maintainer
 
-- **Export file names** still begin with `isoline-` (`isoline-summary.csv`, `isoline-report.html`
-  and the rest). Renaming them changes a documented output format, which `CLAUDE.md` says to ask
-  about first.
+- ~~**Export file names** still begin with `isoline-`.~~ Answered 2026-09-22: they now begin
+  `backcross-` (`backcross-summary.csv`, `backcross-report.html` and the rest). The names live only
+  in `src/ui/screens/ExportScreen.tsx`; the contract, its mirror and `docs/data-formats.md` name no
+  download, so `contract/VERSION` did not move. Recorded as an amendment to ADR 0017, which keeps
+  0020 free for the crop schemes. The synthetic VCF's `##source` header still says `isoline-browser`
+  and is still a separate decision.
 - **The crop palette's leaf green and wheat gold** are close in hue to two Okabe-Ito class colours.
   No chrome colour is used inside the genotype view or its legend, so nothing is ambiguous today;
   ADR 0017 records it.

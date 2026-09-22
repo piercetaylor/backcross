@@ -39,3 +39,11 @@ Good: the name matches the work; a visitor can see every screen working from a s
 Bad: the palette brings back the collision risk ADR 0009 was written to avoid. Leaf green and Okabe-Ito's bluish green (`#009E73`), and wheat gold and Okabe-Ito's orange (`#E69F00`), are near each other in hue. The mitigation is that crop colours stay out of the canvas and legend, the gold never appears as a fill a reader must decode, and the greens are much darker than the data green. The worker now fetches files from the page's own origin as well as from a BrAPI server. A renamed repository relies on GitHub's redirect for existing links until they are updated.
 
 Neutral: the demo loads the same committed fixture the tests use, so it changes whenever the generator changes.
+
+## Amendment, 2026-09-22
+
+This record left the export file names alone because they are an output format, and `CLAUDE.md` says to ask before changing one. The maintainer was asked in `docs/handoff-m4-phase6.md` and answered on 2026-09-22.
+
+**The export file names carry the new name.** The six downloads become `backcross-summary.csv`, `backcross-segments.csv`, `backcross-targets.csv`, `backcross-pairwise.csv`, `backcross-discordant-markers.csv` and `backcross-report.html`; the call-set table stays `brapi-callsets.csv`, which never carried the old name. The names are in `src/ui/screens/ExportScreen.tsx` and nowhere else: `contract/data-contract.md` does not name a download, and `docs/data-formats.md` describes each table by its columns, so `contract/VERSION` does not move and the mirror into progeny-selector is untouched. Nothing inside a file changes; only the name the browser saves it under. The cost falls on anyone whose script picks a download up by name, which is why the question was asked; the benefit is that a breeder who downloads six files from a tool called Backcross does not have to remember what it used to be called. The CHANGELOG's rename entry, still unreleased, is corrected rather than contradicted.
+
+The synthetic VCF's `##source` header still says `isoline-browser`. It stays parked where this record put it: changing it regenerates the committed fixture, which the demo and the contract cases both read, and that is a separate decision.

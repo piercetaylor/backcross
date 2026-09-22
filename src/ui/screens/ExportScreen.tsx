@@ -210,7 +210,7 @@ export function ExportScreen({
             onClick={() => {
               if (rpp === null) return;
               downloadText(
-                'isoline-summary.csv',
+                'backcross-summary.csv',
                 lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                 }),
@@ -230,7 +230,7 @@ export function ExportScreen({
             onClick={() => {
               if (segmentsByCandidate === null) return;
               downloadText(
-                'isoline-segments.csv',
+                'backcross-segments.csv',
                 segmentsCsv(segmentsByCandidate.flat(), effectiveGapCriterion, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                 }),
@@ -250,7 +250,7 @@ export function ExportScreen({
             onClick={() => {
               if (targets === null) return;
               downloadText(
-                'isoline-targets.csv',
+                'backcross-targets.csv',
                 targetsCsv(targets.checks, loaded.samples, { tokenProfile: loaded.tokenProfile }),
                 'text/csv',
               );
@@ -267,7 +267,7 @@ export function ExportScreen({
             disabled={!canPairwise}
             onClick={() => {
               downloadText(
-                'isoline-pairwise.csv',
+                'backcross-pairwise.csv',
                 pairwiseCsv(diffs, loaded.chromosomeOrder, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                 }),
@@ -292,7 +292,7 @@ export function ExportScreen({
               // the worker builds it and hands back the finished text.
               void onRequestDiscordantMarkersCsv(compare.sampleA, compare.sampleB, compare.mode)
                 .then((csv) => {
-                  downloadText('isoline-discordant-markers.csv', csv, 'text/csv');
+                  downloadText('backcross-discordant-markers.csv', csv, 'text/csv');
                 })
                 .catch((e: unknown) => {
                   setDiscordantError(e instanceof Error ? e.message : String(e));
@@ -319,7 +319,7 @@ export function ExportScreen({
             type="button"
             disabled={!canReport}
             onClick={() => {
-              downloadText('isoline-report.html', buildReportHtml(), 'text/html');
+              downloadText('backcross-report.html', buildReportHtml(), 'text/html');
             }}
           >
             Download HTML report
@@ -342,7 +342,7 @@ export function ExportScreen({
             onClick={() => {
               const html = buildReportHtml();
               if (!openForPrint(html)) {
-                downloadText('isoline-report.html', html, 'text/html');
+                downloadText('backcross-report.html', html, 'text/html');
               }
             }}
           >
