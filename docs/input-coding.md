@@ -1,6 +1,6 @@
 # Input coding reference
 
-What each genotype format accepts, reads as missing, and rejects, under contract 1.4.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are soybean-only in this version (`Gm01`..`Gm20`; any other name is kept as written).
+What each genotype format accepts, reads as missing, and rejects, under contract 1.5.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are read under the crop scheme chosen at load time (see "Crop chromosome schemes" below); any name the scheme does not match is kept as written.
 
 | Format               | Accepted calls                                                                                                                               | Missing                                                          | Rejected (error naming the line and cell)                                                                             |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -28,3 +28,21 @@ A token profile (contract 1.4.0, `contract/profiles/`, docs/adr/0019) changes ho
 | `dart`           | `0` -> 0, `1` -> 1                       | `2` -> 0/1                  | empty, `-`, `NA`                                                | none       |
 | `axiom`          | `AA` -> A, `BB` -> B, `0` -> A, `2` -> B | `AB`, `BA`, `1` -> A/B      | empty, `NoCall`, `OTV`, `-1`, `-2`, `--`, `NA`                  | none       |
 | `kasp`           | `X:X` -> X, `Y:Y` -> Y                   | `X:Y`, `Y:X` -> X/Y         | empty, `?`, `Uncallable`, `Missing`, `NTC`, `Dupe`, `Bad`, `NA` | none       |
+
+## Crop chromosome schemes
+
+A crop scheme (contract 1.5.0, `contract/crops/`, docs/adr/0020) decides which chromosome spellings normalise to which canonical names and in what order. Choose one on the Upload screen or with `--crop` on the command line; `soybean` is the default and reproduces the previous soybean-only rule exactly. A name the scheme's pattern does not match is never changed: unanchored bins (`ChrUn`, `Un0`, `chr00`) and organelles (`MT`, `Pltd`, `Mt`, `Pt`) pass through and are ordered after the canonical names in natural order. Positions are never converted between assemblies. Every CSV export records the scheme in a trailing `crop` column.
+
+| id            | canonical names              | assembly the names come from                    | accepted prefixes                     |
+| ------------- | ---------------------------- | ----------------------------------------------- | ------------------------------------- |
+| `soybean`     | `Gm01`..`Gm20`               | Williams 82 (Wm82.a2.v1 / a4.v1 / a6.v1 naming) | `Gm`, `Chr`, `Chromosome`, `LG`, none |
+| `maize`       | `chr1`..`chr10`              | Zm-B73-REFERENCE-NAM-5.0                        | `chr`, `chromosome`, none             |
+| `rice`        | `Chr1`..`Chr12`              | IRGSP-1.0 / MSU7                                | `chr`, `chromosome`, none             |
+| `sorghum`     | `Chr01`..`Chr10`             | BTx623 v3.1.1 (NCBIv3)                          | `chr`, `chromosome`, none             |
+| `wheat`       | `Chr1A`..`Chr7D` (21)        | IWGSC CS RefSeq v2.1                            | `chr`, `chromosome`, none             |
+| `barley`      | `chr1H`..`chr7H`             | MorexV3                                         | `chr`, `chromosome`, none             |
+| `oat`         | `chr1A`..`chr7D` (21, A C D) | OT3098 v2                                       | `chr`, `chromosome`, none             |
+| `common-bean` | `Chr01`..`Chr11`             | G19833 v2.1                                     | `chr`, `Pv`, `chromosome`, none       |
+| `cotton`      | `A01`..`A13`, `D01`..`D13`   | TM-1 UTX v2.1                                   | `chr`, `chromosome`, none             |
+
+The `LG` prefix is accepted only under `soybean`: in other crops a linkage-group number need not equal a chromosome number, so reading it as one would be silently wrong. Cowpea, pea, sunflower and peanut are not shipped in this version because a bare number is ambiguous in each; potato is dosage-called and out of scope.

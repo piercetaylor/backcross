@@ -27,8 +27,9 @@
  * `bytesInflated` and, for VCF, `peakBuilderBytes` (0 for the text formats,
  * whose peak is not accounted).
  *
- * `ParseOptions` carries the wide-CSV mode and the token profile
- * (profiles.ts, contract 1.4.0); a profile with a VCF is an error in both
+ * `ParseOptions` carries the wide-CSV mode, the token profile
+ * (profiles.ts, contract 1.4.0) and the crop chromosome scheme (crops.ts,
+ * contract 1.5.0); a profile with a VCF is an error in both
  * entries, before any record is read. `assembleDataset` records the profile's
  * label (`default`, a built-in id or `custom:<id>`) on the Dataset.
  *
@@ -37,7 +38,8 @@
  * parseGenotypesSource(name, source, options?) -> Promise<StreamedGenotypes>,
  * assembleDataset(parsed, samples, markerMap?, meta?) -> { dataset, warnings }.
  */
-import { buildChromosomeOrder, compareChromosomes } from '../core/chromosomes.ts';
+import { buildChromosomeOrder, compareChromosomes, SOYBEAN } from '../core/chromosomes.ts';
+import type { CompiledScheme } from '../core/chromosomes.ts';
 import type { Dataset, GenotypeMatrix, SampleRecord } from '../core/types.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import { bytesToText, inflateIfGzip } from './decompress.ts';
@@ -57,6 +59,8 @@ export type GenotypeFormat = 'vcf' | 'hapmap' | 'wide-csv';
 export interface ParseOptions {
   mode?: WideCsvMode;
   profile?: TokenProfile | null;
+  /** Crop chromosome scheme (contract 1.5.0); absent means soybean. */
+  crop?: CompiledScheme;
 }
 
 function rejectProfileForVcf(options: ParseOptions | undefined): void {
@@ -99,7 +103,7 @@ export function parseGenotypesText(
   switch (format) {
     case 'vcf':
       rejectProfileForVcf(options);
-      return parseVcf(text);
+      return parseVcf(text, options?.crop ?? SOYBEAN);
     case 'hapmap':
       return parseHapMap(text, options);
     case 'wide-csv':
@@ -148,7 +152,7 @@ export async function parseGenotypesSource(
   };
   if (format === 'vcf') {
     rejectProfileForVcf(options);
-    const { parsed, peakBuilderBytes } = await parseVcfLines(all);
+    const { parsed, peakBuilderBytes } = await parseVcfLines(all, options?.crop ?? SOYBEAN);
     return { ...parsed, bytesInflated: counter.bytes, peakBuilderBytes };
   }
   const collected: string[] = [];
@@ -183,7 +187,10 @@ export function assembleDataset(
   parsed: ParsedGenotypes,
   samples: SampleRecord[],
   markerMap?: MarkerMap,
-  meta: { tokenProfile: string } = { tokenProfile: DEFAULT_PROFILE_ID },
+  meta: { tokenProfile: string; crop: CompiledScheme } = {
+    tokenProfile: DEFAULT_PROFILE_ID,
+    crop: SOYBEAN,
+  },
 ): { dataset: Dataset; warnings: string[] } {
   const warnings = [...parsed.warnings];
   const { markers } = parsed;
@@ -229,13 +236,13 @@ export function assembleDataset(
     throw new Error('both parents must have genotype columns unless the matrix is coded A/B/H');
   }
 
-  const chromosomeOrder = buildChromosomeOrder(markers.chrom);
+  const chromosomeOrder = buildChromosomeOrder(markers.chrom, meta.crop);
   const chromPos = new Map(chromosomeOrder.map((c, i) => [c, i] as const));
   const chromIndex = Int32Array.from(markers.chrom, (c) => chromPos.get(c) as number);
   const sortedMarkerOrder = Int32Array.from(markers.ids.keys()).sort((a, b) => {
     const ca = markers.chrom[a] as string;
     const cb = markers.chrom[b] as string;
-    if (ca !== cb) return compareChromosomes(ca, cb);
+    if (ca !== cb) return compareChromosomes(ca, cb, meta.crop);
     return (markers.posBp[a] as number) - (markers.posBp[b] as number);
   });
 
@@ -251,6 +258,7 @@ export function assembleDataset(
       chromIndex,
       sortedMarkerOrder,
       tokenProfile: meta.tokenProfile,
+      crop: meta.crop.scheme.id,
     },
     warnings,
   };

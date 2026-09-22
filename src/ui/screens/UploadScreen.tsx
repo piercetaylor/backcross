@@ -42,6 +42,11 @@
  * source the select is disabled at the default with a help text. Both load
  * payloads carry `profile`.
  *
+ * A second `Select`, labelled "Crop" (contract 1.5.0, docs/adr/0020), offers
+ * the built-in crop chromosome schemes in BUILTIN_CROPS order with soybean
+ * first and selected; it chooses which spellings normalise to which canonical
+ * chromosome names, and both load payloads carry `crop`.
+ *
  * Props: params, onParamsChange, busy, loaded, onLoad, onFetchCallSets,
  * onCancelBrapi, brapiLoading.
  */
@@ -63,6 +68,7 @@ import './screens.css';
 import type { QcThresholds, RppParams, SegmentParams } from '../../core/types.ts';
 import { callSetsCsv } from '../../export/callsets-csv.ts';
 import type { BrapiCallSet, BrapiSource } from '../../io/brapi.ts';
+import { BUILTIN_CROPS, DEFAULT_CROP_ID } from '../../io/crops.ts';
 import { BUILTIN_PROFILES, DEFAULT_PROFILE_ID, validateProfile } from '../../io/profiles.ts';
 import type { TokenProfile } from '../../io/profiles.ts';
 import type { WorkerRequest, WorkerResult } from '../../workers/protocol.ts';
@@ -78,6 +84,9 @@ const PROFILE_OPTIONS = [
   { id: DEFAULT_PROFILE_ID, label: 'Contract default (by format)' },
   ...[...BUILTIN_PROFILES.values()].map((p) => ({ id: p.id, label: p.name })),
 ];
+
+/** BUILTIN_CROPS order, which puts soybean (the default) first (contract 1.5.0). */
+const CROP_OPTIONS = [...BUILTIN_CROPS.values()].map((c) => ({ id: c.id, label: c.name }));
 
 export interface AnalysisParams {
   rpp: RppParams;
@@ -185,6 +194,7 @@ export function UploadScreen({
   const [callSetsWarnings, setCallSetsWarnings] = useState<string[]>([]);
   const [copyStatus, setCopyStatus] = useState('');
   const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID);
+  const [cropId, setCropId] = useState<string>(DEFAULT_CROP_ID);
   const [customProfile, setCustomProfile] = useState<TokenProfile | null>(null);
   const [customProfileError, setCustomProfileError] = useState<string | null>(null);
 
@@ -259,6 +269,7 @@ export function UploadScreen({
           samples,
           ...(markers === undefined ? {} : { markers }),
           profile: DEFAULT_PROFILE_ID,
+          crop: cropId,
         },
       });
       return;
@@ -273,6 +284,7 @@ export function UploadScreen({
         samples,
         ...(markers === undefined ? {} : { markers }),
         profile: fileProfile,
+        crop: cropId,
       },
     });
   }
@@ -370,6 +382,24 @@ export function UploadScreen({
         {source === 'brapi' && (
           <span>BrAPI sources carry allele indices; profiles apply to files.</span>
         )}
+      </div>
+      <div className="field">
+        <Select
+          selectedKey={cropId}
+          isDisabled={busy}
+          onSelectionChange={(key) => setCropId(String(key))}
+        >
+          <Label>Crop</Label>
+          <Button className="line-select-button">
+            <SelectValue />
+          </Button>
+          <Popover>
+            <ListBox items={CROP_OPTIONS}>{(o) => <ListBoxItem>{o.label}</ListBoxItem>}</ListBox>
+          </Popover>
+        </Select>
+        <span>
+          Chooses the chromosome naming scheme; positions are not converted between assemblies.
+        </span>
       </div>
       <div className="field">
         <label>

@@ -17,7 +17,9 @@
  *
  * 'load' and 'loadBrapi' carry an optional token `profile` (a built-in id or a
  * validated custom object, contract 1.4.0), and 'loaded' reports its label as
- * `tokenProfile`.
+ * `tokenProfile`. Both also carry an optional `crop` (a built-in crop scheme
+ * id, contract 1.5.0; absent means soybean), and 'loaded' reports it as
+ * `crop`.
  * 'loadBrapi' is the BrAPI counterpart of 'load' (docs/adr/0015): the payload
  * carries a BrapiSource instead of a genotype file, the worker fetches the
  * variant set itself, and samples.csv and markers.csv travel as for 'load'.
@@ -68,6 +70,8 @@ export type WorkerRequest =
         markers?: ArrayBuffer;
         /** Token profile (contract 1.4.0): a built-in id or a validated custom object; absent means default. */
         profile?: string | TokenProfile;
+        /** Crop scheme id (contract 1.5.0); absent means soybean. */
+        crop?: string;
       };
     }
   | { id: number; type: 'rpp'; payload: RppParams }
@@ -107,6 +111,8 @@ export type WorkerRequest =
         markers?: ArrayBuffer;
         /** Anything other than the default is rejected before any network (contract 1.4.0). */
         profile?: string | TokenProfile;
+        /** Crop scheme id (contract 1.5.0); absent means soybean. */
+        crop?: string;
       };
     }
   | {
@@ -211,6 +217,8 @@ export type WorkerResult =
       source: DatasetSource;
       /** The token profile the genotypes were read with: 'default', a built-in id, or `custom:<id>`. */
       tokenProfile: string;
+      /** The crop scheme id the chromosome names were read under (contract 1.5.0). */
+      crop: string;
     }
   | { type: 'rpp'; lines: LineRpp[] }
   | { type: 'qc'; report: QcReport }

@@ -59,7 +59,7 @@
  *
  * Interface: checkTargets(dataset, classification, segmentsByCandidate, regions)
  * -> TargetCheck[], candidate-major (candidate outer loop, regions in input
- * order), parseTargetSpec(text, dataset) -> TargetRegion, and parseLocus(text)
+ * order), parseTargetSpec(text, dataset, scheme?) -> TargetRegion, and parseLocus(text, scheme?)
  * -> {chrom, startBp, endBp} | null, the name-free locus grammar of step 2
  * above, exposed for the genotype-view zoom field (src/ui/screens/GenotypeViewScreen.tsx).
  */
@@ -72,7 +72,8 @@ import type {
   TargetRegion,
   TargetStatus,
 } from './types.ts';
-import { normalizeChromosome } from './chromosomes.ts';
+import { normalizeChromosome, SOYBEAN } from './chromosomes.ts';
+import type { CompiledScheme } from './chromosomes.ts';
 
 export function checkTargets(
   dataset: Dataset,
@@ -199,13 +200,16 @@ const RANGE_SEPARATOR = /\s*(?:\.\.|–|-)\s*/;
  * a decimal token has no explicit unit, since guessing one could silently
  * misplace a target or a zoom window.
  */
-export function parseLocus(locusText: string): Omit<TargetRegion, 'name'> | null {
+export function parseLocus(
+  locusText: string,
+  scheme: CompiledScheme = SOYBEAN,
+): Omit<TargetRegion, 'name'> | null {
   const colonIdx = locusText.indexOf(':');
   if (colonIdx < 0) return null;
   const chromRaw = locusText.slice(0, colonIdx).trim();
   const rest = locusText.slice(colonIdx + 1).trim();
   if (chromRaw === '' || rest === '') return null;
-  const chrom = normalizeChromosome(chromRaw);
+  const chrom = normalizeChromosome(chromRaw, scheme);
 
   const parts = rest.split(RANGE_SEPARATOR).filter((p) => p.length > 0);
   if (parts.length === 1) {
@@ -226,7 +230,11 @@ export function parseLocus(locusText: string): Omit<TargetRegion, 'name'> | null
   return null;
 }
 
-export function parseTargetSpec(text: string, dataset: Dataset): TargetRegion {
+export function parseTargetSpec(
+  text: string,
+  dataset: Dataset,
+  scheme: CompiledScheme = SOYBEAN,
+): TargetRegion {
   const trimmed = text.trim();
   const eq = trimmed.indexOf('=');
   let name = trimmed;
@@ -240,7 +248,7 @@ export function parseTargetSpec(text: string, dataset: Dataset): TargetRegion {
   }
 
   try {
-    const locus = parseLocus(locusText);
+    const locus = parseLocus(locusText, scheme);
     if (locus !== null) return { name, ...locus };
   } catch (err) {
     if (err instanceof AmbiguousUnitError) {

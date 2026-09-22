@@ -29,6 +29,7 @@
  * Interface: parseWideCsv(text, options?: ParseOptions) -> ParsedGenotypes,
  * detectWideCsvMode(text, profile?: CompiledProfile) -> 'nucleotide' | 'coded'.
  */
+import { SOYBEAN } from '../core/chromosomes.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import {
@@ -121,6 +122,7 @@ export function parseWideCsv(text: string, options?: ParseOptions): ParsedGenoty
         builder = new GenotypeBuilder(
           sampleCols.map((i) => (f[i] as string).trim()),
           resolved === 'coded',
+          options?.crop ?? SOYBEAN,
         );
         return;
       }

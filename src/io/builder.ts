@@ -14,10 +14,12 @@
  * `2 x size`. JavaScript cannot observe the collector, so this is what the
  * code keeps reachable, not what the engine has yet freed.
  *
- * Interface: new GenotypeBuilder(sampleIds); push(...); finish() -> ParsedGenotypes;
+ * Interface: new GenotypeBuilder(sampleIds, coded?, scheme?); push(...);
+ * finish() -> ParsedGenotypes;
  * readonly peakBytes.
  */
-import { normalizeChromosome } from '../core/chromosomes.ts';
+import { normalizeChromosome, SOYBEAN } from '../core/chromosomes.ts';
+import type { CompiledScheme } from '../core/chromosomes.ts';
 import { MISSING_ALLELE } from '../core/types.ts';
 import type { GenotypeMatrix, MarkerTable } from '../core/types.ts';
 
@@ -42,14 +44,16 @@ export class GenotypeBuilder {
   readonly warnings: string[] = [];
   readonly sampleIds: string[];
   private readonly coded: boolean;
+  private readonly scheme: CompiledScheme;
 
   get peakBytes(): number {
     return this.peak;
   }
 
-  constructor(sampleIds: string[], coded = false) {
+  constructor(sampleIds: string[], coded = false, scheme: CompiledScheme = SOYBEAN) {
     this.sampleIds = sampleIds;
     this.coded = coded;
+    this.scheme = scheme;
     const dup = sampleIds.find((s, i) => sampleIds.indexOf(s) !== i);
     if (dup !== undefined) throw new Error(`duplicate sample id in genotype file: ${dup}`);
   }
@@ -61,7 +65,7 @@ export class GenotypeBuilder {
       throw new Error(`invalid position for ${markerId}: ${posBp}`);
     this.seen.add(markerId);
     this.ids.push(markerId);
-    this.chrom.push(normalizeChromosome(chromRaw));
+    this.chrom.push(normalizeChromosome(chromRaw, this.scheme));
     this.pos.push(posBp);
     this.alleles.push(alleleSymbols);
     const n = this.sampleIds.length;

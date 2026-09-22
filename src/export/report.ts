@@ -20,7 +20,8 @@
  * Per-line quality control and Lines tables carry call_set_db_id and
  * sample_db_id after sample_id; both appear only when their data is present.
  * The dataset summary always carries a Token profile row (contract 1.4.0,
- * `input.provenance`), after the Source row when there is one.
+ * `input.provenance`), after the Source row when there is one, and a Crop row
+ * after it (contract 1.5.0; `soybean` when the provenance names none).
  *
  * Every value in the report was computed with the parameters carried in
  * `input.params`; ADR 0006 requires the RPP coverage cap to be stated because
@@ -214,6 +215,7 @@ browser and is not included in this file except as the summary figures and image
       ? []
       : ([['Source', escapeHtml(dataset.source)]] as [string, string][])),
     ['Token profile', escapeHtml(input.provenance.tokenProfile)],
+    ['Crop', escapeHtml(input.provenance.crop ?? 'soybean')],
     ['Marker count', String(dataset.nMarkers)],
     ['Informative markers', int(nInformative)],
     ['Recurrent parent samples', String(roleCounts.recurrent_parent)],

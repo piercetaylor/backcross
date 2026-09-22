@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Crop selector (contract 1.5.0, docs/adr/0020): soybean (default), maize, rice, sorghum, wheat, barley, oat, common bean and cotton chromosome schemes; a chosen crop normalises and orders chromosome names by that crop's convention, so a maize `chr1` is no longer displayed as `Gm01`. Every CSV export gains a trailing `crop` column and the report a Crop row.
+
 ### Changed
 
 - Data contract 1.3.0 (docs/adr/0018): blank and whitespace-only lines and rows whose every field is empty are skipped in every input, including before the header; `#` no longer starts a comment (a `#` row in the wide CSV, samples.csv or markers.csv is data, and a HapMap must begin with its `rs#` header), so a file that relied on `#` comments now fails naming the line; a quoted field may contain a line break, as Excel writes them, and is read with LF line breaks; a `"` opens a quoted field only at the start of a field and is otherwise an ordinary character; a quoted field left open at the end of a file, and a `#` line after a VCF `#CHROM` line, are errors naming the line. Sixteen new cases.

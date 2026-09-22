@@ -103,6 +103,18 @@ describe('external id columns', () => {
   });
 });
 
+describe('crop column (contract 1.5.0)', () => {
+  it('ends every CSV header with crop, after token_profile, and every row with the id', () => {
+    const csv = allCsvs(plain, { tokenProfile: 'default', crop: 'maize' });
+    for (const [name, text] of Object.entries(csv)) {
+      const lines = text.trimEnd().split('\n');
+      expect(lines[0]?.endsWith(',token_profile,crop'), name).toBe(true);
+      expect(lines.length, name).toBeGreaterThan(1);
+      for (const row of lines.slice(1)) expect(row.endsWith(',default,maize'), name).toBe(true);
+    }
+  });
+});
+
 describe('token_profile column', () => {
   it('ends every CSV header with token_profile and every row with the given profile', () => {
     const csv = allCsvs(plain, { tokenProfile: 'custom:mylab' });

@@ -27,4 +27,5 @@ export {
   validateProfile,
 } from './profiles.ts';
 export type { CompiledProfile, TokenProfile } from './profiles.ts';
+export { BUILTIN_CROPS, DEFAULT_CROP_ID, resolveCrop, validateScheme } from './crops.ts';
 export type { ParsedGenotypes } from './builder.ts';

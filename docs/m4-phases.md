@@ -715,7 +715,7 @@ S6 therefore makes four edits the table does not name:
 2. `src/progeny_selector/constants.py` line 171: `RESULTS_SCHEMA` becomes `"1.1.0"`. ADR 0016
    line 29 makes a new fixed column a minor bump.
 3. `tests/test_results_schema.py`: `FIXED_PREFIX` grows to 35 entries and the `len(FIXED_PREFIX)
-   == 34` assertion at line 79 becomes 35. `EMPTY_HEADER` keeps its shape, since `crop` enters the
+== 34` assertion at line 79 becomes 35. `EMPTY_HEADER` keeps its shape, since `crop` enters the
    prefix and `token_profile` still trails it.
 4. `scripts/read_results.R` lines 45 and 89: add `crop` to the column list and
    `crop = col_character()` to the `col_types` specification.

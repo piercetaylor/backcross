@@ -29,6 +29,7 @@ import {
   resolveHetOfMarker,
   symbolIndex,
 } from './calls.ts';
+import { SOYBEAN } from '../core/chromosomes.ts';
 import type { ParseOptions } from './loaders.ts';
 import { compileProfile } from './profiles.ts';
 import { parsePosition } from './position.ts';
@@ -55,7 +56,7 @@ export function parseHapMap(text: string, options?: ParseOptions): ParsedGenotyp
   }
   const header = (lines[headerIdx] as string).split('\t');
   if (header.length < 12) throw new Error('HapMap: fewer than 12 columns (11 fixed + taxa)');
-  const builder = new GenotypeBuilder(header.slice(11));
+  const builder = new GenotypeBuilder(header.slice(11), false, options?.crop ?? SOYBEAN);
   const nSamples = builder.sampleIds.length;
 
   for (let i = headerIdx + 1; i < lines.length; i++) {

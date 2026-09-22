@@ -7,8 +7,13 @@
  * hand-authored expected.json; an error case must throw the message its kind
  * maps to below. The kind-to-message table lives here, not in the contract,
  * so rewording a message is a change to this test and not to the contract.
- * A case with an options.json (contract 1.4.0) passes its token profile to
- * both entries and records its label on the dataset.
+ * A case with an options.json passes its token profile (contract 1.4.0) and
+ * its crop scheme (contract 1.5.0) to both entries. Neither appears in
+ * expected.json: tests/support/normalise.ts is the contract's language-neutral
+ * dataset shape, and the crop shows through it only as the canonical
+ * chromosome names and their order. The profile label and crop id recorded on
+ * the Dataset are asserted in tests/export-ids.test.ts and tests/report.test.ts,
+ * where they reach an output.
  * The manifest and the version string are checked too.
  */
 import { createHash } from 'node:crypto';
@@ -20,9 +25,11 @@ import { describe, expect, it } from 'vitest';
 import { assembleDataset, parseGenotypesBytes, parseGenotypesSource } from '../src/io/loaders.ts';
 import type { ParsedGenotypes } from '../src/io/builder.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
+import { resolveCrop } from '../src/io/crops.ts';
 import { parseMarkerMap } from '../src/io/markers.ts';
 import { profileLabel, resolveProfile } from '../src/io/profiles.ts';
 import type { TokenProfile } from '../src/io/profiles.ts';
+import type { CompiledScheme } from '../src/core/chromosomes.ts';
 import { bytesOf } from '../src/io/stream.ts';
 import { normaliseDataset } from './support/normalise.ts';
 import type { ContractErrorExpect, ContractExpect, ErrorKind } from './support/normalise.ts';
@@ -55,12 +62,15 @@ function loadCase(
   dir: string,
   parsed: ParsedGenotypes,
   profile: TokenProfile | null,
+  crop: CompiledScheme,
 ): ContractExpect {
   const samples = parseSampleManifest(readFileSync(join(dir, 'samples.csv'), 'utf8'));
   const markersPath = join(dir, 'markers.csv');
-  const map = exists(markersPath) ? parseMarkerMap(readFileSync(markersPath, 'utf8')) : undefined;
+  const map = exists(markersPath)
+    ? parseMarkerMap(readFileSync(markersPath, 'utf8'), crop)
+    : undefined;
   return normaliseDataset(
-    assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile) }).dataset,
+    assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile), crop }).dataset,
     VERSION,
   );
 }
@@ -74,12 +84,11 @@ function exists(path: string): boolean {
   }
 }
 
-/** The case's token profile from options.json, or null when the file is absent. */
-function caseProfile(dir: string): TokenProfile | null {
+/** The case's options.json (contract 1.4.0, 1.5.0), or an empty record when the file is absent. */
+function caseOptions(dir: string): { profile?: string; crop?: string } {
   const path = join(dir, 'options.json');
-  if (!exists(path)) return null;
-  const options = JSON.parse(readFileSync(path, 'utf8')) as { profile?: string };
-  return resolveProfile(options.profile);
+  if (!exists(path)) return {};
+  return JSON.parse(readFileSync(path, 'utf8')) as { profile?: string; crop?: string };
 }
 
 function genotypeFile(dir: string): string {
@@ -110,7 +119,9 @@ describe('contract cases', () => {
     const dir = join(CASES, name);
     const file = genotypeFile(dir);
     const bytes = new Uint8Array(readFileSync(join(dir, file)));
-    const profile = caseProfile(dir);
+    const options = caseOptions(dir);
+    const profile = resolveProfile(options.profile);
+    const crop = resolveCrop(options.crop);
 
     if (exists(join(dir, 'expected.json'))) {
       const expected = JSON.parse(
@@ -118,14 +129,14 @@ describe('contract cases', () => {
       ) as ContractExpect;
 
       it(`${name}: synchronous load matches expected.json`, () => {
-        expect(loadCase(dir, parseGenotypesBytes(file, bytes, { profile }), profile)).toEqual(
-          expected,
-        );
+        expect(
+          loadCase(dir, parseGenotypesBytes(file, bytes, { profile, crop }), profile, crop),
+        ).toEqual(expected);
       });
 
       it(`${name}: streaming load matches expected.json`, async () => {
-        const parsed = await parseGenotypesSource(file, bytesOf(bytes), { profile });
-        expect(loadCase(dir, parsed, profile)).toEqual(expected);
+        const parsed = await parseGenotypesSource(file, bytesOf(bytes), { profile, crop });
+        expect(loadCase(dir, parsed, profile, crop)).toEqual(expected);
       });
     } else {
       const { kind, contractVersion } = JSON.parse(
@@ -135,9 +146,9 @@ describe('contract cases', () => {
       it(`${name}: fails with ${kind}`, () => {
         expect(contractVersion).toBe(VERSION);
         expect(ERROR_MESSAGES[kind], `unknown error kind ${kind}`).toBeDefined();
-        expect(() => loadCase(dir, parseGenotypesBytes(file, bytes, { profile }), profile)).toThrow(
-          ERROR_MESSAGES[kind],
-        );
+        expect(() =>
+          loadCase(dir, parseGenotypesBytes(file, bytes, { profile, crop }), profile, crop),
+        ).toThrow(ERROR_MESSAGES[kind]);
       });
     }
   }

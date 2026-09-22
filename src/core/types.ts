@@ -63,7 +63,7 @@ export interface Dataset {
   donorParentCol: number;
   /** True when genotypes came from a coded A/B/H file, so allele 0 is RP and allele 1 is donor by definition. */
   coded: boolean;
-  /** Chromosome names in display order (Gm01..Gm20 first, then scaffolds). */
+  /** Chromosome names in display order (the crop's canonical names first, then scaffolds). */
   chromosomeOrder: string[];
   /** Per-marker index into chromosomeOrder. */
   chromIndex: Int32Array;
@@ -71,6 +71,8 @@ export interface Dataset {
   sortedMarkerOrder: Int32Array;
   /** The token profile the genotype file was read with: 'default', a built-in id, or `custom:<id>` (contract 1.4.0). */
   tokenProfile: string;
+  /** The crop scheme id the chromosome names were read under (contract 1.5.0). */
+  crop: string;
 }
 
 /**

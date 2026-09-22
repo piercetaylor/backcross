@@ -24,6 +24,8 @@
  */
 import { MISSING_ALLELE } from '../core/types.ts';
 import type { SampleRecord } from '../core/types.ts';
+import { SOYBEAN } from '../core/chromosomes.ts';
+import type { CompiledScheme } from '../core/chromosomes.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import type { MarkerMap } from './markers.ts';
@@ -47,6 +49,8 @@ export interface BrapiFetchOptions {
   signal?: AbortSignal;
   /** Per request, not per load. Default BRAPI_REQUEST_TIMEOUT_MS. */
   requestTimeoutMs?: number;
+  /** Crop chromosome scheme for `referenceName` (contract 1.5.0); absent means soybean. */
+  scheme?: CompiledScheme;
 }
 
 export interface BrapiCallSet {
@@ -439,7 +443,11 @@ export async function fetchBrapiGenotypes(
 ): Promise<BrapiGenotypes> {
   const session = openSession(source, fetchImpl, options);
   const { callSets, warnings: sampleWarnings } = await loadCallSets(session);
-  const builder = new GenotypeBuilder(callSets.map((c) => c.sampleId));
+  const builder = new GenotypeBuilder(
+    callSets.map((c) => c.sampleId),
+    false,
+    options?.scheme ?? SOYBEAN,
+  );
   const colByCallSetDbId = new Map(callSets.map((c, i) => [c.callSetDbId, i] as const));
 
   // ---- variants (section 3.5) ----

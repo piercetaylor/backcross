@@ -2016,6 +2016,429 @@ const cases = [
     },
     error: 'genotypes.profile_format',
   },
+  {
+    // chr7 and LG_7 are both Gm07; scaffold_22 matches nothing and follows the canonical names.
+    name: 'crop-soybean-spellings',
+    options: { crop: 'soybean' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Gm13,1000,A,G,R',
+        'r2,chr7,2000,A,G,R',
+        'r3,LG_7,3000,A,G,R',
+        'r4,scaffold_22,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm07', 'Gm13', 'scaffold_22'],
+      markers: [
+        { id: 'r2', chrom: 'Gm07', posBp: 2000, cm: null },
+        { id: 'r3', chrom: 'Gm07', posBp: 3000, cm: null },
+        { id: 'r1', chrom: 'Gm13', posBp: 1000, cm: null },
+        { id: 'r4', chrom: 'scaffold_22', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // The lg prefix is soybean-only; chr, chromosome and a bare number are accepted.
+    name: 'crop-maize-spellings',
+    options: { crop: 'maize' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,chr10,1000,A,G,R',
+        'r2,Chromosome_1,2000,A,G,R',
+        'r3,01,3000,A,G,R',
+        'r4,scaffold_21,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['chr1', 'chr10', 'scaffold_21'],
+      markers: [
+        { id: 'r2', chrom: 'chr1', posBp: 2000, cm: null },
+        { id: 'r3', chrom: 'chr1', posBp: 3000, cm: null },
+        { id: 'r1', chrom: 'chr10', posBp: 1000, cm: null },
+        { id: 'r4', chrom: 'scaffold_21', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // ChrUn is an unanchored bin: it matches nothing and is kept as written.
+    name: 'crop-rice-spellings',
+    options: { crop: 'rice' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,chr01,1000,A,G,R',
+        'r2,12,2000,A,G,R',
+        'r3,Chr1,3000,A,G,R',
+        'r4,ChrUn,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Chr1', 'Chr12', 'ChrUn'],
+      markers: [
+        { id: 'r1', chrom: 'Chr1', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'Chr1', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'Chr12', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'ChrUn', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // Canonical sorghum names are zero-padded; the key never is.
+    name: 'crop-sorghum-spellings',
+    options: { crop: 'sorghum' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Chr01,1000,A,G,R',
+        'r2,chr10,2000,A,G,R',
+        'r3,1,3000,A,G,R',
+        'r4,super_16,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Chr01', 'Chr10', 'super_16'],
+      markers: [
+        { id: 'r1', chrom: 'Chr01', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'Chr01', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'Chr10', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'super_16', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // The subgenome letter is a second capture group; Chr1-A separates it with a hyphen.
+    name: 'crop-wheat-spellings',
+    options: { crop: 'wheat' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,chr1A,1000,A,G,R',
+        'r2,7D,2000,A,G,R',
+        'r3,Chr1-A,3000,A,G,R',
+        'r4,chrUn,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Chr1A', 'Chr7D', 'chrUn'],
+      markers: [
+        { id: 'r1', chrom: 'Chr1A', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'Chr1A', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'Chr7D', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'chrUn', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // H is a capture group so the key is 1H, not 1.
+    name: 'crop-barley-spellings',
+    options: { crop: 'barley' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,1H,1000,A,G,R',
+        'r2,chr7H,2000,A,G,R',
+        'r3,Chr_1H,3000,A,G,R',
+        'r4,chrUn,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['chr1H', 'chr7H', 'chrUn'],
+      markers: [
+        { id: 'r1', chrom: 'chr1H', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'chr1H', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'chr7H', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'chrUn', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // Un0 sorts before chr1A lexically but follows every canonical name.
+    name: 'crop-oat-spellings',
+    options: { crop: 'oat' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,1A,1000,A,G,R',
+        'r2,chr7D,2000,A,G,R',
+        'r3,1C,3000,A,G,R',
+        'r4,Un0,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['chr1A', 'chr1C', 'chr7D', 'Un0'],
+      markers: [
+        { id: 'r1', chrom: 'chr1A', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'chr1C', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'chr7D', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'Un0', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // Common bean also accepts the pv prefix of the G19833 v2.1 names.
+    name: 'crop-common-bean-spellings',
+    options: { crop: 'common-bean' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Pv01,1000,A,G,R',
+        'r2,chr11,2000,A,G,R',
+        'r3,1,3000,A,G,R',
+        'r4,scaffold_46,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Chr01', 'Chr11', 'scaffold_46'],
+      markers: [
+        { id: 'r1', chrom: 'Chr01', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'Chr01', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'Chr11', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'scaffold_46', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // The subgenome letter leads, so the key is A1 and the canonical name A01.
+    name: 'crop-cotton-spellings',
+    options: { crop: 'cotton' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,A01,1000,A,G,R',
+        'r2,D13,2000,A,G,R',
+        'r3,chrA1,3000,A,G,R',
+        'r4,scaffold_27,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['A01', 'D13', 'scaffold_27'],
+      markers: [
+        { id: 'r1', chrom: 'A01', posBp: 1000, cm: null },
+        { id: 'r3', chrom: 'A01', posBp: 3000, cm: null },
+        { id: 'r2', chrom: 'D13', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'scaffold_27', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
 ];
 
 // ---- write ------------------------------------------------------------------

@@ -56,6 +56,8 @@ import {
   segmentGapCriterion,
 } from '../core/index.ts';
 import { classAt, resolveSample } from '../core/compare.ts';
+import { SOYBEAN } from '../core/chromosomes.ts';
+import type { CompiledScheme } from '../core/chromosomes.ts';
 import type { Classification, Dataset, LineRpp } from '../core/types.ts';
 import {
   attachCallSetIds,
@@ -65,6 +67,7 @@ import {
   normaliseBaseUrl,
 } from '../io/brapi.ts';
 import type { BrapiGenotypes, FetchLike } from '../io/brapi.ts';
+import { resolveCrop } from '../io/crops.ts';
 import { assembleDataset, parseGenotypesSource } from '../io/loaders.ts';
 import { DEFAULT_PROFILE_ID, profileLabel, resolveProfile } from '../io/profiles.ts';
 import { blobBytes, bytesOf } from '../io/stream.ts';
@@ -74,6 +77,8 @@ import { discordantMarkersCsv } from '../export/pairwise-csv.ts';
 import type { DatasetSource, WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
 
 let dataset: Dataset | null = null;
+/** The resident dataset's crop scheme (contract 1.5.0): markers.csv, BrAPI and targets all read through it. */
+let scheme: CompiledScheme = SOYBEAN;
 let classification: Classification | null = null;
 let lastRpp: LineRpp[] | null = null;
 let brapiAbort: AbortController | null = null;
@@ -156,6 +161,7 @@ function loadedResult(
         dataset.genotypes.allele1.byteLength + dataset.genotypes.allele2.byteLength,
       source: extra.source,
       tokenProfile: dataset.tokenProfile,
+      crop: dataset.crop,
     },
   };
 }
@@ -168,10 +174,12 @@ async function loadFiles(
   const source =
     p.genotypes instanceof Blob ? blobBytes(p.genotypes) : bytesOf(new Uint8Array(p.genotypes));
   const profile = resolveProfile(p.profile);
-  const parsed = await parseGenotypesSource(p.genotypeFileName, source, { profile });
+  const crop = resolveCrop(p.crop);
+  const parsed = await parseGenotypesSource(p.genotypeFileName, source, { profile, crop });
   const samples = parseSampleManifest(decoder.decode(p.samples));
-  const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
-  const out = assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile) });
+  const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers), crop);
+  const out = assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile), crop });
+  scheme = crop;
   return loadedResult(id, out, {
     bytesInflated: parsed.bytesInflated,
     peakBuilderBytes: parsed.peakBuilderBytes,
@@ -212,12 +220,17 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
           `token profile "${brapiProfile.id}" applies to HapMap and wide CSV; a BrAPI source carries allele indices`,
         );
       }
+      const brapiCrop = resolveCrop(p.crop);
       const samples = parseSampleManifest(decoder.decode(p.samples)); // before any network
-      const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers));
+      const map =
+        p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers), brapiCrop);
       brapiAbort = new AbortController();
       let parsed: BrapiGenotypes;
       try {
-        parsed = await fetchBrapiGenotypes(p.source, fetchImpl, map, { signal: brapiAbort.signal });
+        parsed = await fetchBrapiGenotypes(p.source, fetchImpl, map, {
+          signal: brapiAbort.signal,
+          scheme: brapiCrop,
+        });
       } finally {
         brapiAbort = null;
       }
@@ -225,11 +238,13 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
       try {
         out = assembleDataset(parsed, attachCallSetIds(samples, parsed.callSets), map, {
           tokenProfile: DEFAULT_PROFILE_ID,
+          crop: brapiCrop,
         });
       } catch (e) {
         // A samples.csv id missing from the variant set may be a call set renamed to its DbId.
         throw explainAssembleError(e, parsed.warnings);
       }
+      scheme = brapiCrop;
       return loadedResult(req.id, out, {
         bytesInflated: 0,
         peakBuilderBytes: parsed.peakBuilderBytes,
@@ -295,7 +310,7 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
     }
     case 'targets': {
       const { dataset: ds, classification: cls } = requireLoaded();
-      const regions = req.payload.specs.map((spec) => parseTargetSpec(spec, ds));
+      const regions = req.payload.specs.map((spec) => parseTargetSpec(spec, ds, scheme));
       const byCandidate = Array.from(cls.candidateCols, (_col, row) =>
         callSegments(ds, cls, row, req.payload.params, false),
       );
@@ -402,7 +417,10 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
         ok: true,
         result: {
           type: 'discordantMarkersCsv',
-          csv: discordantMarkersCsv([diff], ds, cls, { tokenProfile: ds.tokenProfile }),
+          csv: discordantMarkersCsv([diff], ds, cls, {
+            tokenProfile: ds.tokenProfile,
+            crop: ds.crop,
+          }),
         },
       };
     }

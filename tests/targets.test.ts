@@ -79,6 +79,7 @@ function build(entries: MarkerSpec[], nCandidates = 1): { dataset: Dataset; cls:
     chromIndex,
     sortedMarkerOrder,
     tokenProfile: 'default',
+    crop: 'soybean',
   };
 
   const informative = new Uint8Array(nMarkers);

@@ -7,7 +7,7 @@
  *
  * Usage:
  *   node src/cli.ts summarize --genotypes <vcf|hmp|csv[.gz]> --samples samples.csv
- *                             [--markers markers.csv] [--profile ID|FILE] [--max-gap-bp N] [--max-gap-cm N] [--out file.csv]
+ *                             [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--max-gap-bp N] [--max-gap-cm N] [--out file.csv]
  *   node src/cli.ts segments  ... [--max-segment-gap-bp N] [--max-segment-gap-cm N]
  *                             [--min-markers N] [--max-missing-span N] [--include-short] [--out file.csv]
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
@@ -17,7 +17,9 @@
  * segment gap criterion go to stderr. `--profile` names a built-in token
  * profile or a JSON file of the same shape (a value containing / or \ or
  * ending .json is read as a path and validated); every CSV records it in its
- * trailing token_profile column (contract 1.4.0).
+ * trailing token_profile column (contract 1.4.0). `--crop` names a built-in
+ * crop chromosome scheme (contract/crops/, contract 1.5.0); it defaults to
+ * soybean and every CSV records it in its trailing crop column.
  */
 import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -27,19 +29,21 @@ import { classifyDataset } from './core/classify.ts';
 import { computeRpp, DEFAULT_RPP_PARAMS } from './core/rpp.ts';
 import { callSegments, DEFAULT_SEGMENT_PARAMS, segmentGapCriterion } from './core/segments.ts';
 import { checkTargets, parseTargetSpec } from './core/targets.ts';
+import type { CompiledScheme } from './core/chromosomes.ts';
 import type { Classification, Dataset, SegmentParams } from './core/types.ts';
 import { segmentsCsv } from './export/segments-csv.ts';
 import { lineSummaryCsv } from './export/summary-csv.ts';
 import { targetsCsv } from './export/targets-csv.ts';
 import { assembleDataset, parseGenotypesSource } from './io/loaders.ts';
 import { parseSampleManifest } from './io/manifest.ts';
+import { resolveCrop } from './io/crops.ts';
 import { parseMarkerMap } from './io/markers.ts';
 import { profileLabel, resolveProfile, validateProfile } from './io/profiles.ts';
 import type { TokenProfile } from './io/profiles.ts';
 
 const USAGE = [
   'usage: node src/cli.ts <summarize|segments|targets> --genotypes FILE --samples samples.csv',
-  '         [--markers markers.csv] [--profile ID|FILE] [--out FILE]',
+  '         [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--out FILE]',
   '  summarize: [--max-gap-bp N] [--max-gap-cm N]',
   '  segments:  [--max-segment-gap-bp N] [--max-segment-gap-cm N] [--min-markers N]',
   '             [--max-missing-span N] [--include-short]',
@@ -75,16 +79,19 @@ async function load(
   samplesPath: string,
   markersPath: string | undefined,
   profile: TokenProfile | null,
+  crop: CompiledScheme,
 ): Promise<Dataset> {
   // A Node Readable is async-iterable over Buffer chunks, which are Uint8Arrays.
   const parsed = await parseGenotypesSource(basename(genotypes), createReadStream(genotypes), {
     profile,
+    crop,
   });
   const samples = parseSampleManifest(readFileSync(samplesPath, 'utf8'));
   const markerMap =
-    markersPath === undefined ? undefined : parseMarkerMap(readFileSync(markersPath, 'utf8'));
+    markersPath === undefined ? undefined : parseMarkerMap(readFileSync(markersPath, 'utf8'), crop);
   const { dataset, warnings } = assembleDataset(parsed, samples, markerMap, {
     tokenProfile: profileLabel(profile),
+    crop,
   });
   for (const w of warnings) console.error(`warning: ${w}`);
   return dataset;
@@ -110,6 +117,7 @@ async function main(argv: string[]): Promise<number> {
       samples: { type: 'string' },
       markers: { type: 'string' },
       profile: { type: 'string' },
+      crop: { type: 'string' },
       out: { type: 'string' },
       target: { type: 'string', multiple: true },
       'include-short': { type: 'boolean' },
@@ -151,13 +159,15 @@ ${USAGE}`);
 ${USAGE}`);
     return 2;
   }
+  const crop = resolveCrop(values.crop);
   const dataset = await load(
     values.genotypes,
     values.samples,
     values.markers,
     readProfile(values.profile),
+    crop,
   );
-  const provenance = { tokenProfile: dataset.tokenProfile };
+  const provenance = { tokenProfile: dataset.tokenProfile, crop: dataset.crop };
   const cls = classifyDataset(dataset);
 
   let csv: string;
@@ -193,7 +203,7 @@ ${USAGE}`);
     if (command === 'segments') {
       csv = segmentsCsv(segments.flat(), criterion, dataset.samples, provenance);
     } else {
-      const regions = (values.target ?? []).map((s) => parseTargetSpec(s, dataset));
+      const regions = (values.target ?? []).map((s) => parseTargetSpec(s, dataset, crop));
       csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples, provenance);
     }
   }

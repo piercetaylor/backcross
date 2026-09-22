@@ -8,9 +8,10 @@
  * position and get cm = NaN. Blank lines and rows whose every field is blank
  * are skipped by csv.ts, and a `#` row is data (contract 1.3.0).
  *
- * Interface: parseMarkerMap(text) -> MarkerMap; applyMarkerMap(markers, map) -> warnings[].
+ * Interface: parseMarkerMap(text, scheme?) -> MarkerMap; applyMarkerMap(markers, map) -> warnings[].
  */
-import { normalizeChromosome } from '../core/chromosomes.ts';
+import { normalizeChromosome, SOYBEAN } from '../core/chromosomes.ts';
+import type { CompiledScheme } from '../core/chromosomes.ts';
 import type { MarkerTable } from '../core/types.ts';
 import { forEachRow, normalizeHeader, requireColumns, sniffDelimiter } from './csv.ts';
 import { parsePosition } from './position.ts';
@@ -23,7 +24,7 @@ export interface MarkerMapEntry {
 
 export type MarkerMap = Map<string, MarkerMapEntry>;
 
-export function parseMarkerMap(text: string): MarkerMap {
+export function parseMarkerMap(text: string, scheme: CompiledScheme = SOYBEAN): MarkerMap {
   const delimiter = sniffDelimiter(text);
   let header: string[] | null = null;
   let hasCm = false;
@@ -45,7 +46,11 @@ export function parseMarkerMap(text: string): MarkerMap {
       const posBp = parsePosition(f[h.indexOf('pos_bp')] ?? '', `markers.csv line ${lineNumber}`);
       const cmRaw = hasCm ? (f[h.indexOf('cm')] ?? '').trim() : '';
       const cm = cmRaw === '' || cmRaw.toUpperCase() === 'NA' ? NaN : Number(cmRaw);
-      map.set(id, { chrom: normalizeChromosome(f[h.indexOf('chrom')] as string), posBp, cm });
+      map.set(id, {
+        chrom: normalizeChromosome(f[h.indexOf('chrom')] as string, scheme),
+        posBp,
+        cm,
+      });
     },
     'markers.csv',
   );

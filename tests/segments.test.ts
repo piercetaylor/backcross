@@ -74,6 +74,7 @@ function makeCase(chroms: ChromSpec[]): { dataset: Dataset; cls: Classification 
     chromIndex: Int32Array.from(chromIndexArr),
     sortedMarkerOrder,
     tokenProfile: 'default',
+    crop: 'soybean',
   };
 
   const cls: Classification = {

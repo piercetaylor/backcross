@@ -22,6 +22,7 @@ import {
   parseBrapiCall,
 } from '../src/io/brapi.ts';
 import type { BrapiErrorKind, BrapiSource, FetchLike } from '../src/io/brapi.ts';
+import { resolveCrop } from '../src/io/crops.ts';
 import { assembleDataset } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
 import { parseMarkerMap } from '../src/io/markers.ts';
@@ -174,6 +175,35 @@ function record(sampleId: string, role: SampleRecord['role']): SampleRecord {
 }
 
 // ---- tests ---------------------------------------------------------------------
+describe('the crop scheme reaches the BrAPI builder (contract 1.5.0)', () => {
+  // Maize, never soybean: soybean is the default and cannot distinguish
+  // a threaded scheme from the fallback.
+  const server: MemServer = {
+    callSets: [{ callSetDbId: 'cs1', callSetName: 'RP' }],
+    variants: [
+      {
+        variantDbId: 'v1',
+        variantNames: ['r1'],
+        referenceName: '2',
+        start: 1000,
+        referenceBases: 'A',
+        alternateBases: ['T'],
+      },
+    ],
+  };
+
+  it('reads a referenceName of 2 as chr2 under maize and Gm02 by default', async () => {
+    const { fetchImpl } = memFetch(server);
+    const maize = await fetchBrapiGenotypes(memSource, fetchImpl, undefined, {
+      scheme: resolveCrop('maize'),
+    });
+    expect(maize.markers.chrom).toEqual(['chr2']);
+    const { fetchImpl: plainFetch } = memFetch(server);
+    const soybean = await fetchBrapiGenotypes(memSource, plainFetch);
+    expect(soybean.markers.chrom).toEqual(['Gm02']);
+  });
+});
+
 describe('fetchBrapiGenotypes against the generated fixture', () => {
   it('equals the VCF-loaded fixture on the BrAPI markers with markers.csv', async () => {
     const { parsed, dataset, warnings } = await loadBrapi('pos', true);

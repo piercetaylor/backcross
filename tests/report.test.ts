@@ -132,6 +132,17 @@ describe('buildHtmlReport', () => {
     expect(buildHtmlReport(baseInput)).toContain('<dt>Token profile</dt><dd>soybase-report</dd>');
   });
 
+  it('records the crop in the dataset summary, after the Token profile row', () => {
+    const html = buildHtmlReport({
+      ...baseInput,
+      provenance: { tokenProfile: 'default', crop: 'maize' },
+    });
+    expect(html).toContain('<dt>Crop</dt><dd>maize</dd>');
+    expect(html.indexOf('<dt>Token profile</dt>')).toBeLessThan(html.indexOf('<dt>Crop</dt>'));
+    // A provenance with no crop still names the default, never an empty cell.
+    expect(buildHtmlReport(baseInput)).toContain('<dt>Crop</dt><dd>soybean</dd>');
+  });
+
   it('escapes an untrusted line name instead of emitting it raw', () => {
     const payload = '<script>alert("x")</script>';
     const taintedDataset: ReportDataset = {

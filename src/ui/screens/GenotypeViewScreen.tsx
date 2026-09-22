@@ -16,7 +16,10 @@
  * on demand through the optional onRequestMarkerDetail prop (see below).
  *
  * Zoom (chromosome selector, a typed region field reusing the locus grammar
- * from core/targets.ts, and drag-to-zoom on the canvas) and hover detail are
+ * from core/targets.ts under the loaded dataset's crop scheme, contract 1.5.0,
+ * so a typed name is read exactly as the genotype file's names were, and its
+ * example region is named from `loaded.chromosomeOrder[0]`; plus drag-to-zoom
+ * on the canvas) and hover detail are
  * implemented here (M2, docs/adr/0007). The hover panel shows the cheap
  * fields (line, chromosome, bp position, class) the instant the hit test
  * resolves, from the local classesData arrays -- so the panel never lags the
@@ -110,6 +113,7 @@ import '../canvas/legend.css';
 import './screens.css';
 import { classSwatchCss } from '../../core/index.ts';
 import { parseLocus } from '../../core/targets.ts';
+import { resolveCrop } from '../../io/crops.ts';
 import { CALL_CLASS_LABEL, CallClass } from '../../core/types.ts';
 import type { CallClassValue, TargetRegion } from '../../core/types.ts';
 import { LineActionBar } from '../lines/LineActionBar.tsx';
@@ -576,15 +580,18 @@ export function GenotypeViewScreen({
     setViewport({});
   }
 
+  /** Example region, in the loaded crop's own chromosome names. */
+  const regionHint = `${loaded?.chromosomeOrder[0] ?? 'Gm13'}:28.5-29.1Mb`;
+
   function applyRegion() {
     const text = regionText.trim();
     if (text === '') {
-      setRegionError('enter a region, e.g. Gm13:28.5-29.1Mb');
+      setRegionError(`enter a region, e.g. ${regionHint}`);
       return;
     }
     let parsed: { chrom: string; startBp: number; endBp: number } | null;
     try {
-      parsed = parseLocus(text);
+      parsed = parseLocus(text, resolveCrop(loaded?.crop));
     } catch (err) {
       setRegionError(err instanceof Error ? err.message : String(err));
       return;
@@ -860,7 +867,7 @@ export function GenotypeViewScreen({
                 type="text"
                 value={regionText}
                 onChange={(e) => setRegionText(e.target.value)}
-                placeholder="Gm13:28.5-29.1Mb"
+                placeholder={regionHint}
                 aria-describedby={regionError !== null ? 'genotype-region-error' : undefined}
               />
             </label>{' '}

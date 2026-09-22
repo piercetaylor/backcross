@@ -10,9 +10,11 @@
  * the SoyBase token profile chosen in the Upload screen's select (contract 1.4.0).
  */
 import { page, userEvent } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureFiles, goTo, loadFiles, mountApp } from '../support/app-harness.tsx';
+import { AnalysisClient } from '../../src/workers/client.ts';
+import { DEFAULT_SEGMENT_PARAMS } from '../../src/core/segments.ts';
 
 /** The flags cell of a sample's row in the Summary screen's per-line QC table. */
 function qcFlags(sampleId: string): string[] {
@@ -73,5 +75,84 @@ describe('load path', () => {
     await loadFiles({ genotypes, samples });
     await goTo('3. Lines');
     await expect.element(page.getByText(/^Lines: 1,/)).toBeInTheDocument();
+  });
+
+  it('normalises chromosome names under the Maize crop scheme chosen in the select', async () => {
+    await mountApp();
+    await userEvent.click(page.getByRole('button', { name: /Crop$/ }));
+    await userEvent.click(page.getByRole('option', { name: 'Maize' }));
+    const genotypes = new File(
+      ['marker_id,chrom,pos_bp,RP,DONOR,L1\nr1,1,1000,A,G,A\nr2,chr2,2000,C,T,C\n'],
+      'genotypes.csv',
+      { type: 'text/csv' },
+    );
+    const samples = new File(
+      [
+        'sample_id,line_name,role,generation,family_id,notes\n' +
+          'RP,Recurrent,recurrent_parent,,,\nDONOR,Donor,donor_parent,,,\nL1,Line 1,candidate,,,\n',
+      ],
+      'samples.csv',
+      { type: 'text/csv' },
+    );
+    await loadFiles({ genotypes, samples });
+    await goTo('4. Graphical genotypes');
+    const options = await vi.waitUntil(() => {
+      const select = page.getByRole('combobox', { name: 'View' }).element();
+      const names = Array.from((select as HTMLSelectElement).options, (o) => o.textContent);
+      return names.length > 1 ? names : null;
+    });
+    expect(options).toContain('chr1');
+    expect(options).toContain('chr2');
+    expect(options).not.toContain('Gm01');
+
+    // The zoom field reads its locus under the same scheme, and its example
+    // region is named in the loaded crop's own chromosome names.
+    const region = page.getByLabelText('Region');
+    expect(region.element().getAttribute('placeholder')).toBe('chr1:28.5-29.1Mb');
+    await userEvent.fill(region, 'chr2:1-3Mb');
+    await userEvent.click(page.getByRole('button', { name: 'Apply' }));
+    const view = page.getByRole('combobox', { name: 'View' });
+    await expect.poll(() => (view.element() as HTMLSelectElement).value).toBe('chr2');
+    expect(document.querySelector('#genotype-region-error')).toBeNull();
+  });
+});
+
+describe('the resident crop scheme in the worker (contract 1.5.0)', () => {
+  // Maize, never soybean: soybean is the worker's default and cannot tell a
+  // threaded scheme from the fallback.
+  const GENOTYPES =
+    'marker_id,chrom,pos_bp,RP,DONOR,L1\nr1,1,1000000,A,G,G\nr2,chr2,2000000,C,T,T\n';
+  const SAMPLES =
+    'sample_id,line_name,role,generation,family_id,notes\n' +
+    'RP,Recurrent,recurrent_parent,,,\nDONOR,Donor,donor_parent,,,\nL1,Line 1,candidate,,,\n';
+
+  async function loadMaize(client: AnalysisClient) {
+    const enc = new TextEncoder();
+    return client.request('load', {
+      genotypeFileName: 'genotypes.csv',
+      genotypes: enc.encode(GENOTYPES).buffer,
+      samples: enc.encode(SAMPLES).buffer,
+      crop: 'maize',
+    });
+  }
+
+  it("answers a targets request through the loaded dataset's scheme", async () => {
+    const worker = new Worker(new URL('../../src/workers/analysis.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    const client = new AnalysisClient(worker);
+    try {
+      const loaded = await loadMaize(client);
+      expect(loaded.type === 'loaded' && loaded.crop).toBe('maize');
+      expect(loaded.type === 'loaded' && loaded.chromosomeOrder).toEqual(['chr1', 'chr2']);
+      const targets = await client.request('targets', {
+        specs: ['t1=chr2:1-3Mb'],
+        params: DEFAULT_SEGMENT_PARAMS,
+      });
+      expect(targets.type === 'targets' && targets.regions[0]?.chrom).toBe('chr2');
+      expect(targets.type === 'targets' && targets.checks[0]?.status).not.toBe('no_data');
+    } finally {
+      client.terminate();
+    }
   });
 });

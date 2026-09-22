@@ -18,11 +18,15 @@
  * stripped here too. Blank and whitespace-only lines are skipped; a `#` line
  * after `#CHROM` is a data line and fails the field count (contract 1.3.0).
  *
- * Interface: class VcfLineParser { pushLine(line); finish() -> ParsedGenotypes },
- * parseVcf(text) -> ParsedGenotypes,
- * parseVcfLines(lines) -> Promise<{ parsed, peakBuilderBytes }>.
+ * Interface: class VcfLineParser(scheme?) { pushLine(line); finish() ->
+ * ParsedGenotypes }, parseVcf(text, scheme?) -> ParsedGenotypes,
+ * parseVcfLines(lines, scheme?) -> Promise<{ parsed, peakBuilderBytes }>.
+ * `scheme` is the crop chromosome scheme (contract 1.5.0); it defaults to
+ * soybean and is handed to the builder.
  */
 import { MISSING_ALLELE } from '../core/types.ts';
+import { SOYBEAN } from '../core/chromosomes.ts';
+import type { CompiledScheme } from '../core/chromosomes.ts';
 import { GenotypeBuilder } from './builder.ts';
 import type { ParsedGenotypes } from './builder.ts';
 import { parsePosition } from './position.ts';
@@ -34,6 +38,11 @@ export class VcfLineParser {
   private builder: GenotypeBuilder | null = null;
   private lineNo = 0;
   private sawFileformat = false;
+  private readonly scheme: CompiledScheme;
+
+  constructor(scheme: CompiledScheme = SOYBEAN) {
+    this.scheme = scheme;
+  }
 
   /** Bytes the builder has accounted at its peak (GenotypeBuilder.peakBytes); 0 before #CHROM. */
   get peakBuilderBytes(): number {
@@ -56,7 +65,7 @@ export class VcfLineParser {
     if (line.startsWith('#CHROM')) {
       const cols = line.split('\t');
       if (cols.length < 10) throw new Error('VCF header has no sample columns');
-      this.builder = new GenotypeBuilder(cols.slice(9));
+      this.builder = new GenotypeBuilder(cols.slice(9), false, this.scheme);
       return;
     }
     const builder = this.builder;
@@ -96,8 +105,8 @@ export class VcfLineParser {
   }
 }
 
-export function parseVcf(text: string): ParsedGenotypes {
-  const parser = new VcfLineParser();
+export function parseVcf(text: string, scheme: CompiledScheme = SOYBEAN): ParsedGenotypes {
+  const parser = new VcfLineParser(scheme);
   let start = 0;
   const n = text.length;
   while (start < n) {
@@ -112,8 +121,9 @@ export function parseVcf(text: string): ParsedGenotypes {
 /** Drains `lines` into a VcfLineParser; returns it finished, with its peak accounting. */
 export async function parseVcfLines(
   lines: AsyncIterable<string>,
+  scheme: CompiledScheme = SOYBEAN,
 ): Promise<{ parsed: ParsedGenotypes; peakBuilderBytes: number }> {
-  const parser = new VcfLineParser();
+  const parser = new VcfLineParser(scheme);
   for await (const line of lines) parser.pushLine(line);
   const parsed = parser.finish();
   return { parsed, peakBuilderBytes: parser.peakBuilderBytes };
