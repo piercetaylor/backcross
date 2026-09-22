@@ -732,6 +732,51 @@ The ADR number in the S6 table is also wrong. `docs/adr/0015` in `progeny-select
 selector. The crop schemes take `0020` there, the next free number, matching `0020` in this
 repository as `docs/handoff-m4-phase6.md` records.
 
+### 8.7b Correction, 2026-09-22: S6 threads the scheme through `core`, and `Dataset` carries it
+
+The S6 table names the readers, the CLI, the Load screen and the exports. It names no call site in
+`core`, and section 8.7a did not notice the omission while correcting the export column. Both are
+faults in this specification. A doer who implements 8.7 exactly produces a `progeny-selector` whose
+readers normalize chromosome names under the chosen crop and whose analysis then re-normalizes them
+under soybean, which is silently wrong for eight of the nine crops.
+
+`core/foreground.py` is the clearest case. A maize target written `chr7` normalizes to `Gm07`,
+matches no marker, and foreground selection returns nothing with no error raised. `chrom_length_bp`
+is the second: it reads the Williams 82 length table after normalizing under soybean, so a maize
+`chr1`, a rice `Chr1`, a sorghum `Chr01` and a common bean `Chr01` all take `Gm01`'s length as the
+chromosome end. That length sets drag bounds and terminal-marker weights, suppresses the warning
+that the assembly gives no length, and can raise a false beyond-length warning.
+
+The wording "`chrom_length_bp` unchanged (soybean lengths; other crops return `fallback`)" in the
+8.7 table is not a contradiction. The length table stays soybean-only, and the lookup is gated on
+the crop. The signature gains a scheme parameter and returns `fallback` unless the scheme is
+soybean. Its callers already pass `None` and substitute the last marker position on that
+chromosome, so they need no further change.
+
+Eight call sites take the dataset's scheme: `core/chrom.py` inside `chrom_length_bp`,
+`core/foreground.py` at the target spec, `core/pipeline.py` at the length lookup and at
+`sorted_by_position`, `core/strip.py` at the length lookup, `core/background.py` at both
+`key=chrom_sort_key` arguments, and `app/screens/compare.py` at `sorted_by_position`. The two in
+`background.py` pass the function rather than calling it and are missed by a search for a call.
+
+`Dataset` carries the compiled scheme and not only the crop id. `model/dataset.py` already imports
+`SOYBEAN`, `CompiledScheme` and `chrom_sort_key` from `core/chrom.py`, so `core` still imports
+nothing from `io`. `load_dataset` sets the scheme from the `resolve_crop` it already calls, and
+`crop` becomes a property returning the scheme's id, so the two cannot disagree. This follows the
+sibling, where `src/io/loaders.ts` reads `meta.crop.scheme.id` from a loaded object that already
+carries the compiled scheme.
+
+One deviation from the 8.7 table is accepted for the same reason. `CropScheme`, `CompiledScheme`,
+`compile_scheme` and the soybean literal live in `core/chrom.py` and are re-exported from
+`io/crops.py`, mirroring this repository's split between `src/core/chromosomes.ts` and
+`src/io/crops.ts`. The rule that `core` imports no `io` forces it.
+
+A discriminating test for this threading is end to end and uses a non-soybean crop. A synthetic
+maize dataset with a target on `chr7`, run through `run_analysis`, asserts a non-empty foreground
+status, `chr2` ordered before `chr10`, and no beyond-length warning. Soybean is the default, so a
+soybean test cannot tell a threaded scheme from the fallback. That is the same trap that let phase 6
+here reach review with five loaders and a worker untested.
+
 ## 9. Milestone verification block (main session, after phase 6 and S6)
 
 Append to PLAN.md an "M4 verification" block in the shape of M3's: the bench's "Load -> first draw" wall-clock and memory figures in both browsers before phase 1 (the M3 figures) and after; the Lighthouse accessibility score and versions; `npm run contract`'s printed line at 1.5.0 (`contract 1.5.0: 62 cases, ...`, where 62 = 34 + 11 + 8 + 9); `check-bundle`'s chunk sizes; what was not verified (a real SoySNP50K, SoyBase, DArT, Axiom or KASP export against its profile; any crop file from a real programme; paper output; screen readers). Rewrite CLAUDE.md's State paragraph (lines 13–17) to name M4 complete, the three contract versions, and the next candidates. Strike the whole deferred sentence at PLAN.md line 355 once every item is closed.
