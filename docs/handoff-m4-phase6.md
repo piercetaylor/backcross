@@ -21,20 +21,15 @@ session before every commit, and CI green on the pushed commit.
 
 ## What is left
 
-1. **Phase 6, contract 1.5.0, the crop schemes.** The specification is `docs/m4-phases.md`
-   lines 587 to 683, with the sibling half S6 at 673 to 683. Nine schemes (soybean the default,
-   reproducing 1.2.0 behaviour, then maize, rice, sorghum, wheat, barley, oat, common bean and
-   cotton), each an ordered canonical list plus one alias regular expression; the `lg` prefix stays
-   soybean-only; cowpea, pea, sunflower and peanut are deferred as ambiguous; every CSV export
-   gains a trailing `crop` column. Renumber the ADR the specification calls 0019: that number is
-   taken by the token profiles, so the crop schemes are 0020 here and the next free number in
-   `progeny-selector`.
-2. **The M4 verification block in `PLAN.md`**, in the shape of M3's. `docs/m4-phases.md` section 9
-   (line 684 onward) says what it must record. It needs runs the phases did not take:
-   `npm run test:bench` in both browsers, before-and-after first-draw and memory figures, and
-   `npm run a11y:lighthouse`. Phase 1's agent measured 13.8 s and 12.6 s to first draw on a loaded
-   machine against M3's 10.5 s and 8.5 s, and could not attribute the difference; take fresh
-   figures on a quiet machine rather than copying those.
+1. ~~**Phase 6, contract 1.5.0, the crop schemes.**~~ Done 2026-09-22 at `d4ad0e8`, with the S6
+   corrections at `0d306ba` and `33245c0`: nine schemes, the `lg` prefix soybean-only, a trailing
+   `crop` column on every CSV export, recorded as `docs/adr/0020` here and in `progeny-selector`
+   as the renumbering below required.
+2. ~~**The M4 verification block in `PLAN.md`**.~~ Done 2026-09-22 at `68eed50`: the block is
+   appended to `PLAN.md` in M3's shape, with fresh bench figures on a quiet machine (first draw
+   4.9 s in Chromium and 6.2 s in Firefox, against M3's 10.5 s and 8.5 s; Chromium memory 1.33 x
+   the inflated file, against 1.67 x), Lighthouse 100, `contract 1.5.0: 68 cases` and 245 mirrored
+   files. Phase 1's figures were not copied. CLAUDE.md's State paragraph names M4 complete.
 3. **The local folder is still `isoline-browser`.** The GitHub repository, the package, the Pages
    base path and the documentation all say `backcross`. Rename the folder from a session that is
    not inside it, then fix the absolute paths in `.claude/settings.json` (three hook commands) and

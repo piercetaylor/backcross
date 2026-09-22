@@ -350,4 +350,52 @@ Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://
 
 **Not verified.** Screen readers (no assistive technology in the environment; in particular whether a browse-mode user can reach the canvas keys); paper output (print media is emulated, not printed); Lighthouse on any screen that needs a dataset (it cannot load files; axe covers those); Safari; a real SoySNP50K or BARCSoySNP6K file; `readr` on the browser-only CSVs; the Lighthouse script's exit code on CI's Linux runner, which has not run yet.
 
-Deferred past M3, in rough order of value: nothing remains; contract 1.3.0 shipped in M4 phase 4 (docs/adr/0018).
+### M4 run, 2026-09-22
+
+Same laptop as the M1, M2, M2.5 and M3 runs. Node v24.13.1, npm 11.8.0, vitest 5.0.0, Playwright 1.63.0 (Chromium 153.0.8010.12, Firefox 155.0), axe-core 4.13.0, Lighthouse 13.4.1, all browser runs headless (`CI=true`). Six phase commits from docs/m4-phases.md (`0847003`, `fea4bf7`, `0ce4587`, `db7b34f`, `a951911`, `d4ad0e8`), the rename at `8473292`, the export names at `41e1afd`, the S6 corrections at `0d306ba` and `33245c0`, and a browser-test fix at `68eed50`; every gate passes at each, and the figures below are from `68eed50`.
+
+```
+$ npm run lint && npm run typecheck
+(exit 0; "All matched files use Prettier code style!")
+
+$ npm test
+ Test Files  34 passed | 1 skipped (35)
+      Tests  691 passed | 2 skipped (693)
+
+$ npm run test:browser
+ Test Files  26 passed (26)   (13 per browser)
+      Tests  98 passed | 2 skipped (100)
+   Duration  103.26s
+
+$ npm run build
+dist/assets/index-*.css              19.22 kB
+dist/assets/rolldown-runtime-*.js     0.58 kB  (gzip  0.36 kB)
+dist/assets/index-*.js               89.89 kB  (gzip 29.35 kB)
+dist/assets/vendor-react-*.js       189.65 kB  (gzip 59.65 kB)
+dist/assets/vendor-*.js             277.46 kB  (gzip 84.27 kB)
+dist/assets/analysis.worker-*.js     72.04 kB
+bundle: ok
+
+$ npm run fixture && npm run contract && git diff --exit-code -- tests/fixtures contract
+contract 1.5.0: 68 cases, 244 files, 97327 bytes
+(exit 0; no diff)
+
+$ node scripts/check-contract-mirror.mjs ../progeny-selector
+contract mirror: 245 files identical
+
+$ npx vitest run --project bench --silent=false --reporter=verbose
+ chromium: Load -> Summary 2985 ms; Load -> "Lines: 200" 4437 ms; first draw 4886 ms; measureUserAgentSpecificMemory delta 53.9 MiB (53.4 -> 107.4 MiB; 1.33 x bytesInflated) against 2 x bytesInflated = 81.2 MiB; peakBuilderBytes + residentMatrixBytes = 63.8 MiB (1.57 x)
+ firefox:  Load -> Summary 3531 ms; Load -> "Lines: 200" 5595 ms; first draw 6187 ms; peakBuilderBytes + residentMatrixBytes = 63.8 MiB (1.57 x; accounting only, no memory API)
+ M3 baseline (2026-09-15, before phase 1): first draw Chromium 10462 ms, Firefox 8543 ms; Chromium memory delta 68.0 MiB (1.67 x).
+
+$ npm run a11y:lighthouse
+Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://127.0.0.1:4173/
+```
+
+**Measured.** Time: first draw of 50,000 markers by 200 lines falls from M3's 10.5 s to 4.9 s in Chromium and from 8.5 s to 6.2 s in Firefox, against the 30 s budget the test asserts. The figures quoted are from the fourth consecutive bench run; the third gave 5809 ms and 6295 ms, so the pair brackets the run-to-run spread, and nothing else was running. Phase 1's own 13.8 s and 12.6 s were taken on a loaded machine and are not comparable with either set. Memory: the Chromium delta falls from 1.67 x to 1.33 x of the inflated file, while the accounting figure, peak builder plus resident matrix, stays at 1.57 x in both browsers. That pair is what virtualisation predicts: the worker still holds the whole matrix, so the accounting is unchanged, and what the page no longer does is retain a drawing of every row. Contract: 1.5.0 generates 68 cases, not the 62 section 9 of docs/m4-phases.md projected; the nine crop cases match the projection exactly, and the difference is in cases the 1.3.0 and 1.4.0 reviews added after the projection was written. The mirror check finds 245 files identical with progeny-selector, so S6 landed. Accessibility: Lighthouse scores the Upload screen 100, and the axe suite is green in both browsers with `KNOWN_A11Y_EXCEPTIONS` empty. Bundle: `scripts/check-bundle.mjs` accepts the five chunks above; the entry chunk is 89.89 kB against M3's single 538.21 kB bundle, which is the vendor split of docs/adr/0016 rather than a reduction in code.
+
+**Test mechanics worth knowing.** `npm run test:bench` prints nothing under vitest 5.0.0's default reporter: the figures this block quotes need `npx vitest run --project bench --silent=false --reporter=verbose`. The test passes either way, so a run that reports "2 passed" and no numbers has not failed. Phase 6 reached review with five loaders and the worker untested, because every test used soybean, which is the default: under the fallback and under a correctly threaded scheme a soybean dataset behaves identically, so only a non-soybean end-to-end case discriminates (docs/m4-phases.md 8.7b). `68eed50` fixed a geometry assertion in `tests/browser/genotype-view.test.tsx` that measured before the rail had finished collapsing. M3's mechanics still hold: `fileParallelism: false` in the browser project, `CI=true` for headed Firefox focus, and chrome-launcher's EPERM on profile cleanup after every Lighthouse audit, which the script catches so the exit code reflects the score.
+
+**Not verified.** A real SoySNP50K, SoyBase, DArT, Axiom or KASP export read against the profile that claims it (the token profiles are asserted against synthetic files only); any genotype file from a real breeding programme in any of the nine crops, so the crop schemes are verified against their published nomenclature and not against a programme's spelling of it; paper output (print media is emulated, not printed); screen readers (no assistive technology in this environment); Safari; `readr` on the browser-only CSVs; Lighthouse on any screen that needs a dataset, which it cannot load (axe covers those).
+
+Deferred past M4, in rough order of value: cowpea, pea, sunflower and peanut, whose chromosome nomenclature the phase 6 research found ambiguous (docs/m4-phases.md D6.3); the pair of one nucleotide and one of N, `-`, `.` at line 137, read as missing by both tools and still outside the contract; the synthetic VCF's `##source` header, which still says `isoline-browser` because changing it regenerates a committed fixture (docs/adr/0017); the local folder, still named `isoline-browser` while everything else says `backcross` (docs/handoff-m4-phase6.md item 3); and the maintainer's open question on the crop palette's leaf green and wheat gold against two Okabe-Ito class colours (docs/adr/0017).
