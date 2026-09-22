@@ -696,6 +696,42 @@ Browser: `tests/browser/load-path.test.tsx` gains: choose `Maize` in the Crop se
 | `core/drag.py` and any caller of `chrom_length_bp`                                                                                                                                                                                                                                                             | unchanged behaviour: a crop without lengths uses the fallback the caller already passes (the doer greps `chrom_length_bp(` and confirms every call passes a fallback; if one does not, it passes the last marker position on that chromosome). |
 | `cli.py` `--crop`, `app/screens/load.py` `ui.input_select("crop", "Crop", ...)`, `io/export.py` trailing `crop` key, `tests/test_contract_cases.py` reading `options.json`'s `crop`, `docs/adr/0015-contract-1.5-crop-schemes.md`, `CHANGELOG.md`, `docs/data-formats.md` (`version 1.5.0`), `PLAN.md` Handoff | as 8.6 from the sibling's side.                                                                                                                                                                                                                |
 
+### 8.7a Correction, 2026-09-22: the `crop` column's position and the results schema
+
+The S6 table above says `io/export.py` gains a "trailing `crop` key", and section 8.6 says the
+sibling's outputs "gain the trailing `crop` column". For `progeny-selector` that is wrong, and the
+doer of S6 follows this note where the two disagree.
+
+`progeny-selector/docs/adr/0016-results-schema-freeze.md` line 29 fixes the position: a new fixed
+column goes after `results_schema` and before `token_profile`, which stays last. The rule is
+load-bearing in the R reader, which commit `2b966bc` corrected to expect `token_profile` last and
+not in the fixed prefix. A `crop` column written after `token_profile` would break
+`scripts/read_results.R` and any reader that takes the last column as the token profile.
+
+S6 therefore makes four edits the table does not name:
+
+1. `src/progeny_selector/io/export.py`: insert `"crop"` into `FIXED_COLUMNS` and
+   `SELECTION_COLUMNS` between `"results_schema"` and `"token_profile"`.
+2. `src/progeny_selector/constants.py` line 171: `RESULTS_SCHEMA` becomes `"1.1.0"`. ADR 0016
+   line 29 makes a new fixed column a minor bump.
+3. `tests/test_results_schema.py`: `FIXED_PREFIX` grows to 35 entries and the `len(FIXED_PREFIX)
+   == 34` assertion at line 79 becomes 35. `EMPTY_HEADER` keeps its shape, since `crop` enters the
+   prefix and `token_profile` still trails it.
+4. `scripts/read_results.R` lines 45 and 89: add `crop` to the column list and
+   `crop = col_character()` to the `col_types` specification.
+
+No earlier version is in error. ADR 0016 was committed at `419a4c5`, after contract 1.4.0 landed at
+`17464e3`, and its text names `token_profile` as part of the frozen 1.0.0 prefix. Schema 1.0.0 was
+frozen with that column already present, so S5 owed no bump and none was missed.
+
+This correction is confined to `progeny-selector`. A search of `docs/adr` and `docs/data-formats.md`
+in this repository finds no rule reserving the last export column, so phase 6's own outputs take the
+trailing `crop` column as section 8.6 specifies, and 8.6 stands unamended for this repository.
+
+The ADR number in the S6 table is also wrong. `docs/adr/0015` in `progeny-selector` is the assembly
+selector. The crop schemes take `0020` there, the next free number, matching `0020` in this
+repository as `docs/handoff-m4-phase6.md` records.
+
 ## 9. Milestone verification block (main session, after phase 6 and S6)
 
 Append to PLAN.md an "M4 verification" block in the shape of M3's: the bench's "Load -> first draw" wall-clock and memory figures in both browsers before phase 1 (the M3 figures) and after; the Lighthouse accessibility score and versions; `npm run contract`'s printed line at 1.5.0 (`contract 1.5.0: 62 cases, ...`, where 62 = 34 + 11 + 8 + 9); `check-bundle`'s chunk sizes; what was not verified (a real SoySNP50K, SoyBase, DArT, Axiom or KASP export against its profile; any crop file from a real programme; paper output; screen readers). Rewrite CLAUDE.md's State paragraph (lines 13–17) to name M4 complete, the three contract versions, and the next candidates. Strike the whole deferred sentence at PLAN.md line 355 once every item is closed.
