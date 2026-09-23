@@ -44,8 +44,9 @@ session before every commit, and CI green on the pushed commit.
   `backcross-` (`backcross-summary.csv`, `backcross-report.html` and the rest). The names live only
   in `src/ui/screens/ExportScreen.tsx`; the contract, its mirror and `docs/data-formats.md` name no
   download, so `contract/VERSION` did not move. Recorded as an amendment to ADR 0017, which keeps
-  0020 free for the crop schemes. The synthetic VCF's `##source` header still says `isoline-browser`
-  and is still a separate decision.
+  0020 free for the crop schemes. The synthetic VCF's `##source` header was thought to still say
+  `isoline-browser`; checked 2026-09-23, it says `backcross` and has since `8473292`, and
+  `npm run fixture` reproduces the committed files, so there was nothing to decide.
 - **The crop palette's leaf green and wheat gold** are close in hue to two Okabe-Ito class colours.
   No chrome colour is used inside the genotype view or its legend, so nothing is ambiguous today;
   ADR 0017 records it.
