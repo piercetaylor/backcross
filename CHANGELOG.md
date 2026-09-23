@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Replace the milestone-heavy landing page with a current overview, a reproducible synthetic example, and links to the detailed records; preserve the previous README in `docs/legacy-readme.md`.
+
 ### Fixed
 
 - The genotype view's browser geometry tests wait for the rail-collapse animation before reading an absolute x. Entering that screen collapses the rail and the shell animates its grid track, so a measurement taken while the track was still moving was a transient, and the gutter case failed intermittently in CI against a settled scroller.
