@@ -1,6 +1,6 @@
 # Input coding reference
 
-What each genotype format accepts, reads as missing, and rejects, under contract 1.5.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are read under the crop scheme chosen at load time (see "Crop chromosome schemes" below); any name the scheme does not match is kept as written.
+What each genotype format accepts, reads as missing, and rejects, under contract 1.6.0 (`contract/data-contract.md`). The same rules apply in progeny-selector, so a file that loads here loads there. Cells are trimmed and case-insensitive. Every call is diploid (two alleles per sample per marker); polyploid dosage is out of scope. Chromosome names are read under the crop scheme chosen at load time (see "Crop chromosome schemes" below); any name the scheme does not match is kept as written.
 
 | Format               | Accepted calls                                                                                                                               | Missing                                                          | Rejected (error naming the line and cell)                                                                             |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -13,7 +13,7 @@ A wide CSV is read as coded when every cell outside the nucleotide missing list 
 
 Blank and whitespace-only lines, and rows whose every field is empty, are skipped in every file; `#` does not start a comment; a quoted field may contain a line break.
 
-A pair of one nucleotide and one of `N`, `-`, `.` (`AN`, `A-`) is read as missing by both tools today but is not yet part of the contract.
+A pair of one nucleotide and one of `N`, `-`, `.`, in either order and in any of the three spellings (`AN`, `-A`, `A/N`), is read as missing in HapMap and in a nucleotide wide CSV (contract 1.6.0, docs/adr/0021). It is part of the pair grammar, not a missing token, so `AX` and `A?` stay errors.
 
 Crop chromosome schemes arrive with contract 1.5.0.
 

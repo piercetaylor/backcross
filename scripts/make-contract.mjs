@@ -46,6 +46,12 @@
  * (an H at a marker showing one allele) and genotypes.profile_format (a
  * profile with a VCF, or with a wide CSV detected as coded A/B/H).
  *
+ * Version 1.6.0 (docs/adr/0021): a pair of one nucleotide and one of N - .
+ * (`AN`, `-A`, `A/N`), which 1.1.0 left undecided, is read as missing in
+ * HapMap and in a nucleotide wide CSV, and under a profile whose base is
+ * nucleotide; under a profile whose base is none it is
+ * genotypes.unknown_cell.
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -2015,6 +2021,140 @@ const cases = [
       'samples.csv': SAMPLES_RP_DONOR_L1,
     },
     error: 'genotypes.profile_format',
+  },
+  {
+    // Contract 1.6.0: a HapMap pair of one nucleotide and one of N - . is missing, in either
+    // order and in all three spellings; the parents' cells are plain calls.
+    name: 'hapmap-half-missing-pair',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1', 'L2'),
+        tsv('f1', 'A/G', 'Gm04', '100', ...HAPMAP_FIXED, 'AA', 'GG', 'AN', '-A'),
+        tsv('f2', 'C/T', 'Gm04', '200', ...HAPMAP_FIXED, 'CC', 'TT', 'C.', '.C'),
+        tsv('f3', 'A/T', 'Gm04', '300', ...HAPMAP_FIXED, 'AA', 'TT', 'A/N', 'N|T'),
+        tsv('f4', 'G/T', 'Gm04', '400', ...HAPMAP_FIXED, 'GG', 'TT', 'G-', '-|G'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 'f1', chrom: 'Gm04', posBp: 100, cm: null },
+        { id: 'f2', chrom: 'Gm04', posBp: 200, cm: null },
+        { id: 'f3', chrom: 'Gm04', posBp: 300, cm: null },
+        { id: 'f4', chrom: 'Gm04', posBp: 400, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['A', 'A'],
+          ['G', 'G'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['T', 'T'],
+          ['T', 'T'],
+        ],
+        L1: [null, null, null, null],
+        L2: [null, null, null, null],
+      },
+    },
+  },
+  {
+    // The same rule in a nucleotide wide CSV; the parents' plain calls give each row its alleles,
+    // which the half-missing cells never add to. Detection is unit-tested, not pinned here.
+    name: 'wide-half-missing-pair',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1,L2',
+        'g1,Gm04,1000,A,G,AN,-A',
+        'g2,Gm04,2000,C,T,C.,.C',
+        'g3,Gm04,3000,A,T,A/N,N|T',
+        'g4,Gm04,4000,G,T,G-,-|G',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 'g1', chrom: 'Gm04', posBp: 1000, cm: null },
+        { id: 'g2', chrom: 'Gm04', posBp: 2000, cm: null },
+        { id: 'g3', chrom: 'Gm04', posBp: 3000, cm: null },
+        { id: 'g4', chrom: 'Gm04', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['A', 'A'],
+          ['G', 'G'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['T', 'T'],
+          ['T', 'T'],
+        ],
+        L1: [null, null, null, null],
+        L2: [null, null, null, null],
+      },
+    },
+  },
+  {
+    // Under a profile whose base is nucleotide the rule still applies, and the profile's own
+    // missing token (X here) is read beside it. That AX stays an error is unit-tested in both
+    // repositories, since an error case carries one fault and this case is a success case.
+    name: 'profile-tassel-half-missing-pair',
+    options: { profile: 'tassel' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1,L2',
+        'j1,Gm04,1000,A,G,AN,X',
+        'j2,Gm04,2000,C,T,.C,C/-',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 'j1', chrom: 'Gm04', posBp: 1000, cm: null },
+        { id: 'j2', chrom: 'Gm04', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [null, null],
+        L2: [null, null],
+      },
+    },
+  },
+  {
+    // Under a profile whose base is none the format's grammar is gone, so a half-missing pair is
+    // not a token of the profile.
+    name: 'err-profile-none-half-missing-pair',
+    options: { profile: 'dart' },
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'j1,Gm04,1000,0,1,AN'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
   },
   {
     // chr7 and LG_7 are both Gm07; scaffold_22 matches nothing and follows the canonical names.

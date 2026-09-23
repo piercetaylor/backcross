@@ -13,9 +13,8 @@
  *     heterozygote; anything else ("?", "B", "H", "X", "0", "+") -> error;
  *   - two characters, or three with "/" or "|" in the middle: each must be
  *     A C G T or one of N - . ; a pair containing N, - or . is read as
- *     missing (half-missing cells such as "AN" are undecided in 1.1.0;
- *     this keeps the pre-1.1.0 wide-CSV reading); any other character
- *     ("A?", "N?", "RR") -> error;
+ *     missing, including a half-missing pair such as "AN" or "-A"
+ *     (contract 1.6.0); any other character ("A?", "N?", "RR") -> error;
  *   - anything else -> error.
  *
  * Under a token profile (profiles.ts, contract 1.4.0) a cell is resolved in

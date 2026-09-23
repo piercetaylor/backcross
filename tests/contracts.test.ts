@@ -10,6 +10,8 @@ import { assembleDataset } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
 import { parseMarkerMap } from '../src/io/markers.ts';
 import { parsePosition } from '../src/io/position.ts';
+import type { TokenProfile } from '../src/io/profiles.ts';
+import { BUILTIN_PROFILES, compileProfile } from '../src/io/profiles.ts';
 import { parseVcf } from '../src/io/vcf.ts';
 import { detectWideCsvMode, parseWideCsv } from '../src/io/wide-csv.ts';
 import { readFixture } from './helpers.ts';
@@ -152,6 +154,14 @@ describe('wide CSV vocabulary', () => {
 describe('nucleotide cell vocabulary (src/io/calls.ts)', () => {
   const wide = (cell: string) => parseNucleotideCell(cell, NUCLEOTIDE_MISSING, 'w');
   const hapmap = (cell: string) => parseNucleotideCell(cell, HAPMAP_MISSING, 'h');
+  /** Every pair of one nucleotide and one of N - . , both orders and all three spellings. */
+  const halfMissingCells = (): string[] => {
+    const cells: string[] = [];
+    for (const n of ['A', 'C', 'G', 'T'])
+      for (const h of ['N', '-', '.'])
+        cells.push(`${n}${h}`, `${h}${n}`, `${n}/${h}`, `${h}/${n}`, `${n}|${h}`, `${h}|${n}`);
+    return cells;
+  };
 
   it('expands IUPAC codes to the heterozygote in both formats', () => {
     const expected: Record<string, [string, string]> = {
@@ -190,11 +200,72 @@ describe('nucleotide cell vocabulary (src/io/calls.ts)', () => {
     }
   });
 
-  it('reads half-missing pairs as missing (undecided in 1.1.0; pins current behaviour)', () => {
-    for (const cell of ['AN', 'A-', '-A', 'A.', './A', 'N/A']) {
+  it('reads a half-missing pair as missing in both orders and both formats (contract 1.6.0)', () => {
+    for (const cell of halfMissingCells()) {
       expect(wide(cell), cell).toBeNull();
       expect(hapmap(cell), cell).toBeNull();
+      const lower = cell.toLowerCase(); // cells are compared case-insensitively
+      expect(wide(lower), lower).toBeNull();
+      expect(hapmap(` ${lower} `), lower).toBeNull();
     }
+  });
+
+  it('keeps a pair with any other character an error, including a profile missing token (1.6.0)', () => {
+    for (const bad of ['AX', 'XA', 'A/X', 'AU', 'UA', 'A?']) {
+      expect(() => wide(bad), bad).toThrow(`w: unexpected cell "${bad}"`);
+      expect(() => hapmap(bad), bad).toThrow(`h: unexpected cell "${bad}"`);
+    }
+  });
+
+  it('reads half-missing pairs as missing under a nucleotide-base profile (1.6.0)', () => {
+    for (const id of ['tassel', 'soybase-report']) {
+      const profile = compileProfile(BUILTIN_PROFILES.get(id) as TokenProfile);
+      for (const cell of halfMissingCells()) {
+        expect(
+          parseNucleotideCell(cell, NUCLEOTIDE_MISSING, 'w', profile),
+          `${id} ${cell}`,
+        ).toBeNull();
+        expect(parseNucleotideCell(cell, HAPMAP_MISSING, 'h', profile), `${id} ${cell}`).toBeNull();
+      }
+      // The profile's own missing tokens do not join the half-missing set.
+      const extra = id === 'tassel' ? 'AX' : 'AU';
+      expect(() => parseNucleotideCell(extra, NUCLEOTIDE_MISSING, 'w', profile), extra).toThrow(
+        `w: unexpected cell "${extra}"`,
+      );
+    }
+  });
+
+  it('rejects half-missing pairs under a profile whose base is none (1.6.0)', () => {
+    for (const id of ['dart', 'axiom', 'kasp']) {
+      const profile = compileProfile(BUILTIN_PROFILES.get(id) as TokenProfile);
+      for (const cell of halfMissingCells()) {
+        if (profile.missing.has(cell)) continue; // NA, asserted below
+        expect(
+          () => parseNucleotideCell(cell, NUCLEOTIDE_MISSING, 'w', profile),
+          `${id} ${cell}`,
+        ).toThrow(`w: unexpected cell "${cell}"`);
+        expect(
+          () => parseNucleotideCell(cell.toLowerCase(), NUCLEOTIDE_MISSING, 'w', profile),
+          `${id} ${cell} lower`,
+        ).toThrow(`w: unexpected cell "${cell}"`);
+      }
+      // "unless the profile lists that exact token": NA is in all three missing lists.
+      expect(profile.missing.has('NA'), id).toBe(true);
+      expect(parseNucleotideCell('NA', NUCLEOTIDE_MISSING, 'w', profile), id).toBeNull();
+      expect(parseNucleotideCell('na', NUCLEOTIDE_MISSING, 'w', profile), id).toBeNull();
+    }
+  });
+
+  it('keeps the half-missing row without an allele and forces nucleotide detection (1.6.0)', () => {
+    const parsed = parseWideCsv('marker_id,chrom,pos_bp,RP,DONOR,L1,L2\ng1,Gm04,1000,A,G,AN,-a\n');
+    expect(parsed.markers.alleles[0]).toEqual(['A', 'G']); // the half-missing cells add no symbol
+    expect(Array.from(parsed.genotypes.allele1)).toEqual([0, 1, MISSING_ALLELE, MISSING_ALLELE]);
+    expect(Array.from(parsed.genotypes.allele2)).toEqual([0, 1, MISSING_ALLELE, MISSING_ALLELE]);
+    // A file whose only non-A/B cell is the pair: the pair is not a missing token, so `auto`
+    // reads it as nucleotide and the parse then fails on the coded letter B, not on the pair.
+    const decides = 'marker_id,chrom,pos_bp,RP,DONOR,L1\nm1,Gm01,100,A,B,N/A\n';
+    expect(detectWideCsvMode(decides)).toBe('nucleotide');
+    expect(() => parseWideCsv(decides)).toThrow('line 2: unexpected cell "B"');
   });
 });
 

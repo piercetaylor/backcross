@@ -4,7 +4,7 @@ This document holds what is this repository's own: the platforms, target regions
 
 ## Input contract
 
-The input contract is `contract/data-contract.md`, version 1.5.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
+The input contract is `contract/data-contract.md`, version 1.6.0, shared byte for byte with progeny-selector. It defines chromosome names, the genotype file (VCF, HapMap, wide CSV), samples.csv, markers.csv and the class codes in exports; `contract/README.md` gives the version rules.
 
 ## BrAPI allele matrix (Backcross only, outside the shared contract)
 

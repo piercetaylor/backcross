@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The shared input contract is version 1.6.0: a genotype cell pairing one of A, C, G, T with one of `N`, `-`, `.`, in either order and in all three spellings (`AN`, `-A`, `A/N`, `.|G`), is read as missing in HapMap and in nucleotide-mode wide CSV. Both tools already did this and neither changes; the contract now says so, with four cases under `contract/cases/` and a mirror in progeny-selector (docs/adr/0021). `AX` and `A?` stay errors, and under a `base: none` token profile (`dart`, `axiom`, `kasp`) the pair is still `genotypes.unknown_cell`. A pair of two missing characters (`N/N`, `..`) remains undefined by the contract.
+
 ### Documentation
 
 - Replace the milestone-heavy landing page with a current overview, a reproducible synthetic example, and links to the detailed records; preserve the previous README in `docs/legacy-readme.md`.
