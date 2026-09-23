@@ -1,49 +1,34 @@
 # Backcross
 
-Status: pre-alpha (0.1.0 unreleased). Open source under the MIT licence.
+Backcross characterizes near-isogenic lines from SNP genotype calls. It compares each line with its recurrent and donor parents, estimates recurrent-parent genome recovery, locates donor segments, checks target regions, and flags genotype quality concerns. The browser app displays graphical genotypes and exports CSV tables and an HTML report. A Node command-line interface uses the same analysis core.
 
-Backcross is a free, open-source web tool for plant breeders who develop near-isogenic lines by backcrossing. Given SNP genotype calls for a set of finished lines and their recurrent and donor parents, it answers the questions a breeder asks before releasing a line: where the donor introgression sits and how large it is, how much of the recurrent-parent genome has been recovered, whether each target locus carries the donor allele, and whether any line looks like a mislabelled sample, a residual heterozygote or an outcross.
+**Status:** Pre-release software (version 0.1.0 is untagged). [Open the app](https://piercetaylor.github.io/backcross/) or [load the synthetic demo](https://piercetaylor.github.io/backcross/?demo=synthetic). The demo contains six generated lines and 500 markers; it does not represent a breeding program.
 
-It classifies every call by parent of origin, estimates recurrent-parent proportion three ways (count-, bp- and cM-weighted), calls donor segments with breakpoint bounds, checks user-defined target regions, flags QC problems per line and per marker, compares lines pairwise, draws graphical genotypes for every line on one screen, and exports CSV tables and a self-contained HTML report. It reads VCF, HapMap and wide CSV files as they come, and chromosome names currently follow soybean (Glycine max). Everything runs inside your browser tab: genotype data for unreleased lines is never uploaded. The same compute core runs from the command line in Node.
+## Data and interpretation
 
-- **Use it:** https://piercetaylor.github.io/backcross/
-- **Try it with synthetic data:** https://piercetaylor.github.io/backcross/?demo=synthetic loads a small generated dataset (six lines, 500 markers) and opens the summary. The data are synthetic, not from any breeding program.
-- **Cite it:** there is no paper yet. Please cite the repository, https://github.com/piercetaylor/backcross, with the version or commit you used.
-- **Licence:** MIT (LICENSE).
+The app accepts VCF, HapMap, and wide CSV genotype files, a `samples.csv` manifest naming one recurrent and one donor parent, and an optional `markers.csv` genetic map. BrAPI v2.1 allele-matrix loading is also available. Crop-specific chromosome conventions cover soybean, maize, rice, sorghum, wheat, barley, oat, common bean, and cotton. [The input contract](contract/data-contract.md) and [coding reference](docs/input-coding.md) specify accepted fields and calls.
 
-Backcross was called Isoline Browser before 2026-09-16 (docs/adr/0017).
+Results describe the supplied markers and parent calls. Sparse or uneven marker coverage leaves segment breakpoints uncertain and can change genome-recovery estimates; the report includes the parameters used. Files selected from disk are analyzed in the browser tab. A BrAPI load requests genotype data from the server the user selects. No real genotype dataset is included in this repository.
 
-## What exists now
+## Run locally
 
-Parsers for VCF 4.2+ (plain or bgzip), HapMap and wide CSV (nucleotide or A/B/H), the samples.csv and markers.csv contracts, parent-of-origin classification, RPP with three estimators, donor segment calling with breakpoint bounds (docs/adr/0008), target-region status with linkage-drag bounds, per-line, per-marker and dataset QC flags, the per-line summary, segments and target check CSVs, CLI `summarize`, `segments` and `targets` commands, a synthetic fixture with independently derived expectations, and passing tests. The Upload, Summary and QC, Lines and Graphical genotype screens run over a Web Worker and draw every line on one canvas with per-pixel binning. Pairwise comparison, the Compare and Export screens, zoom and hover in the genotype view, and the HTML report are M2; see PLAN.md, "Milestones".
+Node.js 22.19 or newer is required.
 
-## Quickstart
-
-Requires Node 22.19 or later.
-
-```
+```sh
 npm ci
-npm test                      # vitest: fixture smoke tests and contract tests
-npm run lint                  # eslint + prettier --check
-npm run typecheck             # tsc --noEmit
-npm run dev                   # Vite dev server; open http://localhost:5173 and load the fixture files
-node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf \
-  --samples tests/fixtures/synthetic/samples.csv \
-  --markers tests/fixtures/synthetic/markers.csv [--profile ID|FILE] [--crop ID] --out summary.csv
-node src/cli.ts segments  ... --out segments.csv        # same inputs; donor segments per line
-node src/cli.ts targets   ... --target rhg1=Gm18:1.6Mb-1.7Mb --out targets.csv
+npm run dev
 ```
 
-`npm run build` writes a static site to dist/ (base path from `VITE_BASE_PATH`, see .env.example) that can be served from GitHub Pages or any static server.
+Open the local address printed by Vite. For batch output, the synthetic fixture provides a working CLI example:
 
-## Input files
+```sh
+node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out summary.csv
+```
 
-Genotypes as VCF, HapMap or wide CSV; samples.csv with exactly one `recurrent_parent` and one `donor_parent`; optional markers.csv with cM positions; an optional token profile (TASSEL, SoyBase report, DArT, Axiom, KASP, or your own JSON); and a crop, chosen on the Upload screen or with `--crop`, which decides how chromosome names are normalised and ordered (soybean, maize, rice, sorghum, wheat, barley, oat, common bean or cotton; soybean is the default). The input contract is specified in contract/data-contract.md and is shared byte for byte with the sibling progeny-selector project so files move between the two tools unchanged. What each format accepts, reads as missing and rejects is tabulated in docs/input-coding.md.
+The `segments` and `targets` commands produce separate CSV files; run `node src/cli.ts` for their options. `npm run build` creates a static site in `dist/`.
 
-## Documents
+## Verification and documentation
 
-PLAN.md (problem, algorithms, UI, milestones, verification), docs/data-formats.md, docs/input-coding.md, docs/reference-repos.md, docs/adr/ (MADR decision records), CHANGELOG.md, CONTRIBUTING.md.
+`npm test`, `npm run typecheck`, `npm run lint`, and `npm run test:browser` check the analysis and interface. The synthetic fixture has independently generated expected values; [the plan](PLAN.md) records measured performance and remaining verification limits. [Data formats and exports](docs/data-formats.md), [design decisions](docs/adr/), and the [archived README](docs/legacy-readme.md) provide detail.
 
-## Licence
-
-MIT (LICENSE).
+The software is available under the [MIT license](LICENSE). There is no associated paper; cite this repository with the commit or version used.
