@@ -30,10 +30,13 @@ session before every commit, and CI green on the pushed commit.
    4.9 s in Chromium and 6.2 s in Firefox, against M3's 10.5 s and 8.5 s; Chromium memory 1.33 x
    the inflated file, against 1.67 x), Lighthouse 100, `contract 1.5.0: 68 cases` and 245 mirrored
    files. Phase 1's figures were not copied. CLAUDE.md's State paragraph names M4 complete.
-3. **The local folder is still `isoline-browser`.** The GitHub repository, the package, the Pages
-   base path and the documentation all say `backcross`. Rename the folder from a session that is
-   not inside it, then fix the absolute paths in `.claude/settings.json` (three hook commands) and
-   in `progeny-selector/docs/data-formats.md`, which already points at `../backcross`.
+3. ~~**The local folder is still `isoline-browser`**.~~ Done 2026-09-23: the folder is now
+   `backcross`, beside `progeny-selector`. The rename needed a session whose working directory was
+   outside it; with one inside, Windows refuses to rename the root while every subdirectory renames
+   freely. `.claude/settings.json` carried four hook commands, not the three counted here
+   (SessionStart, PreToolUse Read, PreToolUse Skill|Agent, Stop), and `.claude/` is gitignored, so
+   that edit is local. `progeny-selector/docs/data-formats.md` already said `../backcross`; what
+   did point at the old folder was that repository's `CLAUDE.md` and `PLAN.md`.
 
 ## Open questions for the maintainer
 
