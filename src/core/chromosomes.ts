@@ -14,7 +14,7 @@
  *
  * `src/core/` imports no JSON, so `soybean.json` is repeated here as
  * `SOYBEAN_SCHEME` (tests/crops.test.ts asserts the two are equal) and every
- * function defaults to it; `src/io/crops.ts` holds the other eight.
+ * function defaults to it; `src/io/crops.ts` holds the other eleven.
  *
  * Interface: CropScheme, CompiledScheme, compileScheme, SOYBEAN_SCHEME,
  * SOYBEAN, SOYBEAN_CHROMOSOME_COUNT, normalizeChromosome,

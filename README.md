@@ -6,7 +6,7 @@ Backcross characterizes near-isogenic lines from SNP genotype calls. It compares
 
 ## Data and interpretation
 
-The app accepts VCF, HapMap, and wide CSV genotype files, a `samples.csv` manifest naming one recurrent and one donor parent, and an optional `markers.csv` genetic map. BrAPI v2.1 allele-matrix loading is also available. Crop-specific chromosome conventions cover soybean, maize, rice, sorghum, wheat, barley, oat, common bean, and cotton. [The input contract](contract/data-contract.md) and [coding reference](docs/input-coding.md) specify accepted fields and calls.
+The app accepts VCF, HapMap, and wide CSV genotype files, a `samples.csv` manifest naming one recurrent and one donor parent, and an optional `markers.csv` genetic map. BrAPI v2.1 allele-matrix loading is also available. Crop-specific chromosome conventions cover soybean, maize, rice, sorghum, wheat, barley, oat, common bean, cotton, cowpea, pea, and peanut. [The input contract](contract/data-contract.md) and [coding reference](docs/input-coding.md) specify accepted fields and calls.
 
 Results describe the supplied markers and parent calls. Sparse or uneven marker coverage leaves segment breakpoints uncertain and can change genome-recovery estimates; the report includes the parameters used. Files selected from disk are analyzed in the browser tab. A BrAPI load requests genotype data from the server the user selects. No real genotype dataset is included in this repository.
 

@@ -42,10 +42,11 @@
  * source the select is disabled at the default with a help text. Both load
  * payloads carry `profile`.
  *
- * A second `Select`, labelled "Crop" (contract 1.5.0, docs/adr/0020), offers
- * the built-in crop chromosome schemes in BUILTIN_CROPS order with soybean
- * first and selected; it chooses which spellings normalise to which canonical
- * chromosome names, and both load payloads carry `crop`.
+ * A second `Select`, labelled "Crop" (contract 1.5.0 and 1.7.0, docs/adr/0020
+ * and 0022), offers the twelve built-in crop chromosome schemes in
+ * BUILTIN_CROPS order with soybean first and selected; it chooses which
+ * spellings normalise to which canonical chromosome names, and both load
+ * payloads carry `crop`.
  *
  * Props: params, onParamsChange, busy, loaded, onLoad, onFetchCallSets,
  * onCancelBrapi, brapiLoading.

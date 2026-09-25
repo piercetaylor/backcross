@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Crop schemes for cowpea, pea and peanut (contract 1.7.0, docs/adr/0022). The Crop select and `--crop` now offer `cowpea` (`Vu01`..`Vu11`, which also reads NCBI's `Vu01(old4)` names in their eleven exact pairings), `pea` (`chr1LG6`..`chr7LG7`, which reads `chr4` and `4LG4` but keeps a bare `4` as written, because pea tables use bare digits for two numberings that disagree) and `peanut` (`Arahy.01`..`Arahy.20`, where `A01`..`A10`, `B01`..`B10` and the `Aradu.`/`Araip.` names are kept as written). Sunflower stays deferred. Three cases under `contract/cases/` pin each scheme's spellings, including one it leaves as written.
 - The shared input contract is version 1.6.0: a genotype cell pairing one of A, C, G, T with one of `N`, `-`, `.`, in either order and in all three spellings (`AN`, `-A`, `A/N`, `.|G`), is read as missing in HapMap and in nucleotide-mode wide CSV. Both tools already did this and neither changes; the contract now says so, with four cases under `contract/cases/` and a mirror in progeny-selector (docs/adr/0021). `AX` and `A?` stay errors, and under a `base: none` token profile (`dart`, `axiom`, `kasp`) the pair is still `genotypes.unknown_cell`. A pair of two missing characters (`N/N`, `..`) remains undefined by the contract.
 
 ### Documentation

@@ -2579,6 +2579,147 @@ const cases = [
       },
     },
   },
+  {
+    // Vu01(old4) is Vu01 and a bare 7 is Vu07; a wrong (oldN) pairing and the LG prefix fall through.
+    name: 'crop-cowpea-spellings',
+    options: { crop: 'cowpea' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Vu01(old4),1000,A,G,R',
+        'r2,7,2000,A,G,R',
+        'r3,Vu01(old7),3000,A,G,R',
+        'r4,LG4,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Vu01', 'Vu07', 'LG4', 'Vu01(old7)'],
+      markers: [
+        { id: 'r1', chrom: 'Vu01', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Vu07', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'LG4', posBp: 4000, cm: null },
+        { id: 'r3', chrom: 'Vu01(old7)', posBp: 3000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // chr4LG4 and 1LG6 carry both numbers and chr2 a prefix; a bare 4 may be either numbering and falls through.
+    name: 'crop-pea-spellings',
+    options: { crop: 'pea' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,chr4LG4,1000,A,G,R',
+        'r2,1LG6,2000,A,G,R',
+        'r3,chr2,3000,A,G,R',
+        'r4,4,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['chr1LG6', 'chr2LG1', 'chr4LG4', '4'],
+      markers: [
+        { id: 'r2', chrom: 'chr1LG6', posBp: 2000, cm: null },
+        { id: 'r3', chrom: 'chr2LG1', posBp: 3000, cm: null },
+        { id: 'r1', chrom: 'chr4LG4', posBp: 1000, cm: null },
+        { id: 'r4', chrom: '4', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // Arahy.01 and the gnm2 NCBI name are read; the B01 subgenome spelling and Arahy.21 fall through.
+    name: 'crop-peanut-spellings',
+    options: { crop: 'peanut' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Arahy.01,1000,A,G,R',
+        'r2,arahy.Tifrunner.gnm2.chr11,2000,A,G,R',
+        'r3,B01,3000,A,G,R',
+        'r4,Arahy.21,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Arahy.01', 'Arahy.11', 'Arahy.21', 'B01'],
+      markers: [
+        { id: 'r1', chrom: 'Arahy.01', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Arahy.11', posBp: 2000, cm: null },
+        { id: 'r4', chrom: 'Arahy.21', posBp: 4000, cm: null },
+        { id: 'r3', chrom: 'B01', posBp: 3000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
 ];
 
 // ---- write ------------------------------------------------------------------
