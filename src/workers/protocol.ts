@@ -23,7 +23,8 @@
  * 'loadBrapi' is the BrAPI counterpart of 'load' (docs/adr/0015): the payload
  * carries a BrapiSource instead of a genotype file, the worker fetches the
  * variant set itself, and samples.csv and markers.csv travel as for 'load'.
- * 'loadDemo' (docs/adr/0017) carries the URLs of the site's demo files; the
+ * 'loadDemo' (docs/adr/0017) carries the URLs of the site's demo files and the
+ * chosen `crop`; the
  * worker fetches them and then runs the 'load' path on the bytes, so a demo
  * is loaded exactly as the same files picked by hand would be.
  * 'brapiCallSets' pages /callsets only, so the Upload screen can offer the
@@ -127,6 +128,8 @@ export type WorkerRequest =
         genotypesUrl: string;
         samplesUrl: string;
         markersUrl: string;
+        /** Crop scheme id (contract 1.5.0), as the Upload screen's select sets it; absent means soybean. */
+        crop?: string;
       };
     }
   | {

@@ -31,8 +31,8 @@
  *
  * 'loadDemo' (docs/adr/0017) fetches the site's demo files through the same
  * `fetchImpl`, from the page's own origin, and hands the bytes to
- * `loadFiles`, the function 'load' runs, so a demo takes the user-picked
- * files' path from parse to 'loaded'.
+ * `loadFiles`, the function 'load' runs, with the payload's `crop`, so a demo
+ * takes the user-picked files' path from parse to 'loaded'.
  *
  * `handle` is async because 'load' is. Requests are queued and handled one
  * at a time in arrival order, as the synchronous handler did, so a request
@@ -210,6 +210,7 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
         genotypes,
         samples,
         markers,
+        ...(p.crop === undefined ? {} : { crop: p.crop }),
       });
     }
     case 'loadBrapi': {

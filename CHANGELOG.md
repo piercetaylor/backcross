@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- "Try the demo dataset" loads under the crop chosen in the Crop select. It always loaded as soybean before, whatever the select showed. The `?demo=synthetic` link still loads as soybean.
 - The genotype view's browser geometry tests wait for the rail-collapse animation before reading an absolute x. Entering that screen collapses the rail and the shell animates its grid track, so a measurement taken while the track was still moving was a transient, and the gutter case failed intermittently in CI against a settled scroller.
 
 ### Added

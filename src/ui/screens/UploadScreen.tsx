@@ -45,8 +45,8 @@
  * A second `Select`, labelled "Crop" (contract 1.5.0 and 1.7.0, docs/adr/0020
  * and 0022), offers the twelve built-in crop chromosome schemes in
  * BUILTIN_CROPS order with soybean first and selected; it chooses which
- * spellings normalise to which canonical chromosome names, and both load
- * payloads carry `crop`.
+ * spellings normalise to which canonical chromosome names, and the files,
+ * BrAPI and demo load payloads all carry `crop`.
  *
  * Props: params, onParamsChange, busy, loaded, onLoad, onFetchCallSets,
  * onCancelBrapi, brapiLoading.
@@ -216,7 +216,10 @@ export function UploadScreen({
   function handleLoadDemo() {
     onLoad({
       type: 'loadDemo',
-      payload: demoLoadPayload('synthetic', import.meta.env.BASE_URL, location.href),
+      payload: {
+        ...demoLoadPayload('synthetic', import.meta.env.BASE_URL, location.href),
+        crop: cropId,
+      },
     });
   }
 
