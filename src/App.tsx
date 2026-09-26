@@ -123,7 +123,12 @@ import { LineTableScreen } from './ui/screens/LineTableScreen.tsx';
 import { SummaryScreen } from './ui/screens/SummaryScreen.tsx';
 import type { AnalysisParams, LoadedState, LoadRequest } from './ui/screens/UploadScreen.tsx';
 import { UploadScreen } from './ui/screens/UploadScreen.tsx';
-import { demoLoadPayload, parseDemoParam, unknownDemoMessage } from './ui/demo.ts';
+import {
+  demoLoadPayload,
+  parseDemoParam,
+  unknownCropMessage,
+  unknownDemoMessage,
+} from './ui/demo.ts';
 import { AnalysisClient } from './workers/client.ts';
 import type { GenotypeClassesData } from './workers/protocol.ts';
 import type { BrapiCallSet, BrapiSource } from './io/brapi.ts';
@@ -197,18 +202,23 @@ export function App() {
     };
   }, []);
 
-  // `?demo=<name>` (docs/adr/0017): load that demo on arrival, as the Upload
-  // screen's demo button does, or report an unknown name in the alert.
+  // `?demo=<name>` (docs/adr/0017), with an optional `&crop=<id>`: load that
+  // demo on arrival under that crop, as the Upload screen's demo button does,
+  // or report an unknown demo or crop in the alert.
   // Declared after the worker effect so the client exists. No run-once
   // guard: under StrictMode's effect replay the first chain's worker is
   // terminated and the second chain, on the sequence counter, supersedes it.
   useEffect(() => {
     const demo = parseDemoParam(location.search);
     if (demo.kind === 'unknown') setError(unknownDemoMessage(demo.value));
+    if (demo.kind === 'unknownCrop') setError(unknownCropMessage(demo.value));
     if (demo.kind !== 'demo') return;
     void runLoad({
       type: 'loadDemo',
-      payload: demoLoadPayload(demo.name, import.meta.env.BASE_URL, location.href),
+      payload: {
+        ...demoLoadPayload(demo.name, import.meta.env.BASE_URL, location.href),
+        ...(demo.crop === undefined ? {} : { crop: demo.crop }),
+      },
     });
     // runLoad is recreated every render; this effect runs on mount only.
   }, []);

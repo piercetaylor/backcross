@@ -1,6 +1,7 @@
 /**
  * src/ui/demo.ts: reading `?demo=`, building the worker's demo payload under
- * the site's base path, and writing the share link (docs/adr/0017).
+ * the site's base path, and writing the share link (docs/adr/0017), with the
+ * optional `crop` parameter.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +10,7 @@ import {
   demoLoadPayload,
   demoShareLink,
   parseDemoParam,
+  unknownCropMessage,
   unknownDemoMessage,
 } from '../src/ui/demo.ts';
 
@@ -43,6 +45,47 @@ describe('parseDemoParam', () => {
       name: 'synthetic',
     });
     expect(parseDemoParam('?demo=a%20b')).toEqual({ kind: 'unknown', value: 'a b' });
+  });
+});
+
+describe('parseDemoParam, crop', () => {
+  it('reads a built-in crop beside the demo, first one winning', () => {
+    expect(parseDemoParam('?demo=synthetic&crop=pea')).toEqual({
+      kind: 'demo',
+      name: 'synthetic',
+      crop: 'pea',
+    });
+    expect(parseDemoParam('?crop=common-bean&demo=synthetic')).toEqual({
+      kind: 'demo',
+      name: 'synthetic',
+      crop: 'common-bean',
+    });
+    expect(parseDemoParam('?demo=synthetic&crop=soybean&crop=pea')).toEqual({
+      kind: 'demo',
+      name: 'synthetic',
+      crop: 'soybean',
+    });
+  });
+
+  it('reports an unknown, empty or differently cased crop rather than loading', () => {
+    expect(parseDemoParam('?demo=synthetic&crop=sunflower')).toEqual({
+      kind: 'unknownCrop',
+      value: 'sunflower',
+    });
+    expect(parseDemoParam('?demo=synthetic&crop=')).toEqual({ kind: 'unknownCrop', value: '' });
+    expect(parseDemoParam('?demo=synthetic&crop=Pea')).toEqual({
+      kind: 'unknownCrop',
+      value: 'Pea',
+    });
+    expect(parseDemoParam('?demo=synthetic&crop=toString')).toEqual({
+      kind: 'unknownCrop',
+      value: 'toString',
+    });
+  });
+
+  it('ignores crop without demo, and reports an unknown demo before its crop', () => {
+    expect(parseDemoParam('?crop=pea')).toEqual({ kind: 'none' });
+    expect(parseDemoParam('?demo=real&crop=nope')).toEqual({ kind: 'unknown', value: 'real' });
   });
 });
 
@@ -85,6 +128,25 @@ describe('demoShareLink', () => {
     const link = demoShareLink('http://localhost:5173/', 'synthetic');
     expect(parseDemoParam(new URL(link).search)).toEqual({ kind: 'demo', name: 'synthetic' });
   });
+
+  it('adds crop for any crop but soybean, which keeps the plain link', () => {
+    const base = 'https://piercetaylor.github.io/backcross/?crop=maize#x';
+    expect(demoShareLink(base, 'synthetic', 'pea')).toBe(
+      'https://piercetaylor.github.io/backcross/?demo=synthetic&crop=pea',
+    );
+    expect(demoShareLink(base, 'synthetic', 'soybean')).toBe(
+      'https://piercetaylor.github.io/backcross/?demo=synthetic',
+    );
+    expect(demoShareLink(base, 'synthetic')).toBe(
+      'https://piercetaylor.github.io/backcross/?demo=synthetic',
+    );
+    const link = demoShareLink('http://localhost:5173/', 'synthetic', 'common-bean');
+    expect(parseDemoParam(new URL(link).search)).toEqual({
+      kind: 'demo',
+      name: 'synthetic',
+      crop: 'common-bean',
+    });
+  });
 });
 
 describe('unknownDemoMessage', () => {
@@ -92,6 +154,14 @@ describe('unknownDemoMessage', () => {
     expect(DEMO_NAMES).toEqual(['synthetic']);
     expect(unknownDemoMessage('real')).toBe(
       'Unknown demo dataset "real" in the page address. Available: synthetic.',
+    );
+  });
+});
+
+describe('unknownCropMessage', () => {
+  it('names the value and every built-in crop', () => {
+    expect(unknownCropMessage('sunflower')).toBe(
+      'Unknown crop "sunflower" in the page address. Available: soybean, maize, rice, sorghum, wheat, barley, oat, common-bean, cotton, cowpea, pea, peanut.',
     );
   });
 });

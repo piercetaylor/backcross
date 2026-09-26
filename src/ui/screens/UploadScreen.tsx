@@ -28,7 +28,8 @@
  * dataset" button that calls `onLoad` with a 'loadDemo' request for the
  * synthetic fixture the site serves under demo/synthetic/ (the worker fetches
  * it and loads it as it loads picked files), a "Copy link to this demo"
- * button that writes the page's `?demo=synthetic` address to the clipboard
+ * button that writes the page's `?demo=synthetic` address, with `&crop=<id>`
+ * for any crop but soybean, to the clipboard
  * and reports the outcome in a polite status line, and a note that the demo
  * data are synthetic. The input-coding link stays the band's first tab stop.
  *
@@ -44,7 +45,8 @@
  *
  * A second `Select`, labelled "Crop" (contract 1.5.0 and 1.7.0, docs/adr/0020
  * and 0022), offers the twelve built-in crop chromosome schemes in
- * BUILTIN_CROPS order with soybean first and selected; it chooses which
+ * BUILTIN_CROPS order with soybean first; it starts at the loaded dataset's
+ * crop, else soybean, and it chooses which
  * spellings normalise to which canonical chromosome names, and the files,
  * BrAPI and demo load payloads all carry `crop`.
  *
@@ -195,7 +197,7 @@ export function UploadScreen({
   const [callSetsWarnings, setCallSetsWarnings] = useState<string[]>([]);
   const [copyStatus, setCopyStatus] = useState('');
   const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID);
-  const [cropId, setCropId] = useState<string>(DEFAULT_CROP_ID);
+  const [cropId, setCropId] = useState<string>(loaded?.crop ?? DEFAULT_CROP_ID);
   const [customProfile, setCustomProfile] = useState<TokenProfile | null>(null);
   const [customProfileError, setCustomProfileError] = useState<string | null>(null);
 
@@ -224,7 +226,7 @@ export function UploadScreen({
   }
 
   async function handleCopyDemoLink() {
-    const link = demoShareLink(location.href, 'synthetic');
+    const link = demoShareLink(location.href, 'synthetic', cropId);
     try {
       await navigator.clipboard.writeText(link);
       setCopyStatus('Link copied.');
