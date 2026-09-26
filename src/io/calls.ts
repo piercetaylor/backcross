@@ -14,7 +14,9 @@
  *   - two characters, or three with "/" or "|" in the middle: each must be
  *     A C G T or one of N - . ; a pair containing N, - or . is read as
  *     missing, including a half-missing pair such as "AN" or "-A"
- *     (contract 1.6.0); any other character ("A?", "N?", "RR") -> error;
+ *     (contract 1.6.0) and a pair of two of N - . such as "N/N" or ".."
+ *     (contract 1.8.0); any other character ("A?", "N?", "RR", "X/X")
+ *     -> error;
  *   - anything else -> error.
  *
  * Under a token profile (profiles.ts, contract 1.4.0) a cell is resolved in

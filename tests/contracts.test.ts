@@ -267,6 +267,76 @@ describe('nucleotide cell vocabulary (src/io/calls.ts)', () => {
     expect(detectWideCsvMode(decides)).toBe('nucleotide');
     expect(() => parseWideCsv(decides)).toThrow('line 2: unexpected cell "B"');
   });
+
+  /** Every pair of two of N - . , in every order and all three spellings: 27 cells. */
+  const twoMissingCells = (): string[] => {
+    const cells: string[] = [];
+    for (const a of ['N', '-', '.'])
+      for (const b of ['N', '-', '.']) cells.push(`${a}${b}`, `${a}/${b}`, `${a}|${b}`);
+    return cells;
+  };
+
+  it('reads a pair of two missing characters as missing, with no profile and under a nucleotide-base profile (1.8.0)', () => {
+    const profiles = ['tassel', 'soybase-report'].map((id) => ({
+      id,
+      profile: compileProfile(BUILTIN_PROFILES.get(id) as TokenProfile),
+    }));
+    expect(twoMissingCells()).toHaveLength(27);
+    for (const cell of twoMissingCells()) {
+      expect(wide(cell), cell).toBeNull();
+      expect(hapmap(cell), cell).toBeNull();
+      expect(wide(` ${cell.toLowerCase()} `), `${cell} lower`).toBeNull();
+      for (const { id, profile } of profiles) {
+        expect(
+          parseNucleotideCell(cell, NUCLEOTIDE_MISSING, 'w', profile),
+          `${id} ${cell}`,
+        ).toBeNull();
+        expect(parseNucleotideCell(cell, HAPMAP_MISSING, 'h', profile), `${id} ${cell}`).toBeNull();
+      }
+    }
+  });
+
+  it('rejects a pair of two missing characters under a base-none profile unless listed (1.8.0)', () => {
+    // axiom lists `--`; the "unless the profile lists that exact token" exception must fire there.
+    const axiom = compileProfile(BUILTIN_PROFILES.get('axiom') as TokenProfile);
+    expect(axiom.missing.has('--')).toBe(true);
+    expect(parseNucleotideCell('--', NUCLEOTIDE_MISSING, 'w', axiom)).toBeNull();
+    for (const id of ['dart', 'kasp', 'axiom']) {
+      const profile = compileProfile(BUILTIN_PROFILES.get(id) as TokenProfile);
+      for (const cell of twoMissingCells()) {
+        if (id === 'axiom' && cell === '--') continue; // asserted above
+        expect(profile.missing.has(cell), `${id} ${cell}`).toBe(false);
+        expect(
+          () => parseNucleotideCell(cell, NUCLEOTIDE_MISSING, 'w', profile),
+          `${id} ${cell}`,
+        ).toThrow(`w: unexpected cell "${cell}" (not a token of the`);
+        expect(
+          () => parseNucleotideCell(cell, HAPMAP_MISSING, 'h', profile),
+          `${id} ${cell}`,
+        ).toThrow(`h: unexpected cell "${cell}" (not a token of the`);
+      }
+    }
+  });
+
+  it('keeps a pair with X an error in both formats (1.8.0)', () => {
+    for (const bad of ['X/X', 'XN', 'N/X', 'X.']) {
+      expect(() => wide(bad), bad).toThrow(`w: unexpected cell "${bad}"`);
+      expect(() => hapmap(bad), bad).toThrow(`h: unexpected cell "${bad}"`);
+    }
+    // X is tassel's own missing token; it still does not become a pair character.
+    const tassel = compileProfile(BUILTIN_PROFILES.get('tassel') as TokenProfile);
+    expect(() => parseNucleotideCell('X/X', NUCLEOTIDE_MISSING, 'w', tassel)).toThrow(
+      'w: unexpected cell "X/X"',
+    );
+  });
+
+  it('reads a wide CSV holding a two-missing pair as nucleotide under auto (1.8.0)', () => {
+    // N/N is not a missing token, so it is a non-coded cell and `auto` reads the file as
+    // nucleotide; the parse then fails on the coded letter B, not on the pair.
+    const decides = 'marker_id,chrom,pos_bp,RP,DONOR,L1\nm1,Gm01,100,A,B,N/N\n';
+    expect(detectWideCsvMode(decides)).toBe('nucleotide');
+    expect(() => parseWideCsv(decides)).toThrow('line 2: unexpected cell "B"');
+  });
 });
 
 describe('HapMap vocabulary', () => {

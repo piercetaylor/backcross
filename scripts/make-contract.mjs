@@ -52,6 +52,12 @@
  * nucleotide; under a profile whose base is none it is
  * genotypes.unknown_cell.
  *
+ * Version 1.8.0 (docs/adr/0023): a pair of two of N - . (`N/N`, `..`,
+ * `-|N`), which 1.6.0 left undefined, is read as missing in HapMap and in a
+ * nucleotide wide CSV, and under a profile whose base is nucleotide; under
+ * a profile whose base is none it is genotypes.unknown_cell unless the
+ * profile lists that exact token.
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -2152,6 +2158,132 @@ const cases = [
     options: { profile: 'dart' },
     files: {
       'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'j1,Gm04,1000,0,1,AN'),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.unknown_cell',
+  },
+  {
+    // Contract 1.8.0: a HapMap pair of two of N - . that is not itself a missing token is missing,
+    // in any order and in all three spellings; the parents' cells are plain calls.
+    name: 'hapmap-two-missing-pair',
+    files: {
+      'genotypes.hmp.txt': lines(
+        tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1', 'L2'),
+        tsv('t1', 'A/G', 'Gm04', '100', ...HAPMAP_FIXED, 'AA', 'GG', 'N/N', '..'),
+        tsv('t2', 'C/T', 'Gm04', '200', ...HAPMAP_FIXED, 'CC', 'TT', '-/-', 'N-'),
+        tsv('t3', 'A/T', 'Gm04', '300', ...HAPMAP_FIXED, 'AA', 'TT', '.|N', '-.'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 't1', chrom: 'Gm04', posBp: 100, cm: null },
+        { id: 't2', chrom: 'Gm04', posBp: 200, cm: null },
+        { id: 't3', chrom: 'Gm04', posBp: 300, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['T', 'T'],
+        ],
+        L1: [null, null, null],
+        L2: [null, null, null],
+      },
+    },
+  },
+  {
+    // The same rule in a nucleotide wide CSV; the parents' plain calls give each row its alleles,
+    // which the two-missing cells never add to. Detection is unit-tested, not pinned here.
+    name: 'wide-two-missing-pair',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1,L2',
+        'u1,Gm04,1000,A,G,N/N,..',
+        'u2,Gm04,2000,C,T,-/-,N-',
+        'u3,Gm04,3000,A,T,.|N,-.',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 'u1', chrom: 'Gm04', posBp: 1000, cm: null },
+        { id: 'u2', chrom: 'Gm04', posBp: 2000, cm: null },
+        { id: 'u3', chrom: 'Gm04', posBp: 3000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['T', 'T'],
+        ],
+        L1: [null, null, null],
+        L2: [null, null, null],
+      },
+    },
+  },
+  {
+    // Under a profile whose base is nucleotide the rule still applies, and the profile's own
+    // missing token (X here) is read beside it. That X/X stays an error is unit-tested in both
+    // repositories, since an error case carries one fault and this case is a success case.
+    name: 'profile-tassel-two-missing-pair',
+    options: { profile: 'tassel' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1,L2',
+        'v1,Gm04,1000,A,G,N/N,X',
+        'v2,Gm04,2000,C,T,.-,-|N',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1_L2,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 'v1', chrom: 'Gm04', posBp: 1000, cm: null },
+        { id: 'v2', chrom: 'Gm04', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1', 'L2'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        L1: [null, null],
+        L2: [null, null],
+      },
+    },
+  },
+  {
+    // Under a profile whose base is none the format's grammar is gone, so a pair of two missing
+    // characters is not a token of the profile (dart lists `-` but not `N/N`).
+    name: 'err-profile-none-two-missing-pair',
+    options: { profile: 'dart' },
+    files: {
+      'genotypes.csv': lines('marker_id,chrom,pos_bp,RP,DONOR,L1', 'k1,Gm04,1000,0,1,N/N'),
       'samples.csv': SAMPLES_RP_DONOR_L1,
     },
     error: 'genotypes.unknown_cell',

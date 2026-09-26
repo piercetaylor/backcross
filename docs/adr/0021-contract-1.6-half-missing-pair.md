@@ -39,3 +39,7 @@ A pair of two of `N`, `-`, `.` that is not itself a missing token (`N/N`, `N-`, 
 ## More Information
 
 Contract 1.6.0: `contract/data-contract.md` ("HapMap", "Wide CSV", "Token profiles"), `contract/VERSION`, `contract/README.md`. Mirrored byte for byte into `progeny-selector` under the version and mirror rules of ADR 0013. Supersedes nothing; it states what ADR 0014 left open.
+
+## Amendment, 2026-09-26
+
+The pair of two of `N`, `-`, `.` that this record left outside its decision is now defined by contract 1.8.0 (docs/adr/0023): it is read as missing, as both tools already read it, and it too belongs to the pair grammar rather than the missing-token lists. The sentence "not defined by this version" is gone from both sections of `contract/data-contract.md`.
