@@ -18,9 +18,9 @@
  * Zoom (chromosome selector, a typed region field reusing the locus grammar
  * from core/targets.ts under the loaded dataset's crop scheme, contract 1.5.0,
  * so a typed name is read exactly as the genotype file's names were, and its
- * example region is named from `loaded.chromosomeOrder[0]`; plus drag-to-zoom
- * on the canvas) and hover detail are
- * implemented here (M2, docs/adr/0007). The hover panel shows the cheap
+ * example region is named from `loaded.chromosomeOrder[0]`, and a region on a
+ * chromosome the dataset lacks is an error that leaves the view as it was;
+ * plus drag-to-zoom on the canvas) and hover detail are implemented here (M2, docs/adr/0007). The hover panel shows the cheap
  * fields (line, chromosome, bp position, class) the instant the hit test
  * resolves, from the local classesData arrays -- so the panel never lags the
  * pointer -- then debounces (MARKER_DETAIL_DEBOUNCE_MS) a 'markerDetail'
@@ -143,6 +143,9 @@ const ZOOM_FRACTION = 0.2;
 
 /** Delay before a hovered marker's detail is requested from the worker, so a sweep across the canvas does not queue one request per pixel. */
 const MARKER_DETAIL_DEBOUNCE_MS = 120;
+
+/** How many of the dataset's chromosome names a region error lists. */
+const REGION_ERROR_NAMES = 3;
 
 const NO_HOVER_MESSAGE = 'Hover or focus a marker on the canvas to see its detail.';
 
@@ -598,6 +601,15 @@ export function GenotypeViewScreen({
     }
     if (parsed === null) {
       setRegionError('not a region');
+      return;
+    }
+    // parseLocus reads the name under the crop scheme but knows nothing of
+    // the dataset; a name the scheme keeps as written may not be loaded.
+    const order = loaded?.chromosomeOrder ?? [];
+    if (!order.includes(parsed.chrom)) {
+      const shown = order.slice(0, REGION_ERROR_NAMES).join(', ');
+      const more = order.length > REGION_ERROR_NAMES ? ', ...' : '';
+      setRegionError(`no chromosome "${parsed.chrom}" in this dataset (${shown}${more})`);
       return;
     }
     setRegionError(null);

@@ -33,7 +33,8 @@ function setDemoParam(value: string, crop?: string): void {
 
 // The fixture's Gm names read the same under every crop, so the region field
 // tells the schemes apart: soybean reads chr13 as Gm13, any other crop keeps
-// chr13 as written, and the view never reaches Gm13.
+// chr13 as written, which is not in the dataset: the field reports it and the
+// view stays where it was, never reaching Gm13.
 async function applyRegion(text: string): Promise<void> {
   await userEvent.fill(page.getByLabelText('Region'), text);
   await userEvent.click(page.getByRole('button', { name: 'Apply' }));
@@ -53,9 +54,12 @@ async function expectLoadedUnderOtherCrop(): Promise<void> {
   await goTo('4. Graphical genotypes');
   await applyRegion('Gm12:1-3Mb');
   await expect.poll(viewValue).toBe('Gm12');
+  expect(document.querySelector('#genotype-region-error')).toBeNull();
   await applyRegion('chr13:1-3Mb');
-  await expect.poll(viewValue).not.toBe('Gm12');
-  expect(viewValue()).not.toBe('Gm13');
+  await expect
+    .poll(() => document.querySelector('#genotype-region-error')?.textContent ?? '')
+    .toBe('no chromosome "chr13" in this dataset (Gm01, Gm02, Gm03, ...)');
+  expect(viewValue()).toBe('Gm12');
 }
 
 async function choosePea(): Promise<void> {

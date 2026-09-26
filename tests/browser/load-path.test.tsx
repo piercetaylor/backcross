@@ -115,6 +115,49 @@ describe('load path', () => {
     await expect.poll(() => (view.element() as HTMLSelectElement).value).toBe('chr2');
     expect(document.querySelector('#genotype-region-error')).toBeNull();
   });
+
+  it('reports a region on a chromosome the dataset lacks and leaves the view unchanged', async () => {
+    await mountApp();
+    await userEvent.click(page.getByRole('button', { name: /Crop$/ }));
+    await userEvent.click(page.getByRole('option', { name: 'Maize' }));
+    const genotypes = new File(
+      ['marker_id,chrom,pos_bp,RP,DONOR,L1\nr1,chr1,1000,A,G,A\nr2,chr2,2000,C,T,C\n'],
+      'genotypes.csv',
+      { type: 'text/csv' },
+    );
+    const samples = new File(
+      [
+        'sample_id,line_name,role,generation,family_id,notes\n' +
+          'RP,Recurrent,recurrent_parent,,,\nDONOR,Donor,donor_parent,,,\nL1,Line 1,candidate,,,\n',
+      ],
+      'samples.csv',
+      { type: 'text/csv' },
+    );
+    await loadFiles({ genotypes, samples });
+    await goTo('4. Graphical genotypes');
+    const region = page.getByLabelText('Region');
+    const view = page.getByRole('combobox', { name: 'View' });
+    const viewValue = () => (view.element() as HTMLSelectElement).value;
+    await userEvent.fill(region, 'chr2:1-3Mb');
+    await userEvent.click(page.getByRole('button', { name: 'Apply' }));
+    await expect.poll(viewValue).toBe('chr2');
+
+    // chr7 is a maize name the scheme reads, but this dataset has no chr7:
+    // the field says so and the view stays on chr2 rather than going to an
+    // empty canvas.
+    await userEvent.fill(region, 'chr7:1-3Mb');
+    await userEvent.click(page.getByRole('button', { name: 'Apply' }));
+    await expect
+      .poll(() => document.querySelector('#genotype-region-error')?.textContent ?? '')
+      .toBe('no chromosome "chr7" in this dataset (chr1, chr2)');
+    expect(viewValue()).toBe('chr2');
+
+    // A region the dataset has clears the error and moves the view.
+    await userEvent.fill(region, 'chr1:1-2Mb');
+    await userEvent.click(page.getByRole('button', { name: 'Apply' }));
+    await expect.poll(viewValue).toBe('chr1');
+    expect(document.querySelector('#genotype-region-error')).toBeNull();
+  });
 });
 
 describe('the resident crop scheme in the worker (contract 1.5.0)', () => {
