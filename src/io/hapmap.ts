@@ -67,6 +67,13 @@ export function parseHapMap(text: string, options?: ParseOptions): ParsedGenotyp
       throw new Error(`HapMap line ${i + 1}: ${f.length} columns, header has ${header.length}`);
     }
     const id = f[0] as string;
+    // The alleles column seeds the marker's symbol table in file order, and
+    // symbolIndex appends any symbol a cell uses that the column lacks.
+    // progeny-selector instead keeps the sorted symbols the calls use. The two
+    // tables can order a marker's alleles differently, but no output reads
+    // that order: classification compares indices within one tool, and only
+    // the marker-detail popover maps an index back to a symbol. TASSEL does
+    // not define the column's order, so neither reading is the reference one.
     const alleles = (f[1] as string)
       .split('/')
       .map((a) => a.trim().toUpperCase())
