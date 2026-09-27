@@ -3,7 +3,7 @@
  *
  * Responsibility: run the same compute core outside the browser so results
  * can be scripted, regression-tested, or fed to Shiny dashboards without a
- * UI. Three subcommands write the three CSV tables of docs/data-formats.md.
+ * UI. Five subcommands write the CSV tables of docs/data-formats.md.
  *
  * Usage:
  *   node src/cli.ts summarize --genotypes <vcf|hmp|csv[.gz]> --samples samples.csv
@@ -11,6 +11,8 @@
  *   node src/cli.ts segments  ... [--max-segment-gap-bp N] [--max-segment-gap-cm N]
  *                             [--min-markers N] [--max-missing-span N] [--include-short] [--out file.csv]
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
+ *   node src/cli.ts compare    ... --a sampleId --b sampleId [--mode informative|all] [--out file.csv]
+ *   node src/cli.ts discordant ... --a sampleId --b sampleId [--mode informative|all] [--out file.csv]
  *
  * The genotype file is read as a stream (parseGenotypesSource), so a
  * bgzipped VCF is never held inflated. Warnings from the loaders, the
@@ -21,17 +23,29 @@
  * trailing token_profile column (contract 1.4.0). `--crop` names a built-in
  * crop chromosome scheme (contract/crops/, contract 1.5.0); it defaults to
  * soybean and every CSV records it in its trailing crop column.
+ *
+ * `compare` and `discordant` run one pairwise comparison (algorithm 5,
+ * src/core/compare.ts) between `--a` and `--b`, sample ids resolved the same
+ * way compareLines resolves them (a candidate row, or a parent by role); only
+ * one pair per run, because a sample id may itself contain a comma. `--mode`
+ * defaults to `informative`; `all` needs a genotype column for both samples
+ * and throws (exit 1) when one is a coded matrix's absent parent. `compare`
+ * writes the pairwise summary CSV (one row per chromosome plus an ALL row);
+ * `discordant` writes the discordant-marker CSV (one row per discordant
+ * marker).
  */
 import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { classifyDataset } from './core/classify.ts';
+import { compareLines } from './core/compare.ts';
 import { computeRpp, DEFAULT_RPP_PARAMS } from './core/rpp.ts';
 import { callSegments, DEFAULT_SEGMENT_PARAMS, segmentGapCriterion } from './core/segments.ts';
 import { checkTargets, missingChromosomeNote, parseTargetSpec } from './core/targets.ts';
 import type { CompiledScheme } from './core/chromosomes.ts';
 import type { Classification, Dataset, SegmentParams } from './core/types.ts';
+import { discordantMarkersCsv, pairwiseCsv } from './export/pairwise-csv.ts';
 import { segmentsCsv } from './export/segments-csv.ts';
 import { lineSummaryCsv } from './export/summary-csv.ts';
 import { targetsCsv } from './export/targets-csv.ts';
@@ -43,13 +57,17 @@ import { profileLabel, resolveProfile, validateProfile } from './io/profiles.ts'
 import type { TokenProfile } from './io/profiles.ts';
 
 const USAGE = [
-  'usage: node src/cli.ts <summarize|segments|targets> --genotypes FILE --samples samples.csv',
+  'usage: node src/cli.ts <summarize|segments|targets|compare|discordant> --genotypes FILE --samples samples.csv',
   '         [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--out FILE]',
-  '  summarize: [--max-gap-bp N] [--max-gap-cm N]',
-  '  segments:  [--max-segment-gap-bp N] [--max-segment-gap-cm N] [--min-markers N]',
-  '             [--max-missing-span N] [--include-short]',
-  '  targets:   --target name=Gm13:28,500,000-29,100,000 [--target marker_id] ... plus the segment options',
+  '  summarize:  [--max-gap-bp N] [--max-gap-cm N]',
+  '  segments:   [--max-segment-gap-bp N] [--max-segment-gap-cm N] [--min-markers N]',
+  '              [--max-missing-span N] [--include-short]',
+  '  targets:    --target name=Gm13:28,500,000-29,100,000 [--target marker_id] ... plus the segment options',
+  '  compare:    --a sampleId --b sampleId [--mode informative|all]',
+  '  discordant: --a sampleId --b sampleId [--mode informative|all]',
 ].join('\n');
+
+type Command = 'summarize' | 'segments' | 'targets' | 'compare' | 'discordant';
 
 function numberOr(raw: string | undefined, fallback: number): number {
   if (raw === undefined) return fallback;
@@ -128,18 +146,26 @@ async function main(argv: string[]): Promise<number> {
       'max-segment-gap-cm': { type: 'string' },
       'min-markers': { type: 'string' },
       'max-missing-span': { type: 'string' },
+      a: { type: 'string' },
+      b: { type: 'string' },
+      mode: { type: 'string' },
     },
   });
-  const command = positionals[0];
-  const known = command === 'summarize' || command === 'segments' || command === 'targets';
+  const commandArg = positionals[0];
+  const known =
+    commandArg === 'summarize' ||
+    commandArg === 'segments' ||
+    commandArg === 'targets' ||
+    commandArg === 'compare' ||
+    commandArg === 'discordant';
   if (!known || values.genotypes === undefined || values.samples === undefined) {
     console.error(USAGE);
     return 2;
   }
+  const command: Command = commandArg;
   // An option that belongs to another subcommand is a mistake, not a no-op:
   // --max-gap-bp on `segments` would otherwise be silently ignored.
-  const RPP_ONLY = ['max-gap-bp', 'max-gap-cm'] as const;
-  const SEGMENT_ONLY = [
+  const SEGMENT_SHARED = [
     'max-segment-gap-bp',
     'max-segment-gap-cm',
     'min-markers',
@@ -147,8 +173,17 @@ async function main(argv: string[]): Promise<number> {
     'include-short',
     'target',
   ] as const;
-  const foreign = (command === 'summarize' ? SEGMENT_ONLY : RPP_ONLY).filter(
-    (k) => values[k] !== undefined,
+  const ALLOWED: Record<Command, readonly string[]> = {
+    summarize: ['max-gap-bp', 'max-gap-cm'],
+    segments: SEGMENT_SHARED,
+    targets: SEGMENT_SHARED,
+    compare: ['a', 'b', 'mode'],
+    discordant: ['a', 'b', 'mode'],
+  };
+  const ALL_SUBCOMMAND_OPTIONS = Array.from(new Set(Object.values(ALLOWED).flat()));
+  const allowedHere = new Set(ALLOWED[command]);
+  const foreign = ALL_SUBCOMMAND_OPTIONS.filter(
+    (k) => !allowedHere.has(k) && values[k as keyof typeof values] !== undefined,
   );
   if (foreign.length > 0) {
     console.error(`${command}: option(s) not accepted here: ${foreign.map((k) => `--${k}`).join(', ')}
@@ -157,6 +192,24 @@ ${USAGE}`);
   }
   if (command === 'targets' && (values.target ?? []).length === 0) {
     console.error(`targets: at least one --target is required
+${USAGE}`);
+    return 2;
+  }
+  const mode = values.mode ?? 'informative';
+  if (
+    (command === 'compare' || command === 'discordant') &&
+    mode !== 'informative' &&
+    mode !== 'all'
+  ) {
+    console.error(`${command}: --mode must be "informative" or "all", got "${mode}"
+${USAGE}`);
+    return 2;
+  }
+  if (
+    (command === 'compare' || command === 'discordant') &&
+    (values.a === undefined || values.b === undefined)
+  ) {
+    console.error(`${command}: --a and --b are both required
 ${USAGE}`);
     return 2;
   }
@@ -183,7 +236,7 @@ ${USAGE}`);
       dataset.samples,
       provenance,
     );
-  } else {
+  } else if (command === 'segments' || command === 'targets') {
     const params: SegmentParams = {
       minMarkers: numberOr(values['min-markers'], DEFAULT_SEGMENT_PARAMS.minMarkers),
       maxSegmentGapBp: numberOr(
@@ -213,6 +266,19 @@ ${USAGE}`);
       }
       csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples, provenance);
     }
+  } else {
+    // command is 'compare' or 'discordant'; --a and --b were checked above.
+    const diff = compareLines(
+      dataset,
+      cls,
+      values.a as string,
+      values.b as string,
+      mode as 'informative' | 'all',
+    );
+    csv =
+      command === 'compare'
+        ? pairwiseCsv([diff], dataset.chromosomeOrder, dataset.samples, provenance)
+        : discordantMarkersCsv([diff], dataset, cls, provenance);
   }
   if (values.out === undefined) process.stdout.write(csv);
   else writeFileSync(values.out, csv);

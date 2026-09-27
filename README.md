@@ -25,7 +25,7 @@ Open the local address printed by Vite. For batch output, the synthetic fixture 
 node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out summary.csv
 ```
 
-The `segments` and `targets` commands produce separate CSV files; run `node src/cli.ts` for their options. `npm run build` creates a static site in `dist/`.
+The `segments` and `targets` commands produce separate CSV files; `compare` and `discordant` write the pairwise comparison and discordant-marker CSVs for one pair of sample ids given as `--a` and `--b` (`--mode informative`, the default, or `all`); run `node src/cli.ts` for their options. `npm run build` creates a static site in `dist/`.
 
 ## Verification and documentation
 
