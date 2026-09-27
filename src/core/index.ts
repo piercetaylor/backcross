@@ -8,7 +8,7 @@ export { classifyDataset, countInformative } from './classify.ts';
 export { computeRpp, weightedSums, DEFAULT_RPP_PARAMS } from './rpp.ts';
 export { callSegments, segmentGapCriterion, DEFAULT_SEGMENT_PARAMS } from './segments.ts';
 export type { GapCriterion } from './segments.ts';
-export { checkTargets, parseTargetSpec } from './targets.ts';
+export { checkTargets, missingChromosomeNote, parseTargetSpec } from './targets.ts';
 export { compareLines } from './compare.ts';
 export { computeQc, DEFAULT_QC_THRESHOLDS } from './qc.ts';
 export {

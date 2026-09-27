@@ -28,7 +28,11 @@
  *
  * Target columns are keyed by the region's position in `regions`, not by
  * name, so a re-typed or duplicate spec text can never collide with
- * another column's key.
+ * another column's key. A region on a chromosome the loaded dataset lacks
+ * still gets its column, every line reporting no_data (docs/data-formats.md),
+ * and a warning under the Apply button names the chromosome
+ * (core/targets.ts missingChromosomeNote), so a typo or a name the crop
+ * scheme keeps as written is not read as a real no_data.
  *
  * `rows` is gone from the props: the phase 2 screen used it only to tell
  * "no lines at all" from "the filter hides them all", and React Aria's
@@ -56,6 +60,7 @@ import {
 } from 'react-aria-components';
 
 import type { LoadedState } from './UploadScreen.tsx';
+import { missingChromosomeNote } from '../../core/targets.ts';
 import type { TargetRegion } from '../../core/types.ts';
 import type { Density } from '../lines/LineActionBar.tsx';
 import { LineActionBar, LineCheckbox } from '../lines/LineActionBar.tsx';
@@ -158,6 +163,11 @@ export function LineTableScreen({
   onDensityChange: (d: Density) => void;
 }) {
   const [specsText, setSpecsText] = useState(targetSpecs.join('\n'));
+  const chromosomeOrder = loaded?.chromosomeOrder ?? [];
+  const targetNotes = regions.flatMap((region) => {
+    const note = missingChromosomeNote(region.chrom, chromosomeOrder);
+    return note === null ? [] : [`target "${region.name}": ${note}, so every line reports no_data`];
+  });
 
   const columns: LineColumn[] = [
     ...FIXED_COLUMNS,
@@ -276,6 +286,16 @@ export function LineTableScreen({
         >
           Apply
         </Button>
+        {/* Persistently mounted so a screen reader announces a new warning. */}
+        <div role="status" className="line-target-notes">
+          {targetNotes.length > 0 && (
+            <ul>
+              {targetNotes.map((note, i) => (
+                <li key={i}>{note}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </section>
   );

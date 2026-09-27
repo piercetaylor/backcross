@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A target on a chromosome the loaded dataset lacks, such as `chr13` under pea when the names are `Gm01`..`Gm20`, is now reported: the Lines screen shows a warning under the targets and `node src/cli.ts targets` prints one to stderr, each naming the chromosome and the first few loaded names. Its column and CSV rows still report `no_data` and the CLI still exits 0, so one target list can still be run over several datasets. It was a silent `no_data` before.
 - The Graphical genotypes Region field reports a chromosome the loaded dataset lacks, such as `chr13` under pea when the names are `Gm01`..`Gm20`, and leaves the view where it was. It went to an empty canvas with no message before, while the View select still read "Whole genome".
 - "Try the demo dataset" loads under the crop chosen in the Crop select. It always loaded as soybean before, whatever the select showed.
 - The genotype view's browser geometry tests wait for the rail-collapse animation before reading an absolute x. Entering that screen collapses the rail and the shell animates its grid track, so a measurement taken while the track was still moving was a transient, and the gutter case failed intermittently in CI against a settled scroller.

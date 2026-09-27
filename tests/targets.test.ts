@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildChromosomeOrder } from '../src/core/chromosomes.ts';
-import { checkTargets, parseTargetSpec } from '../src/core/targets.ts';
+import { checkTargets, missingChromosomeNote, parseTargetSpec } from '../src/core/targets.ts';
 import { CallClass, MISSING_ALLELE } from '../src/core/types.ts';
 import type {
   CallClassValue,
@@ -410,6 +410,8 @@ describe('parseTargetSpec', () => {
     const result = parseTargetSpec('m0', dataset);
     expect(result).toEqual({ name: 'm0', chrom: 'Gm07', startBp: 12345, endBp: 12345 });
     expect(result.startBp).toBe(result.endBp);
+    // Its chromosome comes from the dataset's own markers, so it never warns.
+    expect(missingChromosomeNote(result.chrom, dataset.chromosomeOrder)).toBeNull();
   });
 
   it('throws, quoting the input, when nothing matches', () => {
@@ -561,5 +563,34 @@ describe('parseTargetSpec: edge cases from review', () => {
     expect(r.chrom).toBe('scaffold_12');
     const [check] = checkTargets(scaffoldDs, scaffoldCls, [[]], [r]);
     expect(check?.status).not.toBe('no_data');
+  });
+});
+
+describe('missingChromosomeNote', () => {
+  const GM = Array.from({ length: 20 }, (_, i) => `Gm${String(i + 1).padStart(2, '0')}`);
+
+  it('is null for a chromosome the dataset has', () => {
+    expect(missingChromosomeNote('Gm13', GM)).toBeNull();
+  });
+
+  it('names the chromosome and the first three loaded names, then "..."', () => {
+    expect(missingChromosomeNote('chr13', GM)).toBe(
+      'no chromosome "chr13" in this dataset (Gm01, Gm02, Gm03, ...)',
+    );
+  });
+
+  it('lists every name, with no "...", when there are three or fewer', () => {
+    expect(missingChromosomeNote('chr7', ['chr1', 'chr2'])).toBe(
+      'no chromosome "chr7" in this dataset (chr1, chr2)',
+    );
+    expect(missingChromosomeNote('chr7', ['chr1', 'chr2', 'chr3'])).toBe(
+      'no chromosome "chr7" in this dataset (chr1, chr2, chr3)',
+    );
+  });
+
+  it('compares names exactly, so a case variant of a kept-as-written name is missing', () => {
+    expect(missingChromosomeNote('scaffold_12', ['Scaffold_12'])).toBe(
+      'no chromosome "scaffold_12" in this dataset (Scaffold_12)',
+    );
   });
 });

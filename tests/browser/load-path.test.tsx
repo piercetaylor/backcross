@@ -28,6 +28,27 @@ function qcFlags(sampleId: string): string[] {
   throw new Error(`no QC row for ${sampleId}`);
 }
 
+/** Mounts the app and loads a two-chromosome dataset (chr1, chr2) under the Maize scheme. */
+async function loadMaizeChr1Chr2(): Promise<void> {
+  await mountApp();
+  await userEvent.click(page.getByRole('button', { name: /Crop$/ }));
+  await userEvent.click(page.getByRole('option', { name: 'Maize' }));
+  const genotypes = new File(
+    ['marker_id,chrom,pos_bp,RP,DONOR,L1\nr1,chr1,1000,A,G,A\nr2,chr2,2000,C,T,C\n'],
+    'genotypes.csv',
+    { type: 'text/csv' },
+  );
+  const samples = new File(
+    [
+      'sample_id,line_name,role,generation,family_id,notes\n' +
+        'RP,Recurrent,recurrent_parent,,,\nDONOR,Donor,donor_parent,,,\nL1,Line 1,candidate,,,\n',
+    ],
+    'samples.csv',
+    { type: 'text/csv' },
+  );
+  await loadFiles({ genotypes, samples });
+}
+
 describe('load path', () => {
   it('loads the fixture through the real inputs and reports six lines', async () => {
     await mountApp();
@@ -117,23 +138,7 @@ describe('load path', () => {
   });
 
   it('reports a region on a chromosome the dataset lacks and leaves the view unchanged', async () => {
-    await mountApp();
-    await userEvent.click(page.getByRole('button', { name: /Crop$/ }));
-    await userEvent.click(page.getByRole('option', { name: 'Maize' }));
-    const genotypes = new File(
-      ['marker_id,chrom,pos_bp,RP,DONOR,L1\nr1,chr1,1000,A,G,A\nr2,chr2,2000,C,T,C\n'],
-      'genotypes.csv',
-      { type: 'text/csv' },
-    );
-    const samples = new File(
-      [
-        'sample_id,line_name,role,generation,family_id,notes\n' +
-          'RP,Recurrent,recurrent_parent,,,\nDONOR,Donor,donor_parent,,,\nL1,Line 1,candidate,,,\n',
-      ],
-      'samples.csv',
-      { type: 'text/csv' },
-    );
-    await loadFiles({ genotypes, samples });
+    await loadMaizeChr1Chr2();
     await goTo('4. Graphical genotypes');
     const region = page.getByLabelText('Region');
     const view = page.getByRole('combobox', { name: 'View' });
@@ -157,6 +162,22 @@ describe('load path', () => {
     await userEvent.click(page.getByRole('button', { name: 'Apply' }));
     await expect.poll(viewValue).toBe('chr1');
     expect(document.querySelector('#genotype-region-error')).toBeNull();
+  });
+
+  it('warns about a target on a chromosome the dataset lacks and still gives it a column', async () => {
+    await loadMaizeChr1Chr2();
+    await goTo('3. Lines');
+    await userEvent.fill(page.getByLabelText(/One per line/), 'ok=chr2:1-3Mb\ntypo=chr7:1-3Mb');
+    await userEvent.click(page.getByRole('button', { name: 'Apply' }));
+    await expect.element(page.getByRole('columnheader', { name: 'typo' })).toBeInTheDocument();
+    await expect.element(page.getByRole('columnheader', { name: 'ok' })).toBeInTheDocument();
+    await expect
+      .poll(() => document.querySelector('.line-target-notes')?.textContent ?? '')
+      .toBe(
+        'target "typo": no chromosome "chr7" in this dataset (chr1, chr2), so every line reports no_data',
+      );
+    expect(document.querySelector('.line-target-notes')?.getAttribute('role')).toBe('status');
+    expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 });
 

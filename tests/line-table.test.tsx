@@ -59,19 +59,20 @@ const REGIONS: TargetRegion[] = [
 ];
 const COUNTS = { total: 6, visible: 3, selected: 2 };
 
-// LineTableScreen reads nothing off `loaded` but its nullness, so an empty
-// shell is enough and no fixture has to be parsed to render the table.
+// LineTableScreen reads nothing off `loaded` but its nullness and its
+// chromosome order, which the missing-chromosome warning checks each region
+// against, so a shell is enough and no fixture has to be parsed.
 const LOADED = {
   samples: [],
-  chromosomeOrder: [],
+  chromosomeOrder: ['Gm17', 'Gm18'],
 } as unknown as LoadedState;
 
-function renderScreen(visibleRows: LineRow[], counts = COUNTS): string {
+function renderScreen(visibleRows: LineRow[], counts = COUNTS, regions = REGIONS): string {
   return renderToString(
     <LineTableScreen
       loaded={LOADED}
       visibleRows={visibleRows}
-      regions={REGIONS}
+      regions={regions}
       counts={counts}
       sort={SORT}
       onSortChange={() => undefined}
@@ -128,6 +129,25 @@ describe('the Lines table server-renders as a grid', () => {
   it('shows the empty-state message when the filter hides every row', () => {
     const empty = renderScreen([], { total: 6, visible: 0, selected: 2 });
     expect(empty).toContain('No lines match the filter.');
+  });
+});
+
+describe('the targets bar', () => {
+  it('warns about nothing when every region is on a loaded chromosome', () => {
+    expect(html).toContain('role="status"');
+    expect(html).not.toContain('no chromosome');
+  });
+
+  it('warns about a region on a chromosome the dataset lacks, and still gives it a column', () => {
+    const missing = renderScreen(VISIBLE, COUNTS, [
+      ...REGIONS,
+      { name: 'typo', chrom: 'Gm81', startBp: 1, endBp: 2 },
+    ]);
+    expect(missing).toMatch(/<th[^>]*data-key="target:1"[^>]*>typo<\/th>/);
+    expect(missing).toContain(
+      '<li>target &quot;typo&quot;: no chromosome &quot;Gm81&quot; in this dataset (Gm17, Gm18), so every line reports no_data</li>',
+    );
+    expect(missing).not.toContain('target &quot;rhg1&quot;');
   });
 });
 

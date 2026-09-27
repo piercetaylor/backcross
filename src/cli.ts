@@ -13,8 +13,9 @@
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
  *
  * The genotype file is read as a stream (parseGenotypesSource), so a
- * bgzipped VCF is never held inflated. Warnings from the loaders and the
- * segment gap criterion go to stderr. `--profile` names a built-in token
+ * bgzipped VCF is never held inflated. Warnings from the loaders, the
+ * segment gap criterion and any target on a chromosome the dataset lacks
+ * (whose rows still report no_data) go to stderr. `--profile` names a built-in token
  * profile or a JSON file of the same shape (a value containing / or \ or
  * ending .json is read as a path and validated); every CSV records it in its
  * trailing token_profile column (contract 1.4.0). `--crop` names a built-in
@@ -28,7 +29,7 @@ import { parseArgs } from 'node:util';
 import { classifyDataset } from './core/classify.ts';
 import { computeRpp, DEFAULT_RPP_PARAMS } from './core/rpp.ts';
 import { callSegments, DEFAULT_SEGMENT_PARAMS, segmentGapCriterion } from './core/segments.ts';
-import { checkTargets, parseTargetSpec } from './core/targets.ts';
+import { checkTargets, missingChromosomeNote, parseTargetSpec } from './core/targets.ts';
 import type { CompiledScheme } from './core/chromosomes.ts';
 import type { Classification, Dataset, SegmentParams } from './core/types.ts';
 import { segmentsCsv } from './export/segments-csv.ts';
@@ -204,6 +205,12 @@ ${USAGE}`);
       csv = segmentsCsv(segments.flat(), criterion, dataset.samples, provenance);
     } else {
       const regions = (values.target ?? []).map((s) => parseTargetSpec(s, dataset, crop));
+      for (const region of regions) {
+        const note = missingChromosomeNote(region.chrom, dataset.chromosomeOrder);
+        if (note !== null) {
+          console.error(`warning: target "${region.name}": ${note}; its rows report no_data`);
+        }
+      }
       csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples, provenance);
     }
   }

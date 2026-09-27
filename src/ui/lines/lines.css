@@ -297,6 +297,12 @@
   outline-offset: var(--focus-ring-offset);
 }
 
+/* Warnings for targets on a chromosome the dataset lacks. */
+.line-target-notes ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
 /* ---- Print ---- */
 
 @media print {

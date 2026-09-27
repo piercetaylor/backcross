@@ -112,7 +112,7 @@ import type { RowWindow } from '../canvas/row-window.ts';
 import '../canvas/legend.css';
 import './screens.css';
 import { classSwatchCss } from '../../core/index.ts';
-import { parseLocus } from '../../core/targets.ts';
+import { missingChromosomeNote, parseLocus } from '../../core/targets.ts';
 import { resolveCrop } from '../../io/crops.ts';
 import { CALL_CLASS_LABEL, CallClass } from '../../core/types.ts';
 import type { CallClassValue, TargetRegion } from '../../core/types.ts';
@@ -143,9 +143,6 @@ const ZOOM_FRACTION = 0.2;
 
 /** Delay before a hovered marker's detail is requested from the worker, so a sweep across the canvas does not queue one request per pixel. */
 const MARKER_DETAIL_DEBOUNCE_MS = 120;
-
-/** How many of the dataset's chromosome names a region error lists. */
-const REGION_ERROR_NAMES = 3;
 
 const NO_HOVER_MESSAGE = 'Hover or focus a marker on the canvas to see its detail.';
 
@@ -605,11 +602,9 @@ export function GenotypeViewScreen({
     }
     // parseLocus reads the name under the crop scheme but knows nothing of
     // the dataset; a name the scheme keeps as written may not be loaded.
-    const order = loaded?.chromosomeOrder ?? [];
-    if (!order.includes(parsed.chrom)) {
-      const shown = order.slice(0, REGION_ERROR_NAMES).join(', ');
-      const more = order.length > REGION_ERROR_NAMES ? ', ...' : '';
-      setRegionError(`no chromosome "${parsed.chrom}" in this dataset (${shown}${more})`);
+    const missing = missingChromosomeNote(parsed.chrom, loaded?.chromosomeOrder ?? []);
+    if (missing !== null) {
+      setRegionError(missing);
       return;
     }
     setRegionError(null);

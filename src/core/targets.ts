@@ -43,7 +43,8 @@
  *   2. Locus "CHROM:START-END" or "CHROM:POS". CHROM accepts any spelling
  *      normalizeChromosome understands and does not have to exist in the
  *      dataset (a region on a chromosome with no markers simply yields
- *      no_data). START/END/POS are numbers with optional thousands
+ *      no_data; missingChromosomeNote words the warning the targets bar and
+ *      the CLI show for it). START/END/POS are numbers with optional thousands
  *      separators (comma, underscore, or space, stripped before parsing), an
  *      optional decimal point, and an optional unit (bp, kb, Mb, or k/m,
  *      case-insensitive; a missing unit means bp). In a range, a unit on the
@@ -61,7 +62,9 @@
  * -> TargetCheck[], candidate-major (candidate outer loop, regions in input
  * order), parseTargetSpec(text, dataset, scheme?) -> TargetRegion, and parseLocus(text, scheme?)
  * -> {chrom, startBp, endBp} | null, the name-free locus grammar of step 2
- * above, exposed for the genotype-view zoom field (src/ui/screens/GenotypeViewScreen.tsx).
+ * above, exposed for the genotype-view zoom field (src/ui/screens/GenotypeViewScreen.tsx),
+ * and missingChromosomeNote(chrom, chromosomeOrder) -> string | null, the
+ * wording shared by the zoom field's error and the targets warning.
  */
 import { CallClass } from './types.ts';
 import type {
@@ -192,6 +195,24 @@ function toBp({ digits, unit }: PositionToken): number {
 }
 
 const RANGE_SEPARATOR = /\s*(?:\.\.|–|-)\s*/;
+
+/** How many of the dataset's chromosome names a missing-chromosome note lists. */
+const MISSING_CHROM_NAMES = 3;
+
+/**
+ * `no chromosome "chr13" in this dataset (Gm01, Gm02, Gm03, ...)` when chrom
+ * is not in chromosomeOrder, listing the first few loaded names with "..."
+ * only when more exist; null when it is present.
+ */
+export function missingChromosomeNote(
+  chrom: string,
+  chromosomeOrder: readonly string[],
+): string | null {
+  if (chromosomeOrder.includes(chrom)) return null;
+  const shown = chromosomeOrder.slice(0, MISSING_CHROM_NAMES).join(', ');
+  const more = chromosomeOrder.length > MISSING_CHROM_NAMES ? ', ...' : '';
+  return `no chromosome "${chrom}" in this dataset (${shown}${more})`;
+}
 
 /**
  * Parses "CHROM:START-END" or "CHROM:POS" into a chromosome and a bp range
