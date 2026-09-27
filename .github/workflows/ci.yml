@@ -99,7 +99,8 @@ jobs:
           node src/cli.ts targets --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --target name=Gm13:28,500,000-29,100,000 --out targets.csv
           node src/cli.ts compare --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --a NIL_03 --b RP_Williams --out pairwise.csv
           node src/cli.ts discordant --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --a NIL_03 --b RP_Williams --mode all --out discordant.csv
-      - run: Rscript scripts/read_exports.R summary.csv segments.csv targets.csv pairwise.csv discordant.csv
+          node src/cli.ts qc --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out qc.csv
+      - run: Rscript scripts/read_exports.R summary.csv segments.csv targets.csv pairwise.csv discordant.csv qc.csv
 
   # Deploying needs Pages turned on for the repository first (docs/adr/0003).
   # Until then this job is skipped rather than failing every push to main: set

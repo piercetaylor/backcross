@@ -6,12 +6,15 @@
  * per-chromosome RPP as wide columns rpp_count_Gm01.. so the file opens
  * directly in R (`readr::read_csv`) without reshaping. Numeric NaN is written
  * as NA. `call_set_db_id` and `sample_db_id` follow `sample_id`
- * (sample-ids.ts); they are empty for a file-loaded dataset. The provenance
- * columns (provenance.ts, `token_profile`) are appended last.
+ * (sample-ids.ts); they are empty for a file-loaded dataset. After the
+ * per-chromosome columns, `max_gap_bp` and `max_gap_cm` record the resolved
+ * RPP coverage caps the weighted estimators were computed with (docs/adr/0028),
+ * written as given rather than to six decimals. The provenance columns
+ * (provenance.ts, `token_profile`) are appended last.
  *
- * Interface: lineSummaryCsv(lineRpp, chromosomeOrder, samples, provenance) -> string.
+ * Interface: lineSummaryCsv(lineRpp, chromosomeOrder, samples, rppParams, provenance) -> string.
  */
-import type { LineRpp, SampleRecord } from '../core/types.ts';
+import type { LineRpp, RppParams, SampleRecord } from '../core/types.ts';
 import { csvField } from './csv-field.ts';
 import { externalIdCells } from './sample-ids.ts';
 import type { ExportProvenance } from './provenance.ts';
@@ -25,6 +28,7 @@ export function lineSummaryCsv(
   lines: LineRpp[],
   chromosomeOrder: string[],
   samples: SampleRecord[],
+  rppParams: RppParams,
   provenance: ExportProvenance,
 ): string {
   const ids = externalIdCells(samples);
@@ -43,6 +47,8 @@ export function lineSummaryCsv(
     'rpp_bp',
     'rpp_cm',
     ...chromosomeOrder.map((c) => `rpp_count_${c}`),
+    'max_gap_bp',
+    'max_gap_cm',
     ...provenanceHeader(provenance),
   ];
   const rows = lines.map((l) => {
@@ -65,6 +71,8 @@ export function lineSummaryCsv(
       num(o.rppBp),
       num(o.rppCm),
       ...perChrom,
+      String(rppParams.maxGapBp),
+      String(rppParams.maxGapCm),
       ...provenanceCells(provenance),
     ].join(',');
   });

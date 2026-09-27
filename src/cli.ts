@@ -3,7 +3,7 @@
  *
  * Responsibility: run the same compute core outside the browser so results
  * can be scripted, regression-tested, or fed to Shiny dashboards without a
- * UI. Five subcommands write the CSV tables of docs/data-formats.md.
+ * UI. Six subcommands write the CSV tables of docs/data-formats.md.
  *
  * Usage:
  *   node src/cli.ts summarize --genotypes <vcf|hmp|csv[.gz]> --samples samples.csv
@@ -13,6 +13,7 @@
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
  *   node src/cli.ts compare    ... --a sampleId --b sampleId [--mode informative|all] [--out file.csv]
  *   node src/cli.ts discordant ... --a sampleId --b sampleId [--mode informative|all] [--out file.csv]
+ *   node src/cli.ts qc         ... [--out file.csv]
  *
  * The genotype file is read as a stream (parseGenotypesSource), so a
  * bgzipped VCF is never held inflated. Warnings from the loaders, the
@@ -33,6 +34,12 @@
  * writes the pairwise summary CSV (one row per chromosome plus an ALL row);
  * `discordant` writes the discordant-marker CSV (one row per discordant
  * marker).
+ *
+ * `qc` writes the per-sample QC CSV (export/qc-csv.ts, docs/adr/0029): one row
+ * per manifest sample, parents included, from computeQc at the default QC
+ * thresholds. Its RPP input is computed at the default coverage caps, which
+ * no QC flag depends on (the flags read counts and rppCount only), so the
+ * subcommand takes no option of its own.
  */
 import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -40,12 +47,14 @@ import { parseArgs } from 'node:util';
 
 import { classifyDataset } from './core/classify.ts';
 import { compareLines } from './core/compare.ts';
+import { computeQc, DEFAULT_QC_THRESHOLDS } from './core/qc.ts';
 import { computeRpp, DEFAULT_RPP_PARAMS } from './core/rpp.ts';
 import { callSegments, DEFAULT_SEGMENT_PARAMS, segmentGapCriterion } from './core/segments.ts';
 import { checkTargets, missingChromosomeNote, parseTargetSpec } from './core/targets.ts';
 import type { CompiledScheme } from './core/chromosomes.ts';
 import type { Classification, Dataset, SegmentParams } from './core/types.ts';
 import { discordantMarkersCsv, pairwiseCsv } from './export/pairwise-csv.ts';
+import { qcCsv } from './export/qc-csv.ts';
 import { segmentsCsv } from './export/segments-csv.ts';
 import { lineSummaryCsv } from './export/summary-csv.ts';
 import { targetsCsv } from './export/targets-csv.ts';
@@ -58,7 +67,7 @@ import type { TokenProfile } from './io/profiles.ts';
 import { decodeUtf8, InvalidUtf8Error } from './io/utf8.ts';
 
 const USAGE = [
-  'usage: node src/cli.ts <summarize|segments|targets|compare|discordant> --genotypes FILE --samples samples.csv',
+  'usage: node src/cli.ts <summarize|segments|targets|compare|discordant|qc> --genotypes FILE --samples samples.csv',
   '         [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--out FILE]',
   '  summarize:  [--max-gap-bp N] [--max-gap-cm N]',
   '  segments:   [--max-segment-gap-bp N] [--max-segment-gap-cm N] [--min-markers N]',
@@ -66,9 +75,10 @@ const USAGE = [
   '  targets:    --target name=Gm13:28,500,000-29,100,000 [--target marker_id] ... plus the segment options',
   '  compare:    --a sampleId --b sampleId [--mode informative|all]',
   '  discordant: --a sampleId --b sampleId [--mode informative|all]',
+  '  qc:         (no options of its own)',
 ].join('\n');
 
-type Command = 'summarize' | 'segments' | 'targets' | 'compare' | 'discordant';
+type Command = 'summarize' | 'segments' | 'targets' | 'compare' | 'discordant' | 'qc';
 
 function numberOr(raw: string | undefined, fallback: number): number {
   if (raw === undefined) return fallback;
@@ -162,7 +172,8 @@ async function main(argv: string[]): Promise<number> {
     commandArg === 'segments' ||
     commandArg === 'targets' ||
     commandArg === 'compare' ||
-    commandArg === 'discordant';
+    commandArg === 'discordant' ||
+    commandArg === 'qc';
   if (!known || values.genotypes === undefined || values.samples === undefined) {
     console.error(USAGE);
     return 2;
@@ -184,6 +195,7 @@ async function main(argv: string[]): Promise<number> {
     targets: SEGMENT_SHARED,
     compare: ['a', 'b', 'mode'],
     discordant: ['a', 'b', 'mode'],
+    qc: [],
   };
   const ALL_SUBCOMMAND_OPTIONS = Array.from(new Set(Object.values(ALLOWED).flat()));
   const allowedHere = new Set(ALLOWED[command]);
@@ -239,6 +251,7 @@ ${USAGE}`);
       computeRpp(dataset, cls, params),
       dataset.chromosomeOrder,
       dataset.samples,
+      params,
       provenance,
     );
   } else if (command === 'segments' || command === 'targets') {
@@ -271,6 +284,14 @@ ${USAGE}`);
       }
       csv = targetsCsv(checkTargets(dataset, cls, segments, regions), dataset.samples, provenance);
     }
+  } else if (command === 'qc') {
+    const report = computeQc(
+      dataset,
+      cls,
+      computeRpp(dataset, cls, DEFAULT_RPP_PARAMS),
+      DEFAULT_QC_THRESHOLDS,
+    );
+    csv = qcCsv(report.lines, dataset.samples, provenance);
   } else {
     // command is 'compare' or 'discordant'; --a and --b were checked above.
     const diff = compareLines(

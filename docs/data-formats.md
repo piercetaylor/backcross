@@ -48,7 +48,11 @@ Every table below carries `call_set_db_id` and `sample_db_id` (the BrAPI call se
 
 ### Per-line summary CSV (implemented)
 
-One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20, token_profile, crop` (one wide column per chromosome in display order). Numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
+One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20, max_gap_bp, max_gap_cm, token_profile, crop` (one wide column per chromosome in display order). `max_gap_bp` and `max_gap_cm` are the resolved RPP coverage caps (`maxGapBp` and `maxGapCm` above, or the CLI's `--max-gap-bp` and `--max-gap-cm`) the weighted estimators were computed with, the same value on every row and written as given (`2000000`, `10`), so a change of cap is visible in the file (docs/adr/0028). Other numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
+
+### QC CSV (implemented)
+
+`qc.csv` (`backcross-qc.csv` from the Export screen; the CLI's `qc` subcommand): one row per sample in manifest order, the parents included. Columns: `sample_id, call_set_db_id, sample_db_id, role, missing_rate, het_rate, nonparental_rate, qc_flags, token_profile, crop`. `missing_rate` is missing calls over all markers; `het_rate` is heterozygous calls over called markers; `nonparental_rate` is nonparental calls over informative called markers, and is `NA` for a parent. Rates are written with six decimals; NaN is written as `NA` (a coded file's parents, which have no genotype column, have `NA` rates). `qc_flags` lists the sample's flags (`high_missing`, `high_het`, `parent_heterozygous`, `nonparental_alleles`, `closer_to_donor`, `identical_to_rp`, `no_informative_calls`) joined with `|`, as progeny-selector's results.csv joins them, and is an empty cell when there is none. Dataset-level flags (`parents_identical`, `low_marker_call_rate`) are not in this file; they stay in the HTML report. The Export screen uses the QC thresholds set on the Upload screen; the CLI uses the defaults above (docs/adr/0029).
 
 ### Segments CSV (implemented)
 

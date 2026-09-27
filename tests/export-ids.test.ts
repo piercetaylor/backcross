@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { classifyDataset } from '../src/core/classify.ts';
 import { compareLines } from '../src/core/compare.ts';
+import { computeQc } from '../src/core/qc.ts';
 import { computeRpp } from '../src/core/rpp.ts';
 import { callSegments, segmentGapCriterion } from '../src/core/segments.ts';
 import { checkTargets, parseTargetSpec } from '../src/core/targets.ts';
@@ -13,6 +14,7 @@ import type { SampleRecord } from '../src/core/types.ts';
 import { callSetsCsv } from '../src/export/callsets-csv.ts';
 import type { ExportProvenance } from '../src/export/provenance.ts';
 import { discordantMarkersCsv, pairwiseCsv } from '../src/export/pairwise-csv.ts';
+import { qcCsv } from '../src/export/qc-csv.ts';
 import { segmentsCsv } from '../src/export/segments-csv.ts';
 import { lineSummaryCsv } from '../src/export/summary-csv.ts';
 import { targetsCsv } from '../src/export/targets-csv.ts';
@@ -29,6 +31,7 @@ const checks = checkTargets(dataset, cls, segments, [
   parseTargetSpec('gm13core=Gm13:21,000,000-25,000,000', dataset),
 ]);
 const diff = compareLines(dataset, cls, 'NIL_01', 'NIL_02', 'informative');
+const qc = computeQc(dataset, cls, rpp);
 
 const withIds: SampleRecord[] = dataset.samples.map((s, i) => ({
   ...s,
@@ -44,11 +47,12 @@ const rowFor = (csv: string, prefix: string): string | undefined =>
 
 function allCsvs(samples: SampleRecord[], provenance: ExportProvenance = DEFAULT_PROVENANCE) {
   return {
-    summary: lineSummaryCsv(rpp, dataset.chromosomeOrder, samples, provenance),
+    summary: lineSummaryCsv(rpp, dataset.chromosomeOrder, samples, expected.params, provenance),
     segments: segmentsCsv(segments.flat(), criterion, samples, provenance),
     targets: targetsCsv(checks, samples, provenance),
     pairwise: pairwiseCsv([diff], dataset.chromosomeOrder, samples, provenance),
     discordant: discordantMarkersCsv([diff], { ...dataset, samples }, cls, provenance),
+    qc: qcCsv(qc.lines, samples, provenance),
   };
 }
 
@@ -58,7 +62,9 @@ describe('external id columns', () => {
     expect(
       header(csv.summary).startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,'),
     ).toBe(true);
-    expect(header(csv.summary).endsWith('rpp_count_Gm20,token_profile')).toBe(true);
+    expect(header(csv.summary).endsWith('rpp_count_Gm20,max_gap_bp,max_gap_cm,token_profile')).toBe(
+      true,
+    );
     expect(header(csv.segments)).toBe(
       'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion,token_profile',
     );
@@ -67,6 +73,9 @@ describe('external id columns', () => {
     );
     expect(header(csv.pairwise)).toBe(
       'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile',
+    );
+    expect(header(csv.qc)).toBe(
+      'sample_id,call_set_db_id,sample_db_id,role,missing_rate,het_rate,nonparental_rate,qc_flags,token_profile',
     );
     expect(header(csv.discordant)).toBe(
       'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile',
@@ -78,6 +87,7 @@ describe('external id columns', () => {
     expect(rowFor(csv.summary, 'NIL_01,')?.startsWith('NIL_01,cs2,smp2,')).toBe(true);
     expect(rowFor(csv.segments, 'NIL_01,')?.startsWith('NIL_01,cs2,smp2,')).toBe(true);
     expect(rowFor(csv.targets, 'NIL_01,')?.startsWith('NIL_01,cs2,smp2,')).toBe(true);
+    expect(rowFor(csv.qc, 'NIL_01,')?.startsWith('NIL_01,cs2,smp2,')).toBe(true);
     expect(
       rowFor(csv.pairwise, 'NIL_01,')?.startsWith('NIL_01,NIL_02,cs2,smp2,cs3,smp3,informative,'),
     ).toBe(true);
@@ -90,6 +100,7 @@ describe('external id columns', () => {
     expect(rowFor(csv.summary, 'NIL_01,')?.startsWith('NIL_01,,,')).toBe(true);
     expect(rowFor(csv.segments, 'NIL_01,')?.startsWith('NIL_01,,,')).toBe(true);
     expect(rowFor(csv.targets, 'NIL_01,')?.startsWith('NIL_01,,,')).toBe(true);
+    expect(rowFor(csv.qc, 'NIL_01,')?.startsWith('NIL_01,,,')).toBe(true);
     expect(rowFor(csv.pairwise, 'NIL_01,')?.startsWith('NIL_01,NIL_02,,,,,informative,')).toBe(
       true,
     );
@@ -98,7 +109,13 @@ describe('external id columns', () => {
 
   it('quotes ids that need it', () => {
     const quoted = withIds.map((s) => (s.sampleId === 'NIL_01' ? { ...s, callSetDbId: 'a,b' } : s));
-    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, quoted, DEFAULT_PROVENANCE);
+    const csv = lineSummaryCsv(
+      rpp,
+      dataset.chromosomeOrder,
+      quoted,
+      expected.params,
+      DEFAULT_PROVENANCE,
+    );
     expect(rowFor(csv, 'NIL_01,')?.startsWith('NIL_01,"a,b",smp2,')).toBe(true);
   });
 });

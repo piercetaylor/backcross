@@ -2,7 +2,8 @@
  * Screen 6: export.
  *
  * Responsibility: download the per-line summary CSV (export/summary-csv.ts),
- * segments CSV (export/segments-csv.ts), target check CSV (export/targets-csv.ts),
+ * the per-sample QC CSV (export/qc-csv.ts, from the `qc` report the worker
+ * already returned, so no genotype matrix is needed), segments CSV (export/segments-csv.ts), target check CSV (export/targets-csv.ts),
  * pairwise CSV (export/pairwise-csv.ts), the discordant-markers CSV
  * (requested from the worker through `onRequestDiscordantMarkersCsv`, since
  * it needs the parsed dataset and classification that stay worker-resident)
@@ -63,6 +64,7 @@ import type {
   TargetRegion,
 } from '../../core/types.ts';
 import { pairwiseCsv } from '../../export/pairwise-csv.ts';
+import { qcCsv } from '../../export/qc-csv.ts';
 import { buildHtmlReport } from '../../export/report.ts';
 import { lineSummaryCsv } from '../../export/summary-csv.ts';
 import { segmentsCsv } from '../../export/segments-csv.ts';
@@ -166,6 +168,7 @@ export function ExportScreen({
   const effectiveGapCriterion = gapCriterion ?? loaded.gapCriterion;
 
   const canSummary = rpp !== null;
+  const canQc = qc !== null;
   const canSegments = segmentsByCandidate !== null;
   const canTargets = targets !== null && targets.regions.length > 0;
   const canPairwise = compare !== null;
@@ -211,7 +214,7 @@ export function ExportScreen({
               if (rpp === null) return;
               downloadText(
                 'backcross-summary.csv',
-                lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples, {
+                lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples, params.rpp, {
                   tokenProfile: loaded.tokenProfile,
                   crop: loaded.crop,
                 }),
@@ -222,6 +225,27 @@ export function ExportScreen({
             Download per-line summary CSV
           </button>
           {!canSummary && <span> -- no RPP results available yet.</span>}
+        </li>
+
+        <li>
+          <button
+            type="button"
+            disabled={!canQc}
+            onClick={() => {
+              if (qc === null) return;
+              downloadText(
+                'backcross-qc.csv',
+                qcCsv(qc.lines, loaded.samples, {
+                  tokenProfile: loaded.tokenProfile,
+                  crop: loaded.crop,
+                }),
+                'text/csv',
+              );
+            }}
+          >
+            Download QC CSV
+          </button>
+          {!canQc && <span> -- no QC results available yet.</span>}
         </li>
 
         <li>

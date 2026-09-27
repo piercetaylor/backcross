@@ -103,13 +103,19 @@ describe('VCF fixture end to end', () => {
   });
 
   it('writes a per-line summary CSV with one row per candidate', () => {
-    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, {
+    const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, expected.params, {
       tokenProfile: 'default',
     });
     const lines = csv.trim().split('\n');
     expect(lines).toHaveLength(CANDIDATES.length + 1);
     expect(lines[0]?.startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,')).toBe(true);
-    expect(lines[0]?.endsWith('rpp_count_Gm20,token_profile')).toBe(true);
+    expect(lines[0]?.endsWith('rpp_count_Gm20,max_gap_bp,max_gap_cm,token_profile')).toBe(true);
+    // The resolved coverage caps are written as given, before the provenance column.
+    for (const row of lines.slice(1)) {
+      expect(row.endsWith(`,${expected.params.maxGapBp},${expected.params.maxGapCm},default`)).toBe(
+        true,
+      );
+    }
   });
 });
 

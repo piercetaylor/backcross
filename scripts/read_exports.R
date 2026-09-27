@@ -1,11 +1,11 @@
 #!/usr/bin/env Rscript
-# Reads the five CLI-exported CSV tables (docs/data-formats.md, "Outputs")
+# Reads the six CLI-exported CSV tables (docs/data-formats.md, "Outputs")
 # with explicit column types, mirroring progeny-selector's
 # scripts/read_results.R: every documented column is given an explicit
 # readr type, so a numeric column silently parsed as character (a sign the
 # contract and the reader have drifted) is caught rather than passed through.
 #
-# Usage: Rscript scripts/read_exports.R <summary.csv> <segments.csv> <targets.csv> <pairwise.csv> <discordant.csv>
+# Usage: Rscript scripts/read_exports.R <summary.csv> <segments.csv> <targets.csv> <pairwise.csv> <discordant.csv> <qc.csv>
 #
 # Each file is read, checked for readr parse problems (readr::problems()) and
 # for any column documented as numeric coming back as character; the script
@@ -17,7 +17,9 @@ suppressPackageStartupMessages(library(readr))
 # cell as missing, which would be wrong for a text column that can be
 # genuinely empty. None of the columns below are free text, so na = "NA"
 # alone is the safe, explicit choice throughout this file (docs/adr/0016's
-# reasoning for progeny-selector's results.csv applies here too).
+# reasoning for progeny-selector's results.csv applies here too). qc.csv's
+# qc_flags is empty when a sample has no flag; with na = "NA" that reads as
+# the empty string "", not NA, which is the documented meaning.
 NA_STRING <- "NA"
 
 stop_on_problems <- function(df, path) {
@@ -55,10 +57,12 @@ read_summary <- function(path) {
     rpp_count = col_double(),
     rpp_bp = col_double(),
     rpp_cm = col_double(),
+    max_gap_bp = col_double(),
+    max_gap_cm = col_double(),
     token_profile = col_character(),
     crop = col_character(),
     # Per-chromosome rpp_count_<chrom> columns fall between rpp_cm and
-    # token_profile (docs/data-formats.md, "Per-line summary CSV"); read by
+    # max_gap_bp (docs/data-formats.md, "Per-line summary CSV"); read by
     # guess, then checked below.
     .default = col_guess()
   )
@@ -68,7 +72,7 @@ read_summary <- function(path) {
   stop_on_character_numerics(df, path, c(
     "n_informative", "n_called", "n_rp_hom", "n_donor_hom", "n_het",
     "n_missing", "n_nonparental", "rpp_count", "rpp_bp", "rpp_cm",
-    dynamic_cols
+    "max_gap_bp", "max_gap_cm", dynamic_cols
   ))
   df
 }
@@ -190,21 +194,46 @@ read_discordant <- function(path) {
   df
 }
 
+read_qc <- function(path) {
+  df <- readr::read_csv(
+    path,
+    col_types = cols(
+      sample_id = col_character(),
+      call_set_db_id = col_character(),
+      sample_db_id = col_character(),
+      role = col_character(),
+      missing_rate = col_double(),
+      het_rate = col_double(),
+      nonparental_rate = col_double(),
+      qc_flags = col_character(),
+      token_profile = col_character(),
+      crop = col_character()
+    ),
+    na = NA_STRING,
+    show_col_types = FALSE
+  )
+  stop_on_problems(df, path)
+  stop_on_character_numerics(df, path, c("missing_rate", "het_rate", "nonparental_rate"))
+  df
+}
+
 main <- function(args) {
-  if (length(args) != 5) {
-    stop("usage: read_exports.R <summary.csv> <segments.csv> <targets.csv> <pairwise.csv> <discordant.csv>")
+  if (length(args) != 6) {
+    stop("usage: read_exports.R <summary.csv> <segments.csv> <targets.csv> <pairwise.csv> <discordant.csv> <qc.csv>")
   }
   summary_df <- read_summary(args[[1]])
   segments_df <- read_segments(args[[2]])
   targets_df <- read_targets(args[[3]])
   pairwise_df <- read_pairwise(args[[4]])
   discordant_df <- read_discordant(args[[5]])
+  qc_df <- read_qc(args[[6]])
 
   cat(sprintf("summary: %d rows\n", nrow(summary_df)))
   cat(sprintf("segments: %d rows\n", nrow(segments_df)))
   cat(sprintf("targets: %d rows\n", nrow(targets_df)))
   cat(sprintf("pairwise: %d rows\n", nrow(pairwise_df)))
   cat(sprintf("discordant: %d rows\n", nrow(discordant_df)))
+  cat(sprintf("qc: %d rows\n", nrow(qc_df)))
 }
 
 if (!interactive()) {

@@ -19,3 +19,12 @@ Option 3 (src/core/rpp.ts). Contribution is 1 for RP_HOM, 0.5 for HET, 0 for DON
 ### Consequences
 
 Good: robust to uneven density; comparable with Flapjack output on the same data; the count estimator remains available for comparison with older spreadsheets. Bad: results depend on the coverage cap, which must be stated in reports; without markers.csv the cM estimator is NaN. Neutral: expected values by generation (1 − (1/2)^(n+1)) are shown as context only [web] https://iastate.pressbooks.pub/molecularplantbreeding/chapter/marker-assisted-backcrossing/.
+
+## Amendment, 2026-09-27
+
+Two sentences above are wrong about Flapjack and are corrected here; the original text is kept as written. The decision is recorded in docs/adr/0028.
+
+- Decision Outcome: "with chromosome ends using the distance to the end when a length is known, matching the Flapjack documentation". Flapjack's ends are asymmetric: its code credits the first marker the full min(pos, c) and the last marker min(mapLength − pos, c), with `mapLength` defaulting to the last marker's position when the map declares no length, so the last marker normally gets 0. Ours is the symmetric c/2 rule: interior sides min(d/2, c/2), the first marker min(p, c/2), the last marker min(max(L − p, 0), c/2) when a length L is known and c/2 otherwise.
+- Consequences: "comparable with Flapjack output on the same data" should read: interior weighting follows Flapjack; totals differ at chromosome ends by design.
+
+The 2 Mb default stands, as a soybean euchromatic translation of Flapjack's 10 cM and not a Flapjack value; users of other crops should set the cap (docs/adr/0028). The summary CSV now records the cap in `max_gap_bp` and `max_gap_cm`.
