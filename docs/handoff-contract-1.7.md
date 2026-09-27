@@ -4,6 +4,31 @@ Written 2026-09-23, after contract 1.6.0 was committed and pushed in both reposi
 document is the whole brief: a session that reads it needs nothing from the conversation that
 produced it.
 
+## Status: done, 2026-09-25
+
+Contract 1.7.0 shipped in both repositories and nothing in this brief is open. The rest of this
+document is kept as written, as the record of the brief; where the work departed from it, the
+departure is listed here and recorded in docs/adr/0022.
+
+- backcross `ac7ca95`, progeny-selector `cbd8fe8` (mirror record docs/adr/0027), both pushed with
+  CI green. The mirror check reported 274 files identical in both directions at 1.7.0.
+- **Pea refuses a bare `1`-`7`** (the recommendation below, taken). The maintainer delegated the
+  decision ("ask fable", 2026-09-25). The narrowed pattern in `contract/crops/pea.json` still reads
+  Ensembl's prefix-less `1LG6`..`7LG7`. Evidence: Beji 2020 Table 3 and Gali 2018 use bare digits for
+  the two numberings, which agree only on chromosomes 4 and 7.
+- **Cowpea keeps a bare `1`-`11`**, which this brief assumed without asking. The research found
+  that the Vu numbering dates from 2017, not 2019: Lo 2018 gives the correspondence table. It also
+  found that older-numbered files carry the refused `LG` prefix. The `assembly` string no longer
+  says "2019 numbering". The residual risk, a hand-stripped pre-2017 map file, is stated in the ADR.
+- Peanut shipped as specified, with the alias gap stated. Sunflower stayed deferred on the unblock
+  condition below.
+- Each generated spelling case pins at least one fall-through spelling (`4`, `Vu01(old7)`, `B01`),
+  so both tools are held to the same refusals. The adversarial review found two stale documentation
+  lines and no behaviour defect.
+- Of the out-of-scope items below, the pair of two missing characters was settled by contract 1.8.0
+  (backcross `18ba073`). The palette question and the HapMap allele-order divergence were closed
+  as no-ops in `ebcb788`, and progeny-selector `a44e5bf` records why its allele order may differ.
+
 ## Where things stand
 
 Contract 1.6.0 (half-missing pairs, docs/adr/0021, mirrored as progeny-selector docs/adr/0026) is
