@@ -1,5 +1,6 @@
 /**
- * Crop chromosome schemes (contract 1.5.0, 1.7.0 and 1.9.0, docs/adr/0020, 0022 and 0024;
+ * Crop chromosome schemes (contract 1.5.0, 1.7.0, 1.9.0 and 1.12.0, docs/adr/0020, 0022, 0024
+ * and 0027;
  * src/io/crops.ts and
  * the scheme-aware functions of src/core/chromosomes.ts).
  *
@@ -33,6 +34,7 @@ const fileNames = readdirSync(CROPS).sort();
 
 const read = (name: string): unknown => JSON.parse(readFileSync(join(CROPS, name), 'utf8'));
 
+const soybean = resolveCrop('soybean');
 const maize = resolveCrop('maize');
 const cotton = resolveCrop('cotton');
 const oat = resolveCrop('oat');
@@ -245,6 +247,51 @@ describe('the contract 1.9.0 sunflower scheme (docs/adr/0024)', () => {
       'CM007890.2',
       'Ha1',
       'Ha10',
+    ]);
+  });
+});
+
+describe('the contract 1.12.0 soybean Data Store names (docs/adr/0027)', () => {
+  it('reads the Williams 82 Data Store names and the V1.1 GLYMAchr spelling onto Gm01..Gm20', () => {
+    maps(soybean, [
+      ['glyma.Wm82.gnm4.Gm01', 'Gm01'],
+      ['glyma.Wm82.gnm5.Chr13', 'Gm13'],
+      ['glyma.Wm82.gnm2.Gm20', 'Gm20'],
+      ['GLYMAchr_01', 'Gm01'],
+      ['GLYMAchr01', 'Gm01'],
+      ['glyma.wm82.gnm12.gm05', 'Gm05'],
+    ]);
+  });
+
+  it('still reads every spelling of the 1.2.0 rule as before', () => {
+    maps(soybean, [
+      ['Gm01', 'Gm01'],
+      ['gm1', 'Gm01'],
+      ['chr7', 'Gm07'],
+      ['Chr_07', 'Gm07'],
+      ['chromosome 13', 'Gm13'],
+      ['LG_7', 'Gm07'],
+      ['lg7', 'Gm07'],
+      ['7', 'Gm07'],
+      ['07', 'Gm07'],
+      ['20', 'Gm20'],
+    ]);
+  });
+
+  it('keeps out-of-range numbers, scaffolds, other cultivars, LG after the prefix, accessions and organelles as written', () => {
+    fallsThrough(soybean, [
+      '21',
+      'Gm00',
+      'scaffold_22',
+      'glyma.Lee.gnm1.Gm01',
+      'glyma.Wm82.gnm4.scaffold_22',
+      'glyma.Wm82.gnm2.Gm21',
+      'glyma.Wm82.gnm4.LG7',
+      'glyma.Wm82.gnm6.01',
+      'NC_016088.4',
+      'MT',
+      'Pltd',
+      'ChrUn',
     ]);
   });
 });

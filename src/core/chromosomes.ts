@@ -40,7 +40,7 @@ export interface CompiledScheme {
   indexByCanonical: Map<string, number>;
 }
 
-/** The literal of contract/crops/soybean.json (contract 1.5.0). */
+/** The literal of contract/crops/soybean.json (contract 1.5.0; pattern and sources 1.12.0). */
 export const SOYBEAN_SCHEME: CropScheme = {
   id: 'soybean',
   name: 'Soybean',
@@ -91,10 +91,12 @@ export const SOYBEAN_SCHEME: CropScheme = {
     '19',
     '20',
   ],
-  pattern: '^(?:gm|chr|chromosome|lg)?[_\\s-]?0*([1-9]|1[0-9]|20)$',
+  pattern:
+    '^(?:glyma\\.wm82\\.gnm[0-9]+\\.(?:gm|chr)|glymachr|gm|chr|chromosome|lg)?[_\\s-]?0*([1-9]|1[0-9]|20)$',
   sources: [
     'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/004/515/GCF_000004515.6_Glycine_max_v4.0/GCF_000004515.6_Glycine_max_v4.0_assembly_report.txt',
     'https://rest.ensembl.org/info/assembly/glycine_max',
+    'https://data.legumeinfo.org/Glycine/max/genomes/Wm82.gnm5.NRKG/README.Wm82.gnm5.NRKG.yml',
   ],
 };
 

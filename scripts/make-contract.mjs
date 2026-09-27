@@ -2587,6 +2587,55 @@ const cases = [
     },
   },
   {
+    // Contract 1.12.0 (docs/adr/0027): the SoyBase / LIS Data Store names of
+    // Williams 82 and the V1.1 spelling GLYMAchr_07 are read; a Data Store
+    // scaffold matches nothing and follows the canonical names as written.
+    name: 'crop-soybean-data-store-spellings',
+    options: { crop: 'soybean' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'd1,glyma.Wm82.gnm4.Gm13,1000,A,G,R',
+        'd2,glyma.Wm82.gnm5.Chr07,2000,A,G,R',
+        'd3,GLYMAchr_07,3000,A,G,R',
+        'd4,glyma.Wm82.gnm4.scaffold_22,4000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm07', 'Gm13', 'glyma.Wm82.gnm4.scaffold_22'],
+      markers: [
+        { id: 'd2', chrom: 'Gm07', posBp: 2000, cm: null },
+        { id: 'd3', chrom: 'Gm07', posBp: 3000, cm: null },
+        { id: 'd1', chrom: 'Gm13', posBp: 1000, cm: null },
+        { id: 'd4', chrom: 'glyma.Wm82.gnm4.scaffold_22', posBp: 4000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
     // The lg prefix is soybean-only; chr, chromosome and a bare number are accepted.
     name: 'crop-maize-spellings',
     options: { crop: 'maize' },

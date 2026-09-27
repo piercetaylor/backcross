@@ -6,8 +6,10 @@
  * Responsibility: the thirteen schemes shipped under contract/crops/, the schema
  * check for one of them, and the id-to-compiled-scheme lookup the loaders, the
  * worker and the CLI resolve a chosen crop through. `soybean` is the default
- * and reproduces the 1.2.0 rule exactly. No user-supplied scheme is accepted
- * in this version.
+ * and reads every spelling of the 1.2.0 rule, and since 1.12.0 the SoyBase /
+ * LIS Data Store names of the Wm82 reference assemblies (`glyma.Wm82.gnmN.Gm01`,
+ * `glyma.Wm82.gnm5.Chr01`) and the V1.1 spelling `GLYMAchr_01` (docs/adr/0027).
+ * No user-supplied scheme is accepted in this version.
  *
  * Interface: BUILTIN_CROPS (id -> scheme, in the order soybean, maize, rice,
  * sorghum, wheat, barley, oat, common-bean, cotton, cowpea, pea, peanut,
