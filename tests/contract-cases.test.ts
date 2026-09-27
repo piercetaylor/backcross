@@ -48,6 +48,7 @@ const ERROR_MESSAGES: Record<ErrorKind, RegExp> = {
   'genotypes.no_header': /no #CHROM header|no header row|"rs#" not found/,
   'genotypes.unknown_cell': /unexpected cell/,
   'genotypes.invalid_position': /invalid position/,
+  'genotypes.invalid_gt': /invalid GT/,
   'genotypes.column_count':
     /columns, header has|sample fields, header has|expected FORMAT and sample columns|expected \d+ fields, got/,
   'genotypes.repeated_header': /after the #CHROM header/,

@@ -58,6 +58,14 @@
  * a profile whose base is none it is genotypes.unknown_cell unless the
  * profile lists that exact token.
  *
+ * Version 1.10.0 (docs/adr/0025): the VCF GT grammar. A GT is `.` or an
+ * allele index, or two of them joined by `/` or `|`; an index is `0` or
+ * `[1-9][0-9]*`, at most 127 and less than the REF,ALT allele count.
+ * A sign, an exponent, an underscore, a leading zero, an empty side, three
+ * alleles, the VCF 4.4 leading phase indicator and an index outside
+ * REF,ALT are the error kind genotypes.invalid_gt; haploid, `./.`, `.`,
+ * `./1`, an empty GT (missing) and a multiallelic index stay readable.
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -1342,6 +1350,198 @@ const cases = [
       'samples.csv': SAMPLES_RP_DONOR_L1,
     },
     error: 'genotypes.invalid_position',
+  },
+  {
+    // Contract 1.10.0: A sign is not part of an allele index.
+    name: 'err-vcf-gt-negative',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '-1/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: An allele index is decimal digits; an exponent is rejected.
+    name: 'err-vcf-gt-exponent',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1e1/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: An underscore digit separator is rejected.
+    name: 'err-vcf-gt-underscore',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1_0/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: A GT with an empty side is rejected, not read as 0.
+    name: 'err-vcf-gt-empty-side',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: An allele index has no leading zero.
+    name: 'err-vcf-gt-leading-zero',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '01/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: Three alleles are rejected; polyploid dosage is out of scope.
+    name: 'err-vcf-gt-triploid',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/0/1'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: Index 2 with one ALT is outside the REF,ALT list.
+    name: 'err-vcf-gt-exceeds-alt',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '2/0'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: The VCF 4.4 leading phase indicator is rejected (reading it is deferred).
+    name: 'err-vcf-gt-leading-phase',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+        tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '|0|1'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'genotypes.invalid_gt',
+  },
+  {
+    // Contract 1.10.0: what stays readable. Haploid `1` is 1/1, `./.`, `.`, a
+    // half-missing `./1` and an empty GT are missing, a sample field that ends before its
+    // GT sub-field (FORMAT `DP:GT`, sample `12`) is missing, and phased `1|0` is the pair 0/1.
+    name: 'vcf-gt-haploid-and-missing',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'h1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1'),
+        tsv('Gm06', '2000', 'h2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', './.'),
+        tsv('Gm06', '3000', 'h3', 'G', 'A', '.', 'PASS', '.', 'GT', '0/0', '1/1', '.'),
+        tsv('Gm06', '4000', 'h4', 'T', 'C', '.', 'PASS', '.', 'GT', '0/0', '1/1', './1'),
+        tsv('Gm06', '5000', 'h5', 'A', 'C', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1|0'),
+        tsv('Gm06', '6000', 'h6', 'G', 'C', '.', 'PASS', '.', 'GT', '0/0', '1/1', ''),
+        tsv('Gm06', '7000', 'h7', 'A', 'T', '.', 'PASS', '.', 'DP:GT', '5:0/0', '5:1/1', '12'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm06'],
+      markers: [
+        { id: 'h1', chrom: 'Gm06', posBp: 1000, cm: null },
+        { id: 'h2', chrom: 'Gm06', posBp: 2000, cm: null },
+        { id: 'h3', chrom: 'Gm06', posBp: 3000, cm: null },
+        { id: 'h4', chrom: 'Gm06', posBp: 4000, cm: null },
+        { id: 'h5', chrom: 'Gm06', posBp: 5000, cm: null },
+        { id: 'h6', chrom: 'Gm06', posBp: 6000, cm: null },
+        { id: 'h7', chrom: 'Gm06', posBp: 7000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+          ['G', 'G'],
+          ['T', 'T'],
+          ['A', 'A'],
+          ['G', 'G'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+          ['A', 'A'],
+          ['C', 'C'],
+          ['C', 'C'],
+          ['C', 'C'],
+          ['T', 'T'],
+        ],
+        L1: [['G', 'G'], null, null, null, ['A', 'C'], null, null],
+      },
+    },
+  },
+  {
+    // Contract 1.10.0: an allele index counts through a multiallelic ALT; `2/2` with ALT G,T is T/T.
+    name: 'vcf-gt-multiallelic-index',
+    files: {
+      'genotypes.vcf': lines(
+        '##fileformat=VCFv4.2',
+        tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+        tsv('Gm06', '1000', 'k1', 'A', 'G,T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '2/2'),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm06'],
+      markers: [{ id: 'k1', chrom: 'Gm06', posBp: 1000, cm: null }],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [['A', 'A']],
+        DONOR: [['G', 'G']],
+        L1: [['T', 'T']],
+      },
+    },
   },
   {
     // A position with a non-zero fraction is an error naming the line and the value.

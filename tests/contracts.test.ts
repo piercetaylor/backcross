@@ -479,3 +479,82 @@ describe('positions (src/io/position.ts, contract 1.2.0)', () => {
     ).toThrow('markers.csv line 3: invalid position "2000.25"');
   });
 });
+
+describe('VCF GT grammar (src/io/vcf.ts, contract 1.10.0)', () => {
+  const head = '##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tS1\n';
+  /** One record, `alt` as the ALT column and `sample` as S1's field; returns S1's sorted pair. */
+  const read = (sample: string, alt = 'G', format = 'GT'): [number, number] => {
+    const v = parseVcf(head + `Gm01\t1000\tm1\tA\t${alt}\t.\t.\t.\t${format}\t${sample}\n`);
+    return [v.genotypes.allele1[0] as number, v.genotypes.allele2[0] as number];
+  };
+
+  it.each([
+    ['-5/0', 'a sign (was allele 251)'],
+    ['-1/0', 'a sign'],
+    ['1e1/0', 'an exponent (was 10/0)'],
+    ['/0', 'an empty first side (was 0/0)'],
+    ['0/', 'an empty second side (was 0/0)'],
+    ['+1/0', 'a plus sign (was read)'],
+    [' 0/1', 'a leading space (was read)'],
+    ['0/1 ', 'a trailing space'],
+    ['01/0', 'a leading zero (was read)'],
+    ['1_0/0', 'an underscore'],
+    ['0/0/1', 'three alleles (the third was dropped)'],
+    ['0|0|1', 'three phased alleles'],
+    ['|0|1', 'the VCF 4.4 leading phase indicator (was 0/0)'],
+    ['0//1', 'a doubled separator'],
+    ['٣/0', 'a non-ASCII digit'],
+    ['x/0', 'a letter'],
+    ['/', 'a bare separator'],
+    ['0\\1', 'a backslash separator'],
+    ['9'.repeat(5000) + '/0', 'an index of 5000 digits'],
+  ])('rejects %j, %s, naming the line and the value', (gt) => {
+    expect(() => read(gt)).toThrow(`VCF line 3: invalid GT "${gt}"`);
+  });
+
+  it('rejects an index outside the REF,ALT list, including with ALT "."', () => {
+    expect(() => read('2/0')).toThrow('VCF line 3: invalid GT "2/0"');
+    expect(() => read('0/2')).toThrow('VCF line 3: invalid GT "0/2"');
+    expect(() => read('1', '.')).toThrow('VCF line 3: invalid GT "1"');
+    expect(() => read('./2')).toThrow('VCF line 3: invalid GT "./2"');
+    expect(read('0', '.')).toEqual([0, 0]);
+  });
+
+  it('names the first side out of range first, as progeny-selector does', () => {
+    expect(() => read('5/200')).toThrow(
+      'VCF line 3: invalid GT "5/200", allele index 5 but the record has 2 alleles',
+    );
+    expect(() => read('200/5')).toThrow('VCF line 3: invalid GT "200/5", allele index above 127');
+  });
+
+  it('accepts index 127 and rejects 128 even when ALT lists that many alleles (was stored up to 254)', () => {
+    const alt = Array.from({ length: 200 }, (_, i) => `A${i}`).join(',');
+    expect(read('127/0', alt)).toEqual([0, 127]);
+    expect(() => read('128/0', alt)).toThrow('VCF line 3: invalid GT "128/0"');
+    expect(() => read('200/0', alt)).toThrow('VCF line 3: invalid GT "200/0"');
+  });
+
+  it('keeps haploid as homozygous, missing, half-missing and empty GT as missing, and phase ignored', () => {
+    const M = MISSING_ALLELE;
+    expect(read('1')).toEqual([1, 1]);
+    expect(read('0')).toEqual([0, 0]);
+    expect(read('.')).toEqual([M, M]);
+    expect(read('./.')).toEqual([M, M]);
+    expect(read('.|.')).toEqual([M, M]);
+    expect(read('./1')).toEqual([M, M]);
+    expect(read('1/.')).toEqual([M, M]);
+    expect(read('')).toEqual([M, M]);
+    expect(read(':12', 'G', 'GT:DP')).toEqual([M, M]);
+    expect(read('1|0')).toEqual([0, 1]);
+    expect(read('0/1')).toEqual([0, 1]);
+    expect(read('2/2', 'G,T')).toEqual([2, 2]);
+    expect(read('1/2', 'G,T')).toEqual([1, 2]);
+  });
+
+  it('reads the GT before the first ":" and a truncated field whose FORMAT puts GT later as missing', () => {
+    expect(read('0/1:12', 'G', 'GT:DP')).toEqual([0, 1]);
+    expect(read('12', 'G', 'DP:GT')).toEqual([MISSING_ALLELE, MISSING_ALLELE]);
+    expect(read('12:1/1', 'G', 'DP:GT')).toEqual([1, 1]);
+    expect(() => read('12:01/1', 'G', 'DP:GT')).toThrow('VCF line 3: invalid GT "01/1"');
+  });
+});

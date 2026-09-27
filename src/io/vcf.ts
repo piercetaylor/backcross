@@ -8,6 +8,10 @@
  * (0|1 and 0/1 are the same unordered pair). Haploid calls are treated as
  * homozygous. Multiallelic ALT is supported (allele index = position in
  * REF,ALT list). Records with ID "." or empty get `${chrom}_${pos}` from CHROM as written and POS as the parsed integer (contract 1.2.0).
+ * The GT grammar is contract 1.10.0: `.` or an allele index, or two of them
+ * joined by `/` or `|`; an index is `0` or `[1-9][0-9]*`, at most 127 and
+ * less than the REF,ALT allele count. An empty GT is missing. Anything else
+ * is an `invalid GT` error naming the line and the value.
  *
  * The per-line body lives in VcfLineParser, which never sees more than one
  * line, so the streaming loader (loaders.ts, parseGenotypesSource) can feed
@@ -92,7 +96,7 @@ export class VcfLineParser {
       const field = f[9 + s] as string;
       const gt = gtIdx === 0 ? cutAtColon(field) : (field.split(':')[gtIdx] ?? '.');
       if (gt === '.' || gt === './.' || gt === '.|.' || gt === '') continue;
-      const [x, y] = parseGt(gt);
+      const [x, y] = parseGt(gt, alleles.length, lineNo);
       builder.setCall(offset, s, x, y);
     }
   }
@@ -134,16 +138,35 @@ function cutAtColon(s: string): string {
   return i === -1 ? s : s.slice(0, i);
 }
 
-function parseGt(gt: string): [number, number] {
-  const sep = gt.indexOf('/') !== -1 ? '/' : '|';
-  const parts = gt.split(sep);
-  const x = parts[0] === '.' || parts[0] === undefined ? MISSING_ALLELE : Number(parts[0]);
-  const y =
-    parts.length === 1
-      ? x
-      : parts[1] === '.' || parts[1] === undefined
-        ? MISSING_ALLELE
-        : Number(parts[1]);
-  if (Number.isNaN(x) || Number.isNaN(y)) throw new Error(`invalid GT value: ${gt}`);
+/** Contract 1.10.0 GT grammar; `[0-9]`, never `\d`, to match progeny-selector's Python regex. */
+const GT_PATTERN = /^(\.|0|[1-9][0-9]*)(?:[/|](\.|0|[1-9][0-9]*))?$/;
+
+/** Highest allele index accepted (contract 1.10.0), so an index fits a signed byte in progeny-selector. */
+const MAX_ALLELE_INDEX = 127;
+
+/**
+ * Parses one GT value into an allele pair; `.` gives MISSING_ALLELE and a
+ * haploid call is homozygous. Throws `invalid GT` for anything outside the
+ * grammar or an index not below `nAlleles` (REF plus ALT).
+ */
+function parseGt(gt: string, nAlleles: number, lineNo: number): [number, number] {
+  const m = GT_PATTERN.exec(gt);
+  if (m === null) throw new Error(`VCF line ${lineNo}: invalid GT "${gt}"`);
+  const x = alleleIndex(m[1] as string, gt, nAlleles, lineNo);
+  const y = m[2] === undefined ? x : alleleIndex(m[2], gt, nAlleles, lineNo);
   return [x, y];
+}
+
+function alleleIndex(token: string, gt: string, nAlleles: number, lineNo: number): number {
+  if (token === '.') return MISSING_ALLELE;
+  const i = Number(token);
+  if (i > MAX_ALLELE_INDEX)
+    throw new Error(
+      `VCF line ${lineNo}: invalid GT "${gt}", allele index above ${MAX_ALLELE_INDEX}`,
+    );
+  if (i >= nAlleles)
+    throw new Error(
+      `VCF line ${lineNo}: invalid GT "${gt}", allele index ${i} but the record has ${nAlleles} alleles`,
+    );
+  return i;
 }
