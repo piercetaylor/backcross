@@ -43,7 +43,8 @@ export type ErrorKind =
   | 'genotypes.invalid_position'
   | 'genotypes.invalid_gt'
   | 'genotypes.ambiguous_heterozygote'
-  | 'genotypes.profile_format';
+  | 'genotypes.profile_format'
+  | 'text.invalid_utf8';
 
 /** contract/cases/<case>/expected-error.json */
 export interface ContractErrorExpect {

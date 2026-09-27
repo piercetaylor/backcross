@@ -66,6 +66,11 @@
  * REF,ALT are the error kind genotypes.invalid_gt; haploid, `./.`, `.`,
  * `./1`, an empty GT (missing) and a multiallelic index stay readable.
  *
+ * Version 1.11.0 (docs/adr/0026): every text input is UTF-8. err-vcf-latin1-byte, err-vcf-gzip-latin1-byte,
+ * err-vcf-overlong-byte, err-vcf-surrogate-byte, err-vcf-truncated-sequence-at-eof, err-hapmap-latin1-byte,
+ * err-wide-latin1-byte, err-samples-latin1-byte and err-markers-latin1-byte are text.invalid_utf8;
+ * vcf-bgzip-utf8-split-across-members and wide-utf8-non-ascii-ids read. Byte cases are written as Uint8Array.
+ *
  * Determinism: text is joined with explicit '\n'; gzip is fflate's gzipSync
  * with mtime 0, and bgzip is fflate's deflateSync framed here as BGZF
  * members (SAMv1.tex, section 4.1), so Node 22 and Node 24 write identical
@@ -86,19 +91,40 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'contract');
 const CASES = join(ROOT, 'cases');
 const VERSION = readFileSync(join(ROOT, 'VERSION'), 'utf8').trim();
 const MAX_CASE_BYTES = 4096;
-// Raised from 64 KiB in contract 1.3.0 (docs/adr/0018): profiles, crop schemes and their cases follow.
-const MAX_CONTRACT_BYTES = 128 * 1024;
+// Raised from 64 KiB in contract 1.3.0 (docs/adr/0018) and from 128 KiB in 1.11.0 (docs/adr/0026): the mirror is copied with cp and verified by two scripts, so the cap guards a version's diff, not hand copying.
+const MAX_CONTRACT_BYTES = 256 * 1024;
 
 const lines = (...rows) => rows.join('\n') + '\n';
 const tsv = (...cells) => cells.join('\t');
 const utf8 = (text) => new TextEncoder().encode(text);
 const crlf = (...rows) => rows.join('\r\n') + '\r\n';
 const bom = (text) => '﻿' + text;
+const concatBytes = (...parts) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.length;
+  }
+  return out;
+};
+/** `text` as UTF-8 with its one ASCII placeholder `{BAD}` replaced by `bytes` (contract 1.11.0). */
+function withBytes(text, bytes) {
+  const i = text.indexOf('{BAD}');
+  if (i === -1 || text.indexOf('{BAD}', i + 5) !== -1)
+    throw new Error('withBytes: exactly one {BAD}');
+  return concatBytes(utf8(text.slice(0, i)), bytes, utf8(text.slice(i + 5)));
+}
+const LATIN1_E_ACUTE = Uint8Array.of(0xe9);
+const OVERLONG_NUL = Uint8Array.of(0xc0, 0x80);
+const SURROGATE_D800 = Uint8Array.of(0xed, 0xa0, 0x80);
+const TRUNCATED_EURO = Uint8Array.of(0xe2, 0x82);
 
 // ---- compression ------------------------------------------------------------
 
 function gzip(text) {
-  return gzipSync(utf8(text), { level: 6, mtime: 0 });
+  const data = typeof text === 'string' ? utf8(text) : text;
+  return gzipSync(data, { level: 6, mtime: 0 });
 }
 
 const BGZF_EOF = Uint8Array.from([
@@ -108,7 +134,7 @@ const BGZF_EOF = Uint8Array.from([
 
 /** One BGZF member: gzip header with the BC extra subfield, raw deflate, CRC32, ISIZE. */
 function bgzfMember(text) {
-  const data = utf8(text);
+  const data = typeof text === 'string' ? utf8(text) : text;
   const body = deflateSync(data, { level: 6 });
   const total = 18 + body.length + 8;
   const out = new Uint8Array(total);
@@ -264,6 +290,31 @@ const VCF_BASIC_GENOTYPES = lines(
     '7:.|.',
   ),
 );
+
+/** Contract 1.11.0: a VCF whose line 4 carries `bytes` at byte position 12, inside the ID `g?2`. */
+const VCF_UTF8_ROWS = [
+  '##fileformat=VCFv4.2',
+  tsv(VCF_HEADER, 'RP', 'DONOR', 'L1'),
+  tsv('Gm06', '1000', 'g1', 'A', 'G', '.', 'PASS', '.', 'GT', '0/0', '1/1', '0/1'),
+];
+const VCF_BAD_ID = (bytes) =>
+  withBytes(
+    lines(
+      ...VCF_UTF8_ROWS,
+      tsv('Gm06', '2000', 'g{BAD}2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1/1'),
+    ),
+    bytes,
+  );
+
+/** Contract 1.11.0: COMPRESSED_VCF_HEAD and TAIL with z2 named `z2€`, cut between E2 and 82 AC. */
+const UTF8_SPLIT_VCF = utf8(
+  COMPRESSED_VCF_HEAD +
+    lines(
+      tsv('Gm18', '900', 'z2€', 'G', 'T', '.', 'PASS', '.', 'GT', '1/1', '0/0', './.'),
+      tsv('Gm18', '1500', 'z3', 'T', 'A', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1/1'),
+    ),
+);
+const UTF8_SPLIT_AT = UTF8_SPLIT_VCF.indexOf(0xe2) + 1;
 
 const cases = [
   {
@@ -3115,6 +3166,179 @@ const cases = [
           ['A', 'G'],
           ['A', 'G'],
           ['A', 'G'],
+        ],
+      },
+    },
+  },
+  {
+    // 0xE9 (Latin-1 é) on line 4, byte 12, inside the ID.
+    name: 'err-vcf-latin1-byte',
+    files: {
+      'genotypes.vcf': VCF_BAD_ID(LATIN1_E_ACUTE),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // 0xE9 on line 4, byte 12, inside one gzip member: inflated, then decoded.
+    name: 'err-vcf-gzip-latin1-byte',
+    files: {
+      'genotypes.vcf.gz': gzip(VCF_BAD_ID(LATIN1_E_ACUTE)),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // Overlong C0 80 on line 4, byte 12.
+    name: 'err-vcf-overlong-byte',
+    files: {
+      'genotypes.vcf': VCF_BAD_ID(OVERLONG_NUL),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // Encoded surrogate ED A0 80 on line 4, byte 12.
+    name: 'err-vcf-surrogate-byte',
+    files: {
+      'genotypes.vcf': VCF_BAD_ID(SURROGATE_D800),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // E2 82 (a euro sign cut short) ends the file on line 4, byte 41, with no final newline.
+    name: 'err-vcf-truncated-sequence-at-eof',
+    files: {
+      'genotypes.vcf': withBytes(
+        [
+          ...VCF_UTF8_ROWS,
+          tsv('Gm06', '2000', 'g2', 'C', 'T', '.', 'PASS', '.', 'GT', '0/0', '1/1', '1/1'),
+        ].join('\n') + '{BAD}',
+        TRUNCATED_EURO,
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // 0xE9 on line 3, byte 2, inside the rs#.
+    name: 'err-hapmap-latin1-byte',
+    files: {
+      'genotypes.hmp.txt': withBytes(
+        lines(
+          tsv(HAPMAP_HEADER, 'RP', 'DONOR', 'L1'),
+          tsv('h1', 'A/G', 'Gm02', '100', ...HAPMAP_FIXED, 'AA', 'GG', 'AG'),
+          tsv('h{BAD}2', 'C/T', 'Gm02', '200', ...HAPMAP_FIXED, 'CC', 'TT', 'CT'),
+        ),
+        LATIN1_E_ACUTE,
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // 0xE9 on line 3, byte 2, inside the marker_id.
+    name: 'err-wide-latin1-byte',
+    files: {
+      'genotypes.csv': withBytes(
+        lines(
+          'marker_id,chrom,pos_bp,RP,DONOR,L1',
+          'e1,Gm04,1000,A,G,A/G',
+          'e{BAD}2,Gm04,2000,C,T,C',
+        ),
+        LATIN1_E_ACUTE,
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // samples.csv: 0xE9 on line 4, byte 24, inside the notes.
+    name: 'err-samples-latin1-byte',
+    files: {
+      'genotypes.csv': WIDE_SIMPLE,
+      'samples.csv': withBytes(
+        lines(
+          'sample_id,line_name,role,generation,family_id,notes',
+          'RP,Recurrent,recurrent_parent,,,',
+          'DONOR,Donor,donor_parent,,,',
+          'L1,Line 1,candidate,,,s{BAD}lection',
+        ),
+        LATIN1_E_ACUTE,
+      ),
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // markers.csv: 0xE9 on line 3, byte 2, inside the marker_id.
+    name: 'err-markers-latin1-byte',
+    files: {
+      'genotypes.csv': WIDE_SIMPLE,
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+      'markers.csv': withBytes(
+        lines('marker_id,chrom,pos_bp,cm', 'e1,Gm04,1000,0.5', 'e{BAD}2,Gm04,2000,1.5'),
+        LATIN1_E_ACUTE,
+      ),
+    },
+    error: 'text.invalid_utf8',
+  },
+  {
+    // Two BGZF members cut inside the euro sign of `z2€` on line 4 (E2 | 82 AC), then the EOF block.
+    name: 'vcf-bgzip-utf8-split-across-members',
+    files: {
+      'genotypes.vcf.gz': bgzip(
+        UTF8_SPLIT_VCF.subarray(0, UTF8_SPLIT_AT),
+        UTF8_SPLIT_VCF.subarray(UTF8_SPLIT_AT),
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      ...COMPRESSED_VCF_EXPECT,
+      markers: [
+        { id: 'z1', chrom: 'Gm18', posBp: 500, cm: null },
+        { id: 'z2€', chrom: 'Gm18', posBp: 900, cm: null },
+        { id: 'z3', chrom: 'Gm18', posBp: 1500, cm: null },
+      ],
+    },
+  },
+  {
+    // Non-ASCII marker_id and sample_id, written as UTF-8, match across files byte for byte.
+    name: 'wide-utf8-non-ascii-ids',
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,Lé1',
+        'ré1,Gm04,1000,A,G,A/G',
+        'r2,Gm04,2000,C,T,C',
+      ),
+      'samples.csv': lines(
+        'sample_id,line_name,role',
+        'RP,,recurrent_parent',
+        'DONOR,,donor_parent',
+        'Lé1,Línea 1,candidate',
+      ),
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['Gm04'],
+      markers: [
+        { id: 'ré1', chrom: 'Gm04', posBp: 1000, cm: null },
+        { id: 'r2', chrom: 'Gm04', posBp: 2000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'Lé1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['C', 'C'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['T', 'T'],
+        ],
+        Lé1: [
+          ['A', 'G'],
+          ['C', 'C'],
         ],
       },
     },

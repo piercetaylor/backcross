@@ -73,6 +73,7 @@ import { DEFAULT_PROFILE_ID, profileLabel, resolveProfile } from '../io/profiles
 import { blobBytes, bytesOf } from '../io/stream.ts';
 import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
+import { decodeUtf8 } from '../io/utf8.ts';
 import { discordantMarkersCsv } from '../export/pairwise-csv.ts';
 import type { DatasetSource, WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
 
@@ -83,8 +84,6 @@ let classification: Classification | null = null;
 let lastRpp: LineRpp[] | null = null;
 let brapiAbort: AbortController | null = null;
 const fetchImpl: FetchLike = (url, init) => fetch(url, init);
-
-const decoder = new TextDecoder();
 
 /** Sorted ascending gaps (bp) between consecutive informative markers on the same chromosome. */
 function computeInformativeGaps(ds: Dataset, cls: Classification): Float64Array {
@@ -176,8 +175,11 @@ async function loadFiles(
   const profile = resolveProfile(p.profile);
   const crop = resolveCrop(p.crop);
   const parsed = await parseGenotypesSource(p.genotypeFileName, source, { profile, crop });
-  const samples = parseSampleManifest(decoder.decode(p.samples));
-  const map = p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers), crop);
+  const samples = parseSampleManifest(decodeUtf8(new Uint8Array(p.samples), 'samples.csv'));
+  const map =
+    p.markers === undefined
+      ? undefined
+      : parseMarkerMap(decodeUtf8(new Uint8Array(p.markers), 'markers.csv'), crop);
   const out = assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile), crop });
   scheme = crop;
   return loadedResult(id, out, {
@@ -222,9 +224,12 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
         );
       }
       const brapiCrop = resolveCrop(p.crop);
-      const samples = parseSampleManifest(decoder.decode(p.samples)); // before any network
+      // before any network
+      const samples = parseSampleManifest(decodeUtf8(new Uint8Array(p.samples), 'samples.csv'));
       const map =
-        p.markers === undefined ? undefined : parseMarkerMap(decoder.decode(p.markers), brapiCrop);
+        p.markers === undefined
+          ? undefined
+          : parseMarkerMap(decodeUtf8(new Uint8Array(p.markers), 'markers.csv'), brapiCrop);
       brapiAbort = new AbortController();
       let parsed: BrapiGenotypes;
       try {

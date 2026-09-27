@@ -55,6 +55,7 @@ import { resolveCrop } from './io/crops.ts';
 import { parseMarkerMap } from './io/markers.ts';
 import { profileLabel, resolveProfile, validateProfile } from './io/profiles.ts';
 import type { TokenProfile } from './io/profiles.ts';
+import { decodeUtf8, InvalidUtf8Error } from './io/utf8.ts';
 
 const USAGE = [
   'usage: node src/cli.ts <summarize|segments|targets|compare|discordant> --genotypes FILE --samples samples.csv',
@@ -82,8 +83,10 @@ function readProfile(ref: string | undefined): TokenProfile | null {
   if (ref.includes('/') || ref.includes('\\') || ref.toLowerCase().endsWith('.json')) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(readFileSync(ref, 'utf8')) as unknown;
+      parsed = JSON.parse(decodeUtf8(readFileSync(ref), `token profile file ${ref}`)) as unknown;
     } catch (e) {
+      // Already names the file: `token profile file <ref> line <n>: not valid UTF-8 (...)`.
+      if (e instanceof InvalidUtf8Error) throw e;
       throw new Error(`token profile file ${ref}: ${e instanceof Error ? e.message : String(e)}`, {
         cause: e,
       });
@@ -105,9 +108,11 @@ async function load(
     profile,
     crop,
   });
-  const samples = parseSampleManifest(readFileSync(samplesPath, 'utf8'));
+  const samples = parseSampleManifest(decodeUtf8(readFileSync(samplesPath), 'samples.csv'));
   const markerMap =
-    markersPath === undefined ? undefined : parseMarkerMap(readFileSync(markersPath, 'utf8'), crop);
+    markersPath === undefined
+      ? undefined
+      : parseMarkerMap(decodeUtf8(readFileSync(markersPath), 'markers.csv'), crop);
   const { dataset, warnings } = assembleDataset(parsed, samples, markerMap, {
     tokenProfile: profileLabel(profile),
     crop,

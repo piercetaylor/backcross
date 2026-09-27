@@ -8,6 +8,7 @@ export { parseMarkerMap, applyMarkerMap } from './markers.ts';
 export type { MarkerMap, MarkerMapEntry } from './markers.ts';
 export { bytesToText, gunzipAll, inflateIfGzip, isGzip } from './decompress.ts';
 export { blobBytes, bytesOf, countBytes, lines } from './stream.ts';
+export { decodeUtf8, firstInvalidUtf8, InvalidUtf8Error, locateInvalidUtf8 } from './utf8.ts';
 export type { ByteSource } from './stream.ts';
 export { parseDelimited, sniffDelimiter, forEachRow } from './csv.ts';
 export {

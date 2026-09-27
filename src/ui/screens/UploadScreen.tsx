@@ -37,7 +37,8 @@
  * `Select` labelled "Token profile" offers "Contract default (by format)" and
  * each built-in profile's name (BUILTIN_PROFILES order), and a file input
  * labelled "Custom token profile (JSON, optional)" takes a profile JSON: it is
- * read, parsed and validated (validateProfile) on selection; an invalid file
+ * read, decoded as strict UTF-8 (contract 1.11.0), parsed and validated
+ * (validateProfile) on selection; an invalid file
  * shows the validation message in a role="alert" and blocks Load, and a valid
  * one disables the select and is sent as the `profile` object. For a BrAPI
  * source the select is disabled at the default with a help text. Both load
@@ -74,6 +75,7 @@ import type { BrapiCallSet, BrapiSource } from '../../io/brapi.ts';
 import { BUILTIN_CROPS, DEFAULT_CROP_ID } from '../../io/crops.ts';
 import { BUILTIN_PROFILES, DEFAULT_PROFILE_ID, validateProfile } from '../../io/profiles.ts';
 import type { TokenProfile } from '../../io/profiles.ts';
+import { decodeUtf8 } from '../../io/utf8.ts';
 import type { WorkerRequest, WorkerResult } from '../../workers/protocol.ts';
 import { demoLoadPayload, demoShareLink } from '../demo.ts';
 import type { DemoLoadPayload } from '../demo.ts';
@@ -206,7 +208,8 @@ export function UploadScreen({
     setCustomProfileError(null);
     if (file === null) return;
     try {
-      setCustomProfile(validateProfile(JSON.parse(await file.text()) as unknown));
+      const text = decodeUtf8(new Uint8Array(await file.arrayBuffer()), 'token profile');
+      setCustomProfile(validateProfile(JSON.parse(text) as unknown));
     } catch (e) {
       setCustomProfileError(e instanceof Error ? e.message : String(e));
     }

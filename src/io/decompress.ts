@@ -47,15 +47,19 @@
  * however small the first chunks), then either passes chunks through or
  * pushes each into one GzipReader and yields what it inflated.
  * `gunzipAll` and `bytesToText` serve HapMap, wide CSV and the synchronous
- * path with the same checks.
+ * path with the same checks; `bytesToText` decodes strictly (utf8.ts,
+ * contract 1.11.0), so an ill-formed byte throws InvalidUtf8Error labelled
+ * `genotype file`.
  *
- * Interface: isGzip(bytes), gunzipAll(bytes) -> Uint8Array, bytesToText(bytes) -> string,
- * inflateIfGzip(source: ByteSource) -> ByteSource, class GzipReader { push(chunk)
- * -> Uint8Array[]; finish() -> Uint8Array[] }, GzipIntegrityError, BGZF_EOF, crc32(bytes, crc?).
+ * Interface: isGzip(bytes), gunzipAll(bytes) -> Uint8Array, bytesToText(bytes) -> string
+ * (strict UTF-8, BOM stripped), inflateIfGzip(source: ByteSource) -> ByteSource, class
+ * GzipReader { push(chunk) -> Uint8Array[]; finish() -> Uint8Array[] }, GzipIntegrityError,
+ * BGZF_EOF, crc32(bytes, crc?), concatBytes(a, b) -> Uint8Array.
  */
 import { Gunzip, inflateSync } from 'fflate';
 
 import type { ByteSource } from './stream.ts';
+import { decodeUtf8 } from './utf8.ts';
 
 export function isGzip(bytes: Uint8Array): boolean {
   return bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
@@ -492,11 +496,9 @@ export function gunzipAll(bytes: Uint8Array): Uint8Array {
   return out;
 }
 
-const decoder = new TextDecoder('utf-8');
-
 export function bytesToText(bytes: Uint8Array): string {
   const raw = isGzip(bytes) ? gunzipAll(bytes) : bytes;
-  return decoder.decode(raw);
+  return decodeUtf8(raw, 'genotype file');
 }
 
 export function inflateIfGzip(source: ByteSource): ByteSource {
@@ -508,7 +510,7 @@ export function inflateIfGzip(source: ByteSource): ByteSource {
       while (head.length < 2) {
         const next = await iterator.next();
         if (next.done === true) break;
-        head = head.length === 0 ? next.value : concat(head, next.value);
+        head = head.length === 0 ? next.value : concatBytes(head, next.value);
       }
       const rest: ByteSource = { [Symbol.asyncIterator]: () => iterator };
       if (!isGzip(head)) {
@@ -524,7 +526,8 @@ export function inflateIfGzip(source: ByteSource): ByteSource {
   };
 }
 
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+/** `a` then `b`, in a new array. */
+export function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
   const c = new Uint8Array(a.length + b.length);
   c.set(a);
   c.set(b, a.length);

@@ -2,10 +2,12 @@
  * The shared data contract (contract/README.md), checked against this repository's loaders.
  *
  * Every directory under contract/cases/ is loaded through the synchronous and
- * the streaming genotype entries, joined with its samples.csv and optional
- * markers.csv, normalised (tests/support/normalise.ts) and compared with the
+ * the streaming genotype entries (an error case through both too), joined
+ * with its samples.csv and optional markers.csv (decoded strictly, contract
+ * 1.11.0), normalised (tests/support/normalise.ts) and compared with the
  * hand-authored expected.json; an error case must throw the message its kind
- * maps to below. The kind-to-message table lives here, not in the contract,
+ * maps to below, and a text.invalid_utf8 case its exact line, byte position
+ * and lead byte, the same through both entries. The kind-to-message table lives here, not in the contract,
  * so rewording a message is a change to this test and not to the contract.
  * A case with an options.json passes its token profile (contract 1.4.0) and
  * its crop scheme (contract 1.5.0) to both entries. Neither appears in
@@ -31,6 +33,7 @@ import { profileLabel, resolveProfile } from '../src/io/profiles.ts';
 import type { TokenProfile } from '../src/io/profiles.ts';
 import type { CompiledScheme } from '../src/core/chromosomes.ts';
 import { bytesOf } from '../src/io/stream.ts';
+import { decodeUtf8 } from '../src/io/utf8.ts';
 import { normaliseDataset } from './support/normalise.ts';
 import type { ContractErrorExpect, ContractExpect, ErrorKind } from './support/normalise.ts';
 
@@ -55,7 +58,35 @@ const ERROR_MESSAGES: Record<ErrorKind, RegExp> = {
   'delimited.unterminated_quote': /unterminated quoted field/,
   'genotypes.ambiguous_heterozygote': /heterozygote token but the marker shows/,
   'genotypes.profile_format': /applies to HapMap and wide CSV/,
+  'text.invalid_utf8': /not valid UTF-8/,
 };
+
+/**
+ * The exact message of each text.invalid_utf8 case (contract 1.11.0). The line,
+ * position and lead byte are tool wording, not contract vocabulary
+ * (docs/adr/0026 D4), so they live here beside the kind table.
+ */
+const UTF8_MESSAGES: Record<string, string> = {
+  'err-vcf-latin1-byte': 'genotype file line 4: not valid UTF-8 (byte 0xE9 at position 12)',
+  'err-vcf-gzip-latin1-byte': 'genotype file line 4: not valid UTF-8 (byte 0xE9 at position 12)',
+  'err-vcf-overlong-byte': 'genotype file line 4: not valid UTF-8 (byte 0xC0 at position 12)',
+  'err-vcf-surrogate-byte': 'genotype file line 4: not valid UTF-8 (byte 0xED at position 12)',
+  'err-vcf-truncated-sequence-at-eof':
+    'genotype file line 4: not valid UTF-8 (byte 0xE2 at position 41)',
+  'err-hapmap-latin1-byte': 'genotype file line 3: not valid UTF-8 (byte 0xE9 at position 2)',
+  'err-wide-latin1-byte': 'genotype file line 3: not valid UTF-8 (byte 0xE9 at position 2)',
+  'err-samples-latin1-byte': 'samples.csv line 4: not valid UTF-8 (byte 0xE9 at position 24)',
+  'err-markers-latin1-byte': 'markers.csv line 3: not valid UTF-8 (byte 0xE9 at position 2)',
+};
+
+function messageOf(run: () => unknown): string {
+  try {
+    run();
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+  return 'no error';
+}
 
 const caseNames = readdirSync(CASES).sort();
 
@@ -65,10 +96,12 @@ function loadCase(
   profile: TokenProfile | null,
   crop: CompiledScheme,
 ): ContractExpect {
-  const samples = parseSampleManifest(readFileSync(join(dir, 'samples.csv'), 'utf8'));
+  const samples = parseSampleManifest(
+    decodeUtf8(readFileSync(join(dir, 'samples.csv')), 'samples.csv'),
+  );
   const markersPath = join(dir, 'markers.csv');
   const map = exists(markersPath)
-    ? parseMarkerMap(readFileSync(markersPath, 'utf8'), crop)
+    ? parseMarkerMap(decodeUtf8(readFileSync(markersPath), 'markers.csv'), crop)
     : undefined;
   return normaliseDataset(
     assembleDataset(parsed, samples, map, { tokenProfile: profileLabel(profile), crop }).dataset,
@@ -151,8 +184,51 @@ describe('contract cases', () => {
           loadCase(dir, parseGenotypesBytes(file, bytes, { profile, crop }), profile, crop),
         ).toThrow(ERROR_MESSAGES[kind]);
       });
+
+      it(`${name}: streaming load fails with ${kind}`, async () => {
+        await expect(
+          (async () =>
+            loadCase(
+              dir,
+              await parseGenotypesSource(file, bytesOf(bytes), { profile, crop }),
+              profile,
+              crop,
+            ))(),
+        ).rejects.toThrow(ERROR_MESSAGES[kind]);
+      });
+
+      if (kind === 'text.invalid_utf8') {
+        it(`${name}: names the same line, position and lead byte through both entries`, async () => {
+          const want = UTF8_MESSAGES[name];
+          expect(want, `no entry in UTF8_MESSAGES for ${name}`).toBeDefined();
+          const sync = messageOf(() =>
+            loadCase(dir, parseGenotypesBytes(file, bytes, { profile, crop }), profile, crop),
+          );
+          let streamed = 'no error';
+          try {
+            loadCase(
+              dir,
+              await parseGenotypesSource(file, bytesOf(bytes), { profile, crop }),
+              profile,
+              crop,
+            );
+          } catch (e) {
+            streamed = e instanceof Error ? e.message : String(e);
+          }
+          expect({ sync, streamed }).toEqual({ sync: want, streamed: want });
+        });
+      }
     }
   }
+
+  it('UTF8_MESSAGES names only text.invalid_utf8 cases', () => {
+    for (const name of Object.keys(UTF8_MESSAGES)) {
+      const { kind } = JSON.parse(
+        readFileSync(join(CASES, name, 'expected-error.json'), 'utf8'),
+      ) as ContractErrorExpect;
+      expect(kind, name).toBe('text.invalid_utf8');
+    }
+  });
 });
 
 describe('contract integrity', () => {
