@@ -67,3 +67,7 @@ These were not fetched or not read in full, and nothing above rests on them alon
 ## More Information
 
 Contract 1.7.0: `contract/crops/cowpea.json`, `pea.json`, `peanut.json`, `contract/data-contract.md` ("Chromosome names"), `contract/VERSION`, `contract/README.md`. Mirrored byte for byte into `progeny-selector`, whose record is its ADR 0027. Amends ADR 0020 D6.3's deferral for three of its four crops.
+
+## Amendment, 2026-09-26
+
+Sunflower shipped as contract 1.9.0 (docs/adr/0024). The maintainer accepted the whole-genome MUMmer dot plot of HA412-HOv2 against XRQv2 as meeting the unblock condition above, alongside the consensus-map anchoring that XRQ and HA412-HO v1 share (HA412-HOv2 itself has no method sentence on its numbering; ADR 0024 names that as the weakest link); the canonical names are bare `1`..`17`, as this record fixed.

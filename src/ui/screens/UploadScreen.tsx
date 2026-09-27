@@ -43,8 +43,8 @@
  * source the select is disabled at the default with a help text. Both load
  * payloads carry `profile`.
  *
- * A second `Select`, labelled "Crop" (contract 1.5.0 and 1.7.0, docs/adr/0020
- * and 0022), offers the twelve built-in crop chromosome schemes in
+ * A second `Select`, labelled "Crop" (contract 1.5.0, 1.7.0 and 1.9.0,
+ * docs/adr/0020, 0022 and 0024), offers the thirteen built-in crop chromosome schemes in
  * BUILTIN_CROPS order with soybean first; it starts at the loaded dataset's
  * crop, else soybean, and it chooses which
  * spellings normalise to which canonical chromosome names, and the files,

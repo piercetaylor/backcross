@@ -1,5 +1,6 @@
 /**
- * Crop chromosome schemes (contract 1.5.0 and 1.7.0, docs/adr/0020 and 0022; src/io/crops.ts and
+ * Crop chromosome schemes (contract 1.5.0, 1.7.0 and 1.9.0, docs/adr/0020, 0022 and 0024;
+ * src/io/crops.ts and
  * the scheme-aware functions of src/core/chromosomes.ts).
  *
  * The files under contract/crops/ are read from disk here, not imported, so
@@ -38,9 +39,19 @@ const oat = resolveCrop('oat');
 const cowpea = resolveCrop('cowpea');
 const pea = resolveCrop('pea');
 const peanut = resolveCrop('peanut');
+const sunflower = resolveCrop('sunflower');
+
+const maps = (scheme: CompiledScheme, pairs: [string, string][]): void => {
+  for (const [raw, canonical] of pairs) {
+    expect(normalizeChromosome(raw, scheme), raw).toBe(canonical);
+  }
+};
+const fallsThrough = (scheme: CompiledScheme, names: string[]): void => {
+  for (const raw of names) expect(normalizeChromosome(raw, scheme), raw).toBe(raw);
+};
 
 describe('contract/crops files', () => {
-  it('ships the twelve schemes of contracts 1.5.0 and 1.7.0', () => {
+  it('ships the thirteen schemes of contracts 1.5.0, 1.7.0 and 1.9.0', () => {
     expect(fileNames).toEqual([
       'barley.json',
       'common-bean.json',
@@ -53,6 +64,7 @@ describe('contract/crops files', () => {
       'rice.json',
       'sorghum.json',
       'soybean.json',
+      'sunflower.json',
       'wheat.json',
     ]);
     expect([...BUILTIN_CROPS.keys()]).toEqual([
@@ -68,6 +80,7 @@ describe('contract/crops files', () => {
       'cowpea',
       'pea',
       'peanut',
+      'sunflower',
     ]);
   });
 
@@ -141,15 +154,6 @@ describe('normalizeChromosome under a scheme', () => {
 });
 
 describe('the contract 1.7.0 schemes (docs/adr/0022)', () => {
-  const maps = (scheme: CompiledScheme, pairs: [string, string][]): void => {
-    for (const [raw, canonical] of pairs) {
-      expect(normalizeChromosome(raw, scheme), raw).toBe(canonical);
-    }
-  };
-  const fallsThrough = (scheme: CompiledScheme, names: string[]): void => {
-    for (const raw of names) expect(normalizeChromosome(raw, scheme), raw).toBe(raw);
-  };
-
   it('cowpea: reads Vu, chr, bare numbers and the eleven exact NCBI (oldN) pairings', () => {
     maps(cowpea, [
       ['Vu01', 'Vu01'],
@@ -210,6 +214,41 @@ describe('the contract 1.7.0 schemes (docs/adr/0022)', () => {
   });
 });
 
+describe('the contract 1.9.0 sunflower scheme (docs/adr/0024)', () => {
+  it('reads the XRQ and HA412-HO prefixes, chr, chromosome and bare numbers onto 1..17', () => {
+    maps(sunflower, [
+      ['Ha412HOChr01', '1'],
+      ['HanXRQChr17', '17'],
+      ['HANXRQCHR09', '9'],
+      ['chr1', '1'],
+      ['Chr_17', '17'],
+      ['chromosome-4', '4'],
+      ['17', '17'],
+      ['01', '1'],
+    ]);
+  });
+
+  it('keeps scaffolds, 0 and 18, organelles, LG, accessions and v1.1 names as written', () => {
+    fallsThrough(sunflower, [
+      'HanXRQChr00c001',
+      'Ha412HOChr00',
+      'chr0',
+      'chr18',
+      '18',
+      'MT',
+      'Pltd',
+      'HanXRQMT',
+      'HanXRQCP',
+      'Ha412HOv2Chr01',
+      'LG1',
+      'NC_035433.2',
+      'CM007890.2',
+      'Ha1',
+      'Ha10',
+    ]);
+  });
+});
+
 describe('order under a scheme', () => {
   it('orders chr2 before chr10 under maize, and scaffold_2 before scaffold_10', () => {
     expect(compareChromosomes('chr2', 'chr10', maize)).toBeLessThan(0);
@@ -228,8 +267,8 @@ describe('order under a scheme', () => {
 describe('resolveCrop', () => {
   it('defaults to soybean and names the built-ins for an unknown id', () => {
     expect(resolveCrop(undefined).scheme.id).toBe('soybean');
-    // Sunflower is deferred (docs/adr/0022), so it is still an unknown id.
-    expect(() => resolveCrop('sunflower')).toThrow(/unknown crop "sunflower".*soybean, maize/s);
+    // Potato is out of scope (docs/input-coding.md), so it is an unknown id.
+    expect(() => resolveCrop('potato')).toThrow(/unknown crop "potato".*soybean, maize/s);
   });
 });
 

@@ -68,9 +68,9 @@ describe('parseDemoParam, crop', () => {
   });
 
   it('reports an unknown, empty or differently cased crop rather than loading', () => {
-    expect(parseDemoParam('?demo=synthetic&crop=sunflower')).toEqual({
+    expect(parseDemoParam('?demo=synthetic&crop=potato')).toEqual({
       kind: 'unknownCrop',
-      value: 'sunflower',
+      value: 'potato',
     });
     expect(parseDemoParam('?demo=synthetic&crop=')).toEqual({ kind: 'unknownCrop', value: '' });
     expect(parseDemoParam('?demo=synthetic&crop=Pea')).toEqual({
@@ -160,8 +160,8 @@ describe('unknownDemoMessage', () => {
 
 describe('unknownCropMessage', () => {
   it('names the value and every built-in crop', () => {
-    expect(unknownCropMessage('sunflower')).toBe(
-      'Unknown crop "sunflower" in the page address. Available: soybean, maize, rice, sorghum, wheat, barley, oat, common-bean, cotton, cowpea, pea, peanut.',
+    expect(unknownCropMessage('potato')).toBe(
+      'Unknown crop "potato" in the page address. Available: soybean, maize, rice, sorghum, wheat, barley, oat, common-bean, cotton, cowpea, pea, peanut, sunflower.',
     );
   });
 });

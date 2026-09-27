@@ -2852,6 +2852,73 @@ const cases = [
       },
     },
   },
+  {
+    // Ha412HOChr01, HanXRQChr02, chr3 and a bare 17 are read; an unplaced XRQ scaffold and an NCBI accession fall through.
+    name: 'crop-sunflower-spellings',
+    options: { crop: 'sunflower' },
+    files: {
+      'genotypes.csv': lines(
+        'marker_id,chrom,pos_bp,RP,DONOR,L1',
+        'r1,Ha412HOChr01,1000,A,G,R',
+        'r2,HanXRQChr02,2000,A,G,R',
+        'r3,chr3,3000,A,G,R',
+        'r4,17,4000,A,G,R',
+        'r5,HanXRQChr00c001,5000,A,G,R',
+        'r6,NC_035433.2,6000,A,G,R',
+        'r7,LG1,7000,A,G,R',
+        'r8,18,8000,A,G,R',
+      ),
+      'samples.csv': SAMPLES_RP_DONOR_L1,
+    },
+    expect: {
+      contractVersion: VERSION,
+      coded: false,
+      chromosomeOrder: ['1', '2', '3', '17', '18', 'HanXRQChr00c001', 'LG1', 'NC_035433.2'],
+      markers: [
+        { id: 'r1', chrom: '1', posBp: 1000, cm: null },
+        { id: 'r2', chrom: '2', posBp: 2000, cm: null },
+        { id: 'r3', chrom: '3', posBp: 3000, cm: null },
+        { id: 'r4', chrom: '17', posBp: 4000, cm: null },
+        { id: 'r8', chrom: '18', posBp: 8000, cm: null },
+        { id: 'r5', chrom: 'HanXRQChr00c001', posBp: 5000, cm: null },
+        { id: 'r7', chrom: 'LG1', posBp: 7000, cm: null },
+        { id: 'r6', chrom: 'NC_035433.2', posBp: 6000, cm: null },
+      ],
+      sampleIds: ['RP', 'DONOR', 'L1'],
+      calls: {
+        RP: [
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+          ['A', 'A'],
+        ],
+        DONOR: [
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+          ['G', 'G'],
+        ],
+        L1: [
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+          ['A', 'G'],
+        ],
+      },
+    },
+  },
 ];
 
 // ---- write ------------------------------------------------------------------

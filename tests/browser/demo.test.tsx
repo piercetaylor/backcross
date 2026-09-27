@@ -126,11 +126,11 @@ describe('demo dataset', () => {
   });
 
   it('an unknown &crop= value shows the alert and loads nothing', async () => {
-    setDemoParam('synthetic', 'sunflower');
+    setDemoParam('synthetic', 'potato');
     await mountApp();
     await expect
       .poll(() => document.querySelector('[role="alert"]')?.textContent ?? '')
-      .toMatch(/^Unknown crop "sunflower" in the page address\. Available: soybean, /);
+      .toMatch(/^Unknown crop "potato" in the page address\. Available: soybean, /);
     await expect
       .element(page.getByRole('heading', { name: 'Upload and validate' }))
       .toBeInTheDocument();
