@@ -16,6 +16,12 @@
  * timed moments uses in-page clicks on the rail rather than Playwright, so
  * no RPC round trip is inside the figure.
  *
+ * After the first-draw figure is recorded it also times N=5 whole-genome
+ * redraws (switch to one chromosome, then back via the "Whole genome"
+ * button), re-measuring the pre-virtualisation 124 ms whole-genome draw
+ * figure (CLAUDE.md's "State" section). Printed as median and max; no
+ * assertion, no budget.
+ *
  * Memory (docs/m3-phases.md, phase 2; Q1 settled the bound as twice the
  * inflated bytes). The worker's 'loaded' result carries three accounting
  * figures -- bytesInflated, peakBuilderBytes, residentMatrixBytes -- which
@@ -31,7 +37,7 @@
  * 2 x bytesInflated. Firefox has no equivalent API; its figure is reported
  * as unavailable.
  */
-import { server } from 'vitest/browser';
+import { page, server, userEvent } from 'vitest/browser';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { loadFilesInPage, mountApp, waitFor } from '../support/app-harness.tsx';
@@ -132,6 +138,14 @@ function railStep(name: string): HTMLElement {
   throw new Error(`no rail step ${name}`);
 }
 
+/** The in-page "Whole genome" button in the genotype toolbar (not the same-named <option>). */
+function wholeGenomeButton(): HTMLElement {
+  for (const el of document.querySelectorAll<HTMLElement>('.geno-toolbar button')) {
+    if (el.textContent?.trim() === 'Whole genome') return el;
+  }
+  throw new Error('no "Whole genome" button');
+}
+
 function alertText(): string | null {
   return document.querySelector('[role="alert"]')?.textContent ?? null;
 }
@@ -189,6 +203,43 @@ describe('50K x 200 load', () => {
     }, TIMEOUT_MS);
 
     const memoryAfter = await measureMemory();
+
+    // Re-measure the whole-genome draw cost recorded before virtualisation
+    // (CLAUDE.md's "State" section, PLAN.md's M2 deferred findings, docs/adr/
+    // 0007: `binMajorityClasses` cost about 124 ms for a whole-genome draw at
+    // 50,000 markers by 200 lines). Taken after the first-draw figure above
+    // so it cannot perturb it. Each iteration switches to a single
+    // chromosome (via userEvent, untimed), then back to the whole genome via
+    // an in-page click on the "Whole genome" button -- like railStep's
+    // clicks, no RPC round trip inside the timed interval -- and times
+    // click-to-redrawn the same way the first draw above is timed.
+    const REDRAW_N = 5;
+    const redrawMs: number[] = [];
+    const viewSelect = page.getByLabelText('View', { exact: false });
+    for (let i = 0; i < REDRAW_N; i++) {
+      await userEvent.selectOptions(viewSelect, 'Gm01');
+      await waitFor(
+        () => (document.querySelectorAll('.geno-strip-track').length === 1 ? true : null),
+        TIMEOUT_MS,
+      );
+      const redrawClickedAt = performance.now();
+      wholeGenomeButton().click();
+      const redrawAt = await waitFor(
+        () =>
+          document.querySelectorAll('.geno-strip-track').length === BENCH_SPEC.nChrom
+            ? performance.now()
+            : null,
+        TIMEOUT_MS,
+      );
+      redrawMs.push(redrawAt - redrawClickedAt);
+    }
+    const sortedRedraws = [...redrawMs].sort((a, b) => a - b);
+    const redrawMedian = sortedRedraws[Math.floor(sortedRedraws.length / 2)] as number;
+    const redrawMax = sortedRedraws[sortedRedraws.length - 1] as number;
+    console.log(
+      `[bench ${server.browser}] whole-genome redraw (N=${REDRAW_N}) median ` +
+        `${Math.round(redrawMedian)} ms; max ${Math.round(redrawMax)} ms`,
+    );
 
     railStep('1. Upload').click();
     const summary = await waitFor(() => {

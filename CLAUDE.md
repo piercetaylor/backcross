@@ -16,7 +16,7 @@ M0, M1, M2, M2.5, M3 and M4 are complete and verified; each has a dated verifica
 
 M2.5 built the interface from `docs/m2.5-phases.md`; the browser-mode tests M3 added now assert the APG grid keyboard pattern, the sticky-header criterion and the print rules that M2.5 could only claim. Still asserted nowhere: screen-reader behaviour and paper output. The genotype view is virtualised (M4 phase 1): the canvas and gutter draw the rows in view, and the overview bins lines into its pixel rows by column majority.
 
-Deferred items are listed at the end of each verification block in `PLAN.md`. The one worth knowing: the build emits an entry chunk of this repository's code plus `vendor-react` and `vendor` chunks, checked by `scripts/check-bundle.mjs` inside `npm run build` (docs/adr/0016). The whole-genome draw cost of about 124 ms at 50,000 markers by 200 lines was measured before virtualisation and has not been re-measured. ADR 0007's minority-class hatch is closed, by the texture overlay of M2.5 phase 3.
+Deferred items are listed at the end of each verification block in `PLAN.md`. The one worth knowing: the build emits an entry chunk of this repository's code plus `vendor-react` and `vendor` chunks, checked by `scripts/check-bundle.mjs` inside `npm run build` (docs/adr/0016). The whole-genome draw cost at 50,000 markers by 200 lines, about 124 ms of binning before virtualisation, was re-measured on 2026-09-27 by the bench as a whole-genome redraw from click to painted tracks: median 67 ms in Chromium and 53 ms in Firefox (headless, five redraws). ADR 0007's minority-class hatch is closed, by the texture overlay of M2.5 phase 3.
 
 ## Gates: all of these must pass before every commit
 
