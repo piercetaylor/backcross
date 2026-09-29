@@ -25,6 +25,8 @@ Open the local address printed by Vite. For batch output, the synthetic fixture 
 node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out summary.csv
 ```
 
+Every GitHub Release also carries `backcross-cli-<version>.mjs`, a single file that needs only Node 22.19: `node backcross-cli-<version>.mjs summarize ...` with the same options.
+
 The `segments`, `targets` and `qc` commands produce separate CSV files; `compare` and `discordant` write the pairwise comparison and discordant-marker CSVs for one pair of sample ids given as `--a` and `--b` (`--mode informative`, the default, or `all`). Every command takes `--crop ID` (one of the thirteen chromosome schemes, default `soybean`) and `--profile ID|FILE` (a token profile for HapMap and wide CSV, or a JSON file of the same shape); run `node src/cli.ts` for the full option list. `npm run build` creates a static site in `dist/`.
 
 ## Verification and documentation

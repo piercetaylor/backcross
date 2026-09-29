@@ -2,10 +2,23 @@
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import { brapiMockPlugin } from './tests/support/brapi-mock-plugin.ts';
 import type { BrowserCommand } from 'vitest/node';
+import { resolveCommit } from './scripts/git-commit.mjs';
+
+// The build stamp (docs/adr/0030, Q4; src/build-info.ts): package.json's
+// version and the commit scripts/git-commit.mjs resolves, defined for the app
+// and the worker alike. scripts/check-bundle.mjs fails a build where it did
+// not apply.
+const ROOT = fileURLToPath(new URL('.', import.meta.url));
+const PKG_VERSION = (
+  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
 
 // The demo dataset (docs/adr/0017): the committed synthetic fixture, served
 // as <base>demo/synthetic/<file>. The build emits the three files into the
@@ -130,6 +143,10 @@ export default defineConfig(({ mode }) => ({
   // brapiMockPlugin serves tests/fixtures/brapi under /__brapi__ for browser-mode tests (no build hook).
   // demoDataPlugin serves the synthetic fixture under demo/synthetic/, in dev and in the build.
   plugins: [react(), brapiMockPlugin(), demoDataPlugin()],
+  define: {
+    __APP_VERSION__: JSON.stringify(PKG_VERSION),
+    __GIT_COMMIT__: JSON.stringify(resolveCommit({ cwd: ROOT })),
+  },
   worker: { format: 'es' },
   build: {
     target: 'es2022',

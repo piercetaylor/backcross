@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Asserts the shape and size of dist/assets after `vite build` (docs/adr/0016).
+ * Asserts the shape and size of dist/assets after `vite build` (docs/adr/0016),
+ * and that the build stamp's `define` (docs/adr/0030, src/build-info.ts)
+ * replaced its identifiers in every chunk, the worker included.
  * Usage: node scripts/check-bundle.mjs [distDir]   (default: <repo>/dist)
  */
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +17,12 @@ export const LIMITS = {
   /** Rolldown's shared runtime helpers, hoisted into their own chunk by code splitting. */
   runtimeBytes: 16_384,
 };
+
+/**
+ * The build stamp's identifiers, which vite.config.ts `define` must replace;
+ * spelt in halves so that no define applied to this file can rewrite the list.
+ */
+const STAMP_IDENTIFIERS = ['__APP' + '_VERSION__', '__GIT' + '_COMMIT__'];
 
 /**
  * @param {string} assetsDir  the dist/assets directory
@@ -72,6 +80,13 @@ export function checkBundle(assetsDir) {
     const bytes = statSync(join(assetsDir, name)).size;
     if (bytes > LIMITS.chunkBytes) {
       problems.push(`${name} is ${bytes} bytes, over the chunkBytes limit of ${LIMITS.chunkBytes}`);
+    }
+  }
+
+  for (const name of files) {
+    const text = readFileSync(join(assetsDir, name), 'utf8');
+    if (STAMP_IDENTIFIERS.some((id) => text.includes(id))) {
+      problems.push(`define did not apply to ${name}`);
     }
   }
 

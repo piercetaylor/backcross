@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 import uiLiteralSelectors from './eslint/ui-literal-selectors.json' with { type: 'json' };
 
 export default tseslint.config(
-  { ignores: ['dist/', 'node_modules/', 'coverage/', 'lighthouse/'] },
+  { ignores: ['dist/', 'dist-cli/', 'node_modules/', 'coverage/', 'lighthouse/'] },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

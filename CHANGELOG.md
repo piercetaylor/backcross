@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A single-file CLI bundle, `dist-cli/backcross-cli.mjs`, built by `npm run build:cli` with esbuild and attached to every GitHub Release; it needs only Node 22.19 and takes the same subcommands and options as `node src/cli.ts` (docs/adr/0030).
 - A code of conduct (Contributor Covenant 2.1), a security policy, issue and pull-request templates and Dependabot configuration.
 - `qc.csv`: one row per sample in manifest order, parents included, with missing, heterozygosity and nonparental rates and `|`-joined `qc_flags`, from the new CLI `qc` subcommand and an Export screen button (docs/adr/0029).
 - The per-line summary CSV gains `max_gap_bp` and `max_gap_cm`, the resolved RPP coverage caps, before `token_profile`, so a summary records the cap it was computed with (docs/adr/0028). ADR 0006 gains an amendment correcting its Flapjack comparability claims: interior weighting follows Flapjack, totals differ at chromosome ends by design.

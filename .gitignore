@@ -1,6 +1,7 @@
 # dependencies and build output
 node_modules/
 dist/
+dist-cli/
 coverage/
 lighthouse/
 .vitest/

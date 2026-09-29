@@ -96,6 +96,18 @@ describe('checkBundle', () => {
     expect(problems[0]).toMatch(/rolldown-runtime-abc123\.js/);
   });
 
+  it('reports a chunk where the build stamp define did not apply', () => {
+    write('index-abc123.js', 10);
+    write('vendor-react-abc123.js', 10);
+    write('vendor-abc123.js', 10);
+    writeFileSync(
+      join(dir, 'analysis.worker-d.js'),
+      'const v = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : null;',
+    );
+    const problems = checkBundle(dir);
+    expect(problems).toEqual(['define did not apply to analysis.worker-d.js']);
+  });
+
   it('reports a problem for a second rolldown-runtime-*.js', () => {
     writeValidSetWithRuntime();
     write('rolldown-runtime-def456.js', 10);

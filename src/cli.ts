@@ -43,7 +43,11 @@
  */
 import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+
+import { resolveCommit } from '../scripts/git-commit.mjs';
+import { buildInfo, TOOL_NAME } from './build-info.ts';
 
 import { classifyDataset } from './core/classify.ts';
 import { compareLines } from './core/compare.ts';
@@ -140,6 +144,22 @@ function allSegments(
   return Array.from(cls.candidateCols, (_, c) =>
     callSegments(dataset, cls, c, params, includeShort),
   );
+}
+
+/** The bundle's stamp, or, unbundled, package.json's version and git's HEAD. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by phase 7 (docs/m5-phases.md)
+function toolStamp(): { tool: string; toolVersion: string; toolCommit: string } {
+  const b = buildInfo();
+  if (b !== null) return { tool: TOOL_NAME, toolVersion: b.version, toolCommit: b.commit };
+  const root = new URL('..', import.meta.url);
+  const pkg = JSON.parse(readFileSync(new URL('package.json', root), 'utf8')) as {
+    version: string;
+  };
+  return {
+    tool: TOOL_NAME,
+    toolVersion: pkg.version,
+    toolCommit: resolveCommit({ cwd: fileURLToPath(root) }),
+  };
 }
 
 async function main(argv: string[]): Promise<number> {

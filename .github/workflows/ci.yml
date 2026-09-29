@@ -35,6 +35,7 @@ jobs:
         env:
           BGZIP_BIN: bgzip
       - run: npm run build
+      - run: npm run build:cli
       - name: Fixture and contract cases are reproducible
         run: |
           npm run fixture
