@@ -69,7 +69,7 @@ export function SummaryScreen({
         <h2 ref={headingRef} tabIndex={-1}>
           Dataset summary and QC
         </h2>
-        <p>Load a dataset first.</p>
+        <p className="empty-state">Load a dataset first.</p>
       </section>
     );
   }
@@ -109,6 +109,10 @@ export function SummaryScreen({
       <h2 ref={headingRef} tabIndex={-1}>
         Dataset summary and QC
       </h2>
+      <p className="lede">
+        Dataset counts, the parent polymorphism rate, informative-marker gaps and per-line QC
+        against the thresholds set on the Upload screen.
+      </p>
 
       {loaded.warnings.length > 0 && (
         <ul>
@@ -118,7 +122,7 @@ export function SummaryScreen({
         </ul>
       )}
 
-      <ul>
+      <ul className="facts">
         <li>{loaded.nMarkers.toLocaleString()} markers</li>
         <li>{loaded.nInformative.toLocaleString()} informative markers</li>
         {Array.from(roleCounts.entries()).map(([role, count]) => (
@@ -150,7 +154,7 @@ export function SummaryScreen({
         {histCounts.map((count, i) => {
           // The one thing about a bar that is not a design token: its share
           // of the tallest bin. The container's height and the bar's colour
-          // and minimum are tokens in screens.css.
+          // and minimum are tokens in tokens.css.
           const height = `${Math.round((count / maxHistCount) * PERCENT)}%`;
           return (
             <div key={i} className="hist-col">
@@ -173,9 +177,15 @@ export function SummaryScreen({
             <th scope="col">sample_id</th>
             <th scope="col">line_name</th>
             <th scope="col">role</th>
-            <th scope="col">missing rate (all markers)</th>
-            <th scope="col">het rate (called)</th>
-            <th scope="col">nonparental rate (informative called)</th>
+            <th scope="col" className="num">
+              missing rate (all markers)
+            </th>
+            <th scope="col" className="num">
+              het rate (called)
+            </th>
+            <th scope="col" className="num">
+              nonparental rate (informative called)
+            </th>
             <th scope="col">flags</th>
           </tr>
         </thead>
@@ -186,12 +196,12 @@ export function SummaryScreen({
                 const flagged = line.flags.includes('closer_to_donor');
                 return (
                   <tr key={line.sampleId} className={flagged ? 'qc-flagged' : undefined}>
-                    <td>{line.sampleId}</td>
+                    <td className="mono">{line.sampleId}</td>
                     <td>{lineNameById.get(line.sampleId) ?? line.sampleId}</td>
                     <td>{line.role}</td>
-                    <td>{rate3(line.missingRate)}</td>
-                    <td>{rate3(line.hetRate)}</td>
-                    <td>{rate3(line.nonparentalRate)}</td>
+                    <td className="num">{rate3(line.missingRate)}</td>
+                    <td className="num">{rate3(line.hetRate)}</td>
+                    <td className="num">{rate3(line.nonparentalRate)}</td>
                     <td className="flags">{line.flags.join(' ')}</td>
                   </tr>
                 );

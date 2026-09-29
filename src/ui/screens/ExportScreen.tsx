@@ -162,7 +162,7 @@ export function ExportScreen({
     return (
       <section>
         <h2>Export</h2>
-        <p>Load a dataset first.</p>
+        <p className="empty-state">Load a dataset first.</p>
       </section>
     );
   }
@@ -206,9 +206,11 @@ export function ExportScreen({
   return (
     <section>
       <h2>Export</h2>
-      <p>Files are generated in this browser tab and are never uploaded anywhere.</p>
+      <p className="lede">
+        Files are generated in this browser tab and are never uploaded anywhere.
+      </p>
 
-      <ul>
+      <ul className="export-list">
         <li>
           <button
             type="button"

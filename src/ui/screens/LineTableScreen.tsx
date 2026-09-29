@@ -202,7 +202,7 @@ export function LineTableScreen({
     return (
       <section>
         <h2>Lines</h2>
-        <p>Load a dataset first.</p>
+        <p className="empty-state">Load a dataset first.</p>
       </section>
     );
   }
@@ -210,6 +210,10 @@ export function LineTableScreen({
   return (
     <section>
       <h2>Lines</h2>
+      <p className="lede">
+        One row per line with recurrent-parent proportion, coverage and segment counts; sorting,
+        filtering and selecting here also drive the graphical genotypes.
+      </p>
       <LineActionBar
         counts={counts}
         sort={sort}

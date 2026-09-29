@@ -80,7 +80,7 @@ export function CompareScreen({
     return (
       <section>
         <h2>Compare two lines</h2>
-        <p>Load a dataset first.</p>
+        <p className="empty-state">Load a dataset first.</p>
       </section>
     );
   }
@@ -118,6 +118,10 @@ export function CompareScreen({
   return (
     <section>
       <h2>Compare two lines</h2>
+      <p className="lede">
+        Pairwise concordance between two samples over informative or all markers, with the
+        discordant markers listed.
+      </p>
 
       <div>
         <label>
@@ -228,18 +232,24 @@ export function CompareScreen({
             <thead>
               <tr>
                 <th scope="col">chrom</th>
-                <th scope="col">n_compared</th>
-                <th scope="col">n_discordant</th>
-                <th scope="col">discordant rate</th>
+                <th scope="col" className="num">
+                  n_compared
+                </th>
+                <th scope="col" className="num">
+                  n_discordant
+                </th>
+                <th scope="col" className="num">
+                  discordant rate
+                </th>
               </tr>
             </thead>
             <tbody>
               {chromRows.map((row) => (
                 <tr key={row.chrom}>
-                  <td>{row.chrom}</td>
-                  <td>{row.nCompared}</td>
-                  <td>{row.nDiscordant}</td>
-                  <td>{rate4(row.nDiscordant, row.nCompared)}</td>
+                  <td className="mono">{row.chrom}</td>
+                  <td className="num">{row.nCompared}</td>
+                  <td className="num">{row.nDiscordant}</td>
+                  <td className="num">{rate4(row.nDiscordant, row.nCompared)}</td>
                 </tr>
               ))}
             </tbody>
