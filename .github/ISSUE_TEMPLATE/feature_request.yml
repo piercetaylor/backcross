@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a change or addition
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A change to an input format or column is shared with progeny-selector (contract/data-contract.md) and is decided for both tools.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you cannot do today, in breeding terms
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Site
+        - CLI
+        - Both
+        - Input contract shared with progeny-selector

@@ -1,0 +1,78 @@
+name: Bug report
+description: Something is wrong in the site or the CLI
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never attach real genotype data. Build a synthetic reproducer with `npm run fixture`, the demo (`?demo=synthetic`), or a hand-written file of a few markers.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - Site at piercetaylor.github.io
+        - Local build or `npm run dev`
+        - CLI `node src/cli.ts`
+        - CLI bundle `backcross-cli.mjs`
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version (or Node version for the CLI)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Input format
+      options:
+        - VCF
+        - VCF bgzip
+        - HapMap
+        - wide CSV nucleotide
+        - wide CSV A/B/H
+        - BrAPI
+    validations:
+      required: true
+  - type: input
+    id: crop_profile
+    attributes:
+      label: Crop and token profile (the Upload screen's selects, or `--crop`/`--profile`)
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Synthetic reproducer
+      description: Files or the steps on the demo
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console errors or CLI stderr
+  - type: checkboxes
+    id: no_real_data
+    attributes:
+      label: Data
+      options:
+        - label: This report contains no real genotype data.
+          required: true

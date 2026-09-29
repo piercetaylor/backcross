@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: User guide
+    url: https://github.com/piercetaylor/backcross/blob/main/docs/user-guide.md
+    about: How to prepare inputs, run the site or CLI and read the outputs
+  - name: Security report
+    url: https://github.com/piercetaylor/backcross/security/advisories/new
+    about: Report a vulnerability privately

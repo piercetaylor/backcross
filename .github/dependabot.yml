@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Exact pins (vitest, @vitest/browser-playwright, react-aria-components,
+  # axe-core, lighthouse, chrome-launcher, esbuild) are deliberate; a major
+  # bump is reviewed against the gates, never merged unread.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

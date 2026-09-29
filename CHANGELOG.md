@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A code of conduct (Contributor Covenant 2.1), a security policy, issue and pull-request templates and Dependabot configuration.
 - `qc.csv`: one row per sample in manifest order, parents included, with missing, heterozygosity and nonparental rates and `|`-joined `qc_flags`, from the new CLI `qc` subcommand and an Export screen button (docs/adr/0029).
 - The per-line summary CSV gains `max_gap_bp` and `max_gap_cm`, the resolved RPP coverage caps, before `token_profile`, so a summary records the cap it was computed with (docs/adr/0028). ADR 0006 gains an amendment correcting its Flapjack comparability claims: interior weighting follows Flapjack, totals differ at chromosome ends by design.
 - Contract 1.12.0 (docs/adr/0027): the soybean scheme also reads the SoyBase / LIS Data Store names of Williams 82 (`glyma.Wm82.gnmN.Gm01`, `glyma.Wm82.gnm5.Chr01`) and the V1.1 spelling `GLYMAchr_01` as `Gm01`..`Gm20`; every spelling read before maps as before, and RefSeq accessions, other cultivars and Data Store scaffolds are still kept as written.
