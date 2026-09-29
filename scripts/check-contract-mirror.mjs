@@ -5,7 +5,7 @@
  * The copy here is canonical (contract/README.md, "Mirror rule"). Every file
  * present in either directory must exist in both with identical bytes. Prints
  * one line per difference and exits 1 if there is any, 0 otherwise. A local
- * gate, not a CI step (docs/m3-phases.md, phase 3).
+ * gate and the `contract-mirror` CI job (docs/m5-phases.md 15.3).
  *
  * Usage: node scripts/check-contract-mirror.mjs <sibling-path>
  */

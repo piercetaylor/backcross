@@ -46,9 +46,11 @@ jobs:
         with:
           path: dist
 
-  # Browser-mode tests and the bench. The bench's 30 s budget is the laptop
-  # figure; here it is only a hang guard, to be tightened to 3-5x the first
-  # recorded CI baseline (docs/m3-phases.md, Q5). Then Lighthouse's
+  # Browser-mode tests and the bench. Interim CI budget of 60 s (about ten
+  # times the M4 laptop Firefox first draw of 6.2 s, half the former 120 s hang
+  # guard; docs/m5-phases.md 15.1). Once one green run has printed its figures,
+  # set this to four times the slower browser's first-draw figure, rounded up
+  # to the next 5 s, and record both in PLAN.md's M5 block. Then Lighthouse's
   # accessibility category on the built landing page
   # (scripts/lighthouse-a11y.mjs, PLAN.md M3).
   browser:
@@ -65,8 +67,25 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:bench
         env:
-          VITE_BENCH_BUDGET_MS: '120000'
+          VITE_BENCH_BUDGET_MS: '60000'
       - run: npm run a11y:lighthouse
+
+  # Byte-compares contract/ with progeny-selector's mirror (docs/adr/0013).
+  # Red between a contract bump here and the sibling's mirror commit is
+  # expected and is the signal; deploy does not wait for this job.
+  contract-mirror:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: piercetaylor/progeny-selector
+          path: progeny-selector
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: node scripts/check-contract-mirror.mjs progeny-selector
 
   # Generates the six CLI CSV tables from the synthetic fixture and reads
   # them back with readr under explicit column types (scripts/read_exports.R),

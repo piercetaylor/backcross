@@ -118,9 +118,12 @@ function browserMode() {
       { browser: 'firefox' as const },
     ],
     viewport: { width: 1280, height: 720 },
-    // Twelve pages start at once, six per browser; under the same CPU load a
-    // Firefox session missed Vitest's default 60 s connect timeout.
-    connectTimeout: 120_000,
+    // Files run one at a time (fileParallelism below), so this is not
+    // contention between pages: on a cold CI runner the first Firefox session
+    // missed 120 s once (2026-09-29; the rerun passed), so the first connection
+    // is given three minutes. If it recurs, the alternative is a targeted rerun
+    // of the step when the log holds that message, not a longer timeout.
+    connectTimeout: 180_000,
     commands: { bringToFront, emulateMedia },
   };
 }
