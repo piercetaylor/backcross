@@ -55,3 +55,16 @@ describe('token profile controls', () => {
     );
   });
 });
+
+describe('landing band', () => {
+  it('credits the photograph and marks it decorative', () => {
+    expect(html).toContain(
+      'Photo: Anna Locke, USDA Agricultural Research Service (public domain).',
+    );
+    expect(html).toMatch(/<img[^>]*class="landing-photo"[^>]*alt=""/);
+  });
+
+  it('keeps the input-coding link ahead of the demo button', () => {
+    expect(html.indexOf('input-coding-link')).toBeLessThan(html.indexOf('Try the demo dataset'));
+  });
+});
