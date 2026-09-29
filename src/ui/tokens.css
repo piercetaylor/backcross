@@ -23,6 +23,7 @@
  * Okabe-Ito member. Wheat gold is decorative only (it clears 3:1 on neither
  * parchment surface), so it never carries text, a border that conveys state,
  * or the focus ring. tests/tokens.test.ts re-derives every pair.
+ * The 2026-09-29 rework (docs/adr/0009, amendment of that date) added the masthead surface, the panel surface, the chromosome-header greys and the landing's display sizes; wheat gold is now unused on screen and kept only so ADR 0017's enumeration stays true.
  */
 
 :root {
@@ -50,6 +51,9 @@
   --crop-leaf-800: #255a30;
   --crop-leaf-900: #1b4424;
   --crop-wheat-500: #c99a2e;
+  /* Two more soil steps (docs/adr/0009, amended 2026-09-29): the masthead's hover fill and its muted text. */
+  --crop-soil-800: #3e3225;
+  --crop-soil-300: #b9ac98;
 
   /* Role aliases: backgrounds */
   --color-bg: var(--crop-parchment-50);
@@ -68,6 +72,15 @@
   --color-bg-primary: var(--crop-leaf-700);
   --color-bg-primary-hover: var(--crop-leaf-800);
   --color-text-on-primary: var(--neutral-1);
+  /* The masthead: the one dark chrome surface. Text on it is parchment; its focus ring is parchment too, since leaf-900 vanishes on soil. */
+  --color-bg-masthead: var(--crop-soil-900);
+  --color-bg-masthead-hover: var(--crop-soil-800);
+  --color-text-on-dark: var(--crop-parchment-50);
+  --color-text-on-dark-muted: var(--crop-soil-300);
+  --color-focus-ring-on-dark: var(--crop-parchment-50);
+  /* Panels (marker detail, dataset facts) lift one step off the parchment page. */
+  --color-bg-panel: var(--neutral-1);
+  --color-bg-plot: var(--crop-parchment-50);
 
   /*
    * The one reserved hue. ADR 0009 holds that chrome carries no hue, because
@@ -104,6 +117,12 @@
   --color-swatch-border: var(--neutral-12);
   --color-chart-bar: var(--neutral-10);
   --color-canvas-label: var(--neutral-12);
+  /* The chromosome header over the genotype canvas: ideogram, ruler and frame stay on the neutral ramp (docs/adr/0007). */
+  --color-ideogram-fill: var(--neutral-2);
+  --color-ideogram-stroke: var(--neutral-9);
+  --color-ruler: var(--neutral-9);
+  --color-ruler-label: var(--neutral-10);
+  --color-plot-frame: var(--neutral-7);
 
   /* Overlays and shadow: dialogs, menus and popovers only */
   --color-overlay-fill: rgb(28 28 28 / 0.15);
@@ -119,13 +138,19 @@
   --text-body: 14px;
   --text-lg: 16px;
   --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
   --leading-tight: 1.25;
   --leading-ui: 1.4;
   --leading-body: 1.5;
+  --leading-display: 1.15;
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --numeric: tabular-nums slashed-zero;
+  --tracking-tight: -0.01em;
+  --tracking-caps: 0.06em;
+  --measure-prose: 62ch;
 
   /* Spacing */
   --space-1: 4px;
@@ -151,13 +176,21 @@
   --target-min: 24px;
   --rail-width: 240px;
   --logo-size: 24px;
+  --masthead-height: 48px;
+  --hero-column-min: 320px;
+  --step-number-size: 28px;
+  --field-min: 200px;
   --rail-width-collapsed: 48px;
   --content-padding: var(--space-4);
   --gutter-width: 120px;
   --detail-panel-width: 240px;
   --overview-height: 48px;
   --geno-scroll-max-height: 60vh;
-  --chromosome-strip-height: 20px;
+  --chromosome-strip-height: 56px;
+  --ideogram-height: 8px;
+  --ruler-height: 16px;
+  /* Smallest pixel gap between two ruler ticks; src/ui/canvas/ruler.ts picks the 1-2-5 step that clears it. */
+  --ruler-tick-min-gap: 56px;
   --chart-height: 120px;
   --canvas-row-height: 20px;
   --canvas-row-gap: 4px;

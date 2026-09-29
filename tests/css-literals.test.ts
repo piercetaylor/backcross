@@ -49,6 +49,8 @@ describe('stylesheets under src/ui/ name tokens, never values', () => {
     // A rename or a move must not silently empty this test.
     expect(files).toContain('lines/lines.css');
     expect(files).toContain('canvas/legend.css');
+    expect(files).toContain('screens/upload.css');
+    expect(files).toContain('screens/genotype.css');
   });
 
   it.each(files)('%s holds no colour literal', (file) => {

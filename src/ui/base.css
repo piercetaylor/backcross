@@ -41,6 +41,7 @@ h3 {
   margin: 0 0 var(--space-2);
   line-height: var(--leading-tight);
   font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 
 h1 {
@@ -48,10 +49,12 @@ h1 {
 }
 
 h2 {
-  font-size: var(--text-lg);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-xl);
 }
 
 h3 {
+  margin-top: var(--space-5);
   font-size: var(--text-body);
   font-weight: var(--weight-medium);
 }
@@ -88,6 +91,66 @@ button:disabled {
   border-color: var(--color-border-disabled);
 }
 
+button:active:enabled,
+select:active:enabled {
+  background: var(--color-bg-control-active);
+}
+
+/* Native file pickers: the button part takes the control treatment, the file name keeps the page font. */
+input[type='file'] {
+  max-width: 100%;
+  font: inherit;
+  color: var(--color-text-secondary);
+}
+
+input[type='file']::file-selector-button {
+  height: var(--control-height-sm);
+  margin-right: var(--space-2);
+  padding: 0 var(--control-padding-x);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg-control);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+input[type='file']:enabled::file-selector-button:hover {
+  background: var(--color-bg-control-hover);
+}
+
+/* Grouped parameters: a bordered group with the legend set into the border. */
+fieldset {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border: var(--border-1) solid var(--color-border-subtle);
+  border-radius: var(--radius-2);
+}
+
+legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* The one-sentence explanation under a screen title or a control. */
+.lede {
+  max-width: var(--measure-prose);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--color-text-secondary);
+}
+
+/* Typographic empty state: one sentence, no illustration. */
+.empty-state {
+  max-width: var(--measure-prose);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+  border: var(--border-1) dashed var(--color-border);
+  border-radius: var(--radius-2);
+}
+
 /*
  * The primary action: leaf green, with the text colour the crop palette
  * pairs with it (docs/adr/0017). One per screen at most; every other button
@@ -117,13 +180,17 @@ input[type='search'],
 textarea {
   height: var(--control-height);
   padding: 0 var(--space-2);
-  background: var(--color-bg);
+  background: var(--color-bg-panel);
   border: var(--border-1) solid var(--color-border);
   border-radius: var(--radius-2);
 }
 
 input[type='number'] {
   font-variant-numeric: var(--numeric);
+}
+
+input[type='number'] {
+  width: var(--field-min);
 }
 
 *:focus-visible {

@@ -68,7 +68,7 @@ import {
   TextField,
 } from 'react-aria-components';
 
-import './screens.css';
+import './upload.css';
 import type { QcThresholds, RppParams, SegmentParams } from '../../core/types.ts';
 import { callSetsCsv } from '../../export/callsets-csv.ts';
 import type { BrapiCallSet, BrapiSource } from '../../io/brapi.ts';

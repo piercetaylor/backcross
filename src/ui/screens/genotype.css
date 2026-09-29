@@ -1,0 +1,219 @@
+/*
+ * The graphical genotype screen's layout. Token-only by rule. Imported by GenotypeViewScreen.tsx alone.
+ *
+ * The genotype gutter is the one alignment this file has to get exactly
+ * right: each <li> is one canvas row period tall,
+ * calc(var(--canvas-row-height) + var(--canvas-row-gap)), which is the same
+ * arithmetic GraphicalGenotypeRenderer.draw() does in pixels after
+ * read-theme.ts hands it those two tokens. Neither side repeats a number,
+ * so the gutter cannot drift out of step with the rows beside it.
+ */
+
+/* ---- Graphical genotypes ---- */
+
+.geno-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+.geno-layout {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.geno-plot {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/*
+ * Chromosome strip: one absolutely positioned track per chromosome, placed
+ * from renderer.trackLayouts() so a track's name sits over the pixels it
+ * names.
+ */
+.geno-strip {
+  position: relative;
+  height: var(--chromosome-strip-height);
+  /* The strip sits above the scroll container, so it has to step over the
+     gutter itself to line up with the canvas beside it. */
+  margin-left: var(--gutter-width);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.geno-strip-track {
+  position: absolute;
+  top: 0;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  height: 100%;
+  padding-left: var(--space-1);
+  overflow: hidden;
+  border-left: var(--border-1) solid var(--color-border-subtle);
+}
+
+.geno-strip-window {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  font-variant-numeric: var(--numeric);
+}
+
+/*
+ * The container scrolls both ways, bounded vertically by
+ * --geno-scroll-max-height, and the screen draws only a row window: the rows
+ * inside this element's viewport plus a few either side
+ * (ui/canvas/row-window.ts). The gutter <ol> and the canvas host are
+ * full-height spacers, and the drawn rows are offset inside them by an
+ * inline measurement. The gutter sticks to the left horizontally, so a line
+ * name stays readable at any horizontal scroll offset. Both children sit on
+ * the same top edge.
+ */
+.geno-scroll {
+  display: flex;
+  align-items: flex-start;
+  max-height: var(--geno-scroll-max-height);
+  overflow-x: auto;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+.geno-gutter {
+  position: sticky;
+  left: 0;
+  z-index: var(--z-sticky);
+  flex: none;
+  box-sizing: border-box;
+  width: var(--gutter-width);
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  list-style: none;
+  background: var(--color-bg);
+}
+
+.geno-gutter li {
+  height: calc(var(--canvas-row-height) + var(--canvas-row-gap));
+}
+
+/*
+ * One button per row, the full row period tall so it is a 24 px pointer
+ * target (WCAG 2.2 SC 2.5.8, --target-min); box-sizing: border-box plus a
+ * bottom padding equal to the row gap keeps the content box the height of
+ * the drawn row alone, so line-height centres the label on the bar rather
+ * than on the whole period, and the pressed background still covers the
+ * gap under the row. Names are shrunk to fit, as in Flapjack.
+ */
+.geno-gutter button {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: calc(var(--canvas-row-height) + var(--canvas-row-gap));
+  min-height: var(--target-min);
+  padding: 0 var(--space-1);
+  padding-block-end: var(--canvas-row-gap);
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--canvas-row-height);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.geno-gutter button[aria-pressed='true'] {
+  background: var(--color-bg-row-selected);
+  box-shadow: inset var(--border-3) 0 0 0 var(--color-selected-indicator);
+}
+
+.geno-gutter button:hover {
+  background: var(--color-bg-row-hover);
+}
+
+.geno-gutter button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/*
+ * The canvas column. This is what the ResizeObserver measures, so the width
+ * it reports is already the width the canvas may use and the gutter is
+ * never subtracted twice.
+ */
+.geno-canvas-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Inline canvases add a baseline descender under themselves. */
+.geno-canvas,
+.geno-overview {
+  display: block;
+}
+
+.geno-overview {
+  margin-top: var(--space-1);
+  margin-left: var(--gutter-width);
+  border-top: var(--border-1) solid var(--color-border-subtle);
+}
+
+.marker-detail {
+  flex: none;
+  width: var(--detail-panel-width);
+  padding: var(--space-3);
+  background: var(--color-bg-subtle);
+  font-variant-numeric: var(--numeric);
+}
+
+.marker-detail h3 {
+  margin: 0 0 var(--space-1);
+}
+
+.marker-detail-text {
+  margin: 0;
+  min-height: calc(3 * var(--text-ui) * var(--leading-body));
+}
+
+.keyboard-help {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@media print {
+  .geno-toolbar,
+  .keyboard-help,
+  .marker-detail {
+    display: none;
+  }
+
+  .geno-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+}

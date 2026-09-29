@@ -165,7 +165,9 @@ describe('the crop palette', () => {
         'crop-leaf-900',
         'crop-parchment-100',
         'crop-parchment-50',
+        'crop-soil-300',
         'crop-soil-700',
+        'crop-soil-800',
         'crop-soil-900',
         'crop-wheat-500',
       ].sort(),
@@ -225,6 +227,68 @@ describe('the crop palette', () => {
     expect(token('color-overlay-fill')).not.toMatch(/crop/);
     expect(token('color-overlay-stroke')).not.toMatch(/crop/);
   });
+
+  it('text and muted text on the masthead clear 4.5:1, at rest and hovered', () => {
+    expectPairs(
+      ['color-text-on-dark', 'color-text-on-dark-muted'],
+      ['color-bg-masthead', 'color-bg-masthead-hover'],
+      4.5,
+    );
+  });
+
+  it('the masthead focus ring clears 3:1 on both masthead fills', () => {
+    expectPairs(['color-focus-ring-on-dark'], ['color-bg-masthead', 'color-bg-masthead-hover'], 3);
+  });
+
+  it('text, secondary and tertiary text, links and the alert hue clear 4.5:1 on the panel surface', () => {
+    expectPairs(
+      ['color-text', 'color-text-secondary', 'color-text-tertiary', 'color-link', 'hue-alert'],
+      ['color-bg-panel'],
+      4.5,
+    );
+  });
+
+  it('the strong border and the focus ring clear 3:1 on the panel surface', () => {
+    expectPairs(['color-border-strong', 'color-focus-ring'], ['color-bg-panel'], 3);
+  });
+});
+
+/*
+ * The chromosome header (docs/adr/0009, amended 2026-09-29) sits over the
+ * genotype canvas, so it stays on the neutral ramp like everything else the
+ * canvas touches (docs/adr/0007): no crop token, no class colour.
+ */
+describe('the chromosome header', () => {
+  it('draws the ideogram, ruler and frame from the neutral ramp', () => {
+    for (const name of [
+      'color-ideogram-fill',
+      'color-ideogram-stroke',
+      'color-ruler',
+      'color-ruler-label',
+      'color-plot-frame',
+    ]) {
+      expect({ name, neutral: /^var\(--neutral-\d+\)$/.test(token(name)) }).toEqual({
+        name,
+        neutral: true,
+      });
+    }
+  });
+
+  it('the ideogram stroke and the ruler clear 3:1, and tick labels 4.5:1, on the plot and page surfaces', () => {
+    const surfaces = ['color-bg-plot', 'color-bg', 'color-bg-subtle'];
+    expectPairs(['color-ideogram-stroke', 'color-ruler'], surfaces, 3);
+    expectPairs(['color-ruler-label'], surfaces, 4.5);
+  });
+
+  it('the strip is tall enough for a name row, the ideogram and the ruler', () => {
+    const strip = Number.parseFloat(token('chromosome-strip-height'));
+    const ideogram = Number.parseFloat(token('ideogram-height'));
+    const ruler = Number.parseFloat(token('ruler-height'));
+    const nameRow = Number.parseFloat(token('text-xs')) * Number.parseFloat(token('leading-ui'));
+    // The track's top padding and its two gaps are --space-1 each (genotype.css).
+    const gaps = 3 * Number.parseFloat(token('space-1'));
+    expect(strip).toBeGreaterThanOrEqual(ideogram + ruler + nameRow + gaps);
+  });
 });
 
 /*
@@ -277,6 +341,12 @@ describe('dimensions', () => {
   it('interface type is 13px and prose 14px', () => {
     expect(token('text-ui')).toBe('13px');
     expect(token('text-body')).toBe('14px');
+  });
+
+  it('the landing display sizes and the masthead height exist, and the interface size is unchanged', () => {
+    expect(token('text-2xl')).toBe('24px');
+    expect(token('text-3xl')).toBe('30px');
+    expect(token('masthead-height')).toBe('48px');
   });
 
   it('the canvas row period meets --target-min (WCAG 2.2 SC 2.5.8)', () => {

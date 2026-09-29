@@ -110,7 +110,7 @@ import { readOverviewHeight, readRendererLayout, readRendererTheme } from '../ca
 import { visibleRowWindow } from '../canvas/row-window.ts';
 import type { RowWindow } from '../canvas/row-window.ts';
 import '../canvas/legend.css';
-import './screens.css';
+import './genotype.css';
 import { classSwatchCss } from '../../core/index.ts';
 import { missingChromosomeNote, parseLocus } from '../../core/targets.ts';
 import { resolveCrop } from '../../io/crops.ts';
