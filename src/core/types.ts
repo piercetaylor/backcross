@@ -122,9 +122,9 @@ export interface Classification {
 
 export interface RppParams {
   /** Cap on the physical interval one marker can represent, per side, in bp (Flapjack "maximum marker coverage"). */
-  maxGapBp: number;
+  maxMarkerCoverageBp: number;
   /** Cap on the genetic interval one marker can represent, per side, in cM. */
-  maxGapCm: number;
+  maxMarkerCoverageCm: number;
 }
 
 export interface RppByChromosome {
@@ -157,7 +157,7 @@ export interface SegmentParams {
    * Split a run when two consecutive informative markers are farther apart
    * than this (bp). Applied to every step when the dataset has no genetic
    * map, and to any step where either marker lacks a cM value when it has
-   * one. Distinct from RppParams.maxGapBp, the coverage cap (docs/adr/0008).
+   * one. Distinct from RppParams.maxMarkerCoverageBp, the coverage cap (docs/adr/0008).
    */
   maxSegmentGapBp: number;
   /** Same test in cM (absolute difference), for steps where both markers have cM. */

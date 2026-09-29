@@ -62,9 +62,11 @@ describe('external id columns', () => {
     expect(
       header(csv.summary).startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,'),
     ).toBe(true);
-    expect(header(csv.summary).endsWith('rpp_count_Gm20,max_gap_bp,max_gap_cm,token_profile')).toBe(
-      true,
-    );
+    expect(
+      header(csv.summary).endsWith(
+        'rpp_count_Gm20,max_marker_coverage_bp,max_marker_coverage_cm,token_profile',
+      ),
+    ).toBe(true);
     expect(header(csv.segments)).toBe(
       'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion,token_profile',
     );

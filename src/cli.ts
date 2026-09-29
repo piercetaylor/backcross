@@ -7,7 +7,7 @@
  *
  * Usage:
  *   node src/cli.ts summarize --genotypes <vcf|hmp|csv[.gz]> --samples samples.csv
- *                             [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--max-gap-bp N] [--max-gap-cm N] [--out file.csv]
+ *                             [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--max-marker-coverage-bp N] [--max-marker-coverage-cm N] [--out file.csv]
  *   node src/cli.ts segments  ... [--max-segment-gap-bp N] [--max-segment-gap-cm N]
  *                             [--min-markers N] [--max-missing-span N] [--include-short] [--out file.csv]
  *   node src/cli.ts targets   ... --target name=Gm13:28,500,000-29,100,000 [--target ...] [segment options] [--out file.csv]
@@ -73,7 +73,7 @@ import { decodeUtf8, InvalidUtf8Error } from './io/utf8.ts';
 const USAGE = [
   'usage: node src/cli.ts <summarize|segments|targets|compare|discordant|qc> --genotypes FILE --samples samples.csv',
   '         [--markers markers.csv] [--profile ID|FILE] [--crop ID] [--out FILE]',
-  '  summarize:  [--max-gap-bp N] [--max-gap-cm N]',
+  '  summarize:  [--max-marker-coverage-bp N] [--max-marker-coverage-cm N]',
   '  segments:   [--max-segment-gap-bp N] [--max-segment-gap-cm N] [--min-markers N]',
   '              [--max-missing-span N] [--include-short]',
   '  targets:    --target name=Gm13:28,500,000-29,100,000 [--target marker_id] ... plus the segment options',
@@ -175,8 +175,8 @@ async function main(argv: string[]): Promise<number> {
       out: { type: 'string' },
       target: { type: 'string', multiple: true },
       'include-short': { type: 'boolean' },
-      'max-gap-bp': { type: 'string' },
-      'max-gap-cm': { type: 'string' },
+      'max-marker-coverage-bp': { type: 'string' },
+      'max-marker-coverage-cm': { type: 'string' },
       'max-segment-gap-bp': { type: 'string' },
       'max-segment-gap-cm': { type: 'string' },
       'min-markers': { type: 'string' },
@@ -200,7 +200,7 @@ async function main(argv: string[]): Promise<number> {
   }
   const command: Command = commandArg;
   // An option that belongs to another subcommand is a mistake, not a no-op:
-  // --max-gap-bp on `segments` would otherwise be silently ignored.
+  // --max-marker-coverage-bp on `segments` would otherwise be silently ignored.
   const SEGMENT_SHARED = [
     'max-segment-gap-bp',
     'max-segment-gap-cm',
@@ -210,7 +210,7 @@ async function main(argv: string[]): Promise<number> {
     'target',
   ] as const;
   const ALLOWED: Record<Command, readonly string[]> = {
-    summarize: ['max-gap-bp', 'max-gap-cm'],
+    summarize: ['max-marker-coverage-bp', 'max-marker-coverage-cm'],
     segments: SEGMENT_SHARED,
     targets: SEGMENT_SHARED,
     compare: ['a', 'b', 'mode'],
@@ -264,8 +264,14 @@ ${USAGE}`);
   let csv: string;
   if (command === 'summarize') {
     const params = {
-      maxGapBp: numberOr(values['max-gap-bp'], DEFAULT_RPP_PARAMS.maxGapBp),
-      maxGapCm: numberOr(values['max-gap-cm'], DEFAULT_RPP_PARAMS.maxGapCm),
+      maxMarkerCoverageBp: numberOr(
+        values['max-marker-coverage-bp'],
+        DEFAULT_RPP_PARAMS.maxMarkerCoverageBp,
+      ),
+      maxMarkerCoverageCm: numberOr(
+        values['max-marker-coverage-cm'],
+        DEFAULT_RPP_PARAMS.maxMarkerCoverageCm,
+      ),
     };
     csv = lineSummaryCsv(
       computeRpp(dataset, cls, params),

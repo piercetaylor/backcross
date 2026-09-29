@@ -134,8 +134,8 @@ for (let m = 0; m < M; m++) if (rand() < 0.15) planted.NIL_06[m] = 0;
 plant('NIL_06', 'Gm12', 12, 25, 3);
 
 // ---- expected values --------------------------------------------------------
-const MAX_GAP_BP = 2_000_000;
-const MAX_GAP_CM = 10;
+const MAX_MARKER_COVERAGE_BP = 2_000_000;
+const MAX_MARKER_COVERAGE_CM = 10;
 function weighted(positions, scores, cap, originIsEnd) {
   let num = 0;
   let den = 0;
@@ -191,8 +191,8 @@ for (const s of candidates) {
         scores.push(SCORE[k]);
       }
     }
-    const [nb, db] = weighted(posBp, scores, MAX_GAP_BP / 2, true);
-    const [nc, dc] = weighted(posCm, scores, MAX_GAP_CM / 2, false);
+    const [nb, db] = weighted(posBp, scores, MAX_MARKER_COVERAGE_BP / 2, true);
+    const [nc, dc] = weighted(posCm, scores, MAX_MARKER_COVERAGE_CM / 2, false);
     numBp += nb;
     denBp += db;
     numCm += nc;
@@ -212,7 +212,10 @@ for (const s of candidates) {
     byChromosome: byChrom,
   };
 }
-expected.params = { maxGapBp: MAX_GAP_BP, maxGapCm: MAX_GAP_CM };
+expected.params = {
+  maxMarkerCoverageBp: MAX_MARKER_COVERAGE_BP,
+  maxMarkerCoverageCm: MAX_MARKER_COVERAGE_CM,
+};
 
 // ---- expected donor segments (algorithm 3, docs/adr/0008) -------------------
 // Independent implementation: walk informative markers per chromosome, break a

@@ -40,7 +40,7 @@ export interface Expected {
   nMarkers: number;
   nInformative: number;
   lines: Record<string, ExpectedLine>;
-  params: { maxGapBp: number; maxGapCm: number };
+  params: { maxMarkerCoverageBp: number; maxMarkerCoverageCm: number };
   markerReasons: Record<string, string>;
   segmentParams: SegmentParams;
   /** Keyed by gap criterion, then sample id. */

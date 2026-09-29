@@ -29,18 +29,18 @@ Typed in the UI or passed to the CLI as `name=Gm13:28,500,000-29,100,000` or `na
 
 ## Analysis parameters
 
-| parameter         | default    | source                                                                                                                                                         |
-| ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| maxGapBp          | 2,000,000  | VITE_DEFAULT_MAX_GAP_BP; RPP coverage cap, the interval one marker represents (bp); used for bp-weighted RPP only                                              |
-| maxGapCm          | 10         | VITE_DEFAULT_MAX_GAP_CM; the RPP coverage cap in cM; at both ends of a chromosome a terminal marker is credited half the cap on its outer side (docs/adr/0028) |
-| maxSegmentGapBp   | 10,000,000 | VITE_DEFAULT_MAX_SEGMENT_GAP_BP; break a donor run when consecutive informative markers are farther apart than this; used without a map                        |
-| maxSegmentGapCm   | 10         | VITE_DEFAULT_MAX_SEGMENT_GAP_CM; the same test in cM, used whenever markers.csv supplies cM (docs/adr/0008)                                                    |
-| minSegmentMarkers | 2          | VITE_DEFAULT_MIN_SEGMENT_MARKERS                                                                                                                               |
-| maxMissingSpan    | 3          | VITE_DEFAULT_MAX_MISSING_SPAN; skipped (missing or nonparental) informative markers allowed between two non-RP calls of one run                                |
-| lineMissingMax    | 0.10       | VITE_QC_LINE_MISSING_MAX                                                                                                                                       |
-| lineHetMax        | 0.05       | VITE_QC_LINE_HET_MAX                                                                                                                                           |
-| markerCallRateMin | 0.80       | VITE_QC_MARKER_CALLRATE_MIN                                                                                                                                    |
-| parentHetMax      | 0.02       | VITE_QC_PARENT_HET_MAX                                                                                                                                         |
+| parameter           | default    | source                                                                                                                                                                     |
+| ------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| maxMarkerCoverageBp | 2,000,000  | VITE_DEFAULT_MAX_MARKER_COVERAGE_BP; RPP coverage cap, the interval one marker represents (bp); used for bp-weighted RPP only                                              |
+| maxMarkerCoverageCm | 10         | VITE_DEFAULT_MAX_MARKER_COVERAGE_CM; the RPP coverage cap in cM; at both ends of a chromosome a terminal marker is credited half the cap on its outer side (docs/adr/0028) |
+| maxSegmentGapBp     | 10,000,000 | VITE_DEFAULT_MAX_SEGMENT_GAP_BP; break a donor run when consecutive informative markers are farther apart than this; used without a map                                    |
+| maxSegmentGapCm     | 10         | VITE_DEFAULT_MAX_SEGMENT_GAP_CM; the same test in cM, used whenever markers.csv supplies cM (docs/adr/0008)                                                                |
+| minSegmentMarkers   | 2          | VITE_DEFAULT_MIN_SEGMENT_MARKERS                                                                                                                                           |
+| maxMissingSpan      | 3          | VITE_DEFAULT_MAX_MISSING_SPAN; skipped (missing or nonparental) informative markers allowed between two non-RP calls of one run                                            |
+| lineMissingMax      | 0.10       | VITE_QC_LINE_MISSING_MAX                                                                                                                                                   |
+| lineHetMax          | 0.05       | VITE_QC_LINE_HET_MAX                                                                                                                                                       |
+| markerCallRateMin   | 0.80       | VITE_QC_MARKER_CALLRATE_MIN                                                                                                                                                |
+| parentHetMax        | 0.02       | VITE_QC_PARENT_HET_MAX                                                                                                                                                     |
 
 ## Outputs
 
@@ -48,7 +48,7 @@ Every table below carries `call_set_db_id` and `sample_db_id` (the BrAPI call se
 
 ### Per-line summary CSV (implemented)
 
-One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20, max_gap_bp, max_gap_cm, token_profile, crop` (one wide column per chromosome in display order). `max_gap_bp` and `max_gap_cm` are the resolved RPP coverage caps (`maxGapBp` and `maxGapCm` above, or the CLI's `--max-gap-bp` and `--max-gap-cm`) the weighted estimators were computed with, the same value on every row and written as given (`2000000`, `10`), so a change of cap is visible in the file (docs/adr/0028). Other numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
+One row per candidate. Columns: `sample_id, call_set_db_id, sample_db_id, n_informative, n_called, n_rp_hom, n_donor_hom, n_het, n_missing, n_nonparental, rpp_count, rpp_bp, rpp_cm, rpp_count_Gm01 ... rpp_count_Gm20, max_marker_coverage_bp, max_marker_coverage_cm, token_profile, crop` (one wide column per chromosome in display order). `max_marker_coverage_bp` and `max_marker_coverage_cm` are the resolved RPP coverage caps (`maxMarkerCoverageBp` and `maxMarkerCoverageCm` above, or the CLI's `--max-marker-coverage-bp` and `--max-marker-coverage-cm`) the weighted estimators were computed with, the same value on every row and written as given (`2000000`, `10`), so a change of cap is visible in the file (docs/adr/0028). Other numbers are written with six decimals; NaN is written as `NA` so `readr::read_csv` reads it as missing.
 
 ### QC CSV (implemented)
 

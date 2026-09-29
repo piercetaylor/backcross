@@ -28,7 +28,10 @@
 import { CallClass } from './types.ts';
 import type { Classification, Dataset, LineRpp, RppByChromosome, RppParams } from './types.ts';
 
-export const DEFAULT_RPP_PARAMS: RppParams = { maxGapBp: 2_000_000, maxGapCm: 10 };
+export const DEFAULT_RPP_PARAMS: RppParams = {
+  maxMarkerCoverageBp: 2_000_000,
+  maxMarkerCoverageCm: 10,
+};
 
 const SCORE: Record<number, number> = {
   [CallClass.RP_HOM]: 1,
@@ -99,8 +102,8 @@ export function computeRpp(
 ): LineRpp[] {
   const { markers, chromosomeOrder, chromIndex, sortedMarkerOrder, genotypes } = dataset;
   const nMarkers = cls.nMarkers;
-  const capBp = params.maxGapBp / 2;
-  const capCm = params.maxGapCm / 2;
+  const capBp = params.maxMarkerCoverageBp / 2;
+  const capCm = params.maxMarkerCoverageCm / 2;
   const hasCm = markers.cm !== undefined;
 
   // Per chromosome, the sorted marker indices (computed once, reused per line).

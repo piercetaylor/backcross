@@ -57,12 +57,12 @@ read_summary <- function(path) {
     rpp_count = col_double(),
     rpp_bp = col_double(),
     rpp_cm = col_double(),
-    max_gap_bp = col_double(),
-    max_gap_cm = col_double(),
+    max_marker_coverage_bp = col_double(),
+    max_marker_coverage_cm = col_double(),
     token_profile = col_character(),
     crop = col_character(),
     # Per-chromosome rpp_count_<chrom> columns fall between rpp_cm and
-    # max_gap_bp (docs/data-formats.md, "Per-line summary CSV"); read by
+    # max_marker_coverage_bp (docs/data-formats.md, "Per-line summary CSV"); read by
     # guess, then checked below.
     .default = col_guess()
   )
@@ -72,7 +72,7 @@ read_summary <- function(path) {
   stop_on_character_numerics(df, path, c(
     "n_informative", "n_called", "n_rp_hom", "n_donor_hom", "n_het",
     "n_missing", "n_nonparental", "rpp_count", "rpp_bp", "rpp_cm",
-    "max_gap_bp", "max_gap_cm", dynamic_cols
+    "max_marker_coverage_bp", "max_marker_coverage_cm", dynamic_cols
   ))
   df
 }

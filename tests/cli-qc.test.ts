@@ -55,8 +55,8 @@ describe('cli qc', () => {
   });
 
   it('exits 2 when a foreign option is given', () => {
-    const res = runQc(['--max-gap-bp', '1']);
+    const res = runQc(['--max-marker-coverage-bp', '1']);
     expect(res.status).toBe(2);
-    expect(res.stderr).toContain('qc: option(s) not accepted here: --max-gap-bp');
+    expect(res.stderr).toContain('qc: option(s) not accepted here: --max-marker-coverage-bp');
   });
 });

@@ -469,18 +469,22 @@ export function UploadScreen({
       )}
 
       <fieldset>
-        <legend>RPP coverage cap</legend>
+        <legend>RPP maximum marker coverage</legend>
         <NumberField
           label="Maximum marker coverage (bp)"
-          value={params.rpp.maxGapBp}
+          value={params.rpp.maxMarkerCoverageBp}
           disabled={busy}
-          onChange={(v) => onParamsChange({ ...params, rpp: { ...params.rpp, maxGapBp: v } })}
+          onChange={(v) =>
+            onParamsChange({ ...params, rpp: { ...params.rpp, maxMarkerCoverageBp: v } })
+          }
         />
         <NumberField
           label="Maximum marker coverage (cM)"
-          value={params.rpp.maxGapCm}
+          value={params.rpp.maxMarkerCoverageCm}
           disabled={busy}
-          onChange={(v) => onParamsChange({ ...params, rpp: { ...params.rpp, maxGapCm: v } })}
+          onChange={(v) =>
+            onParamsChange({ ...params, rpp: { ...params.rpp, maxMarkerCoverageCm: v } })
+          }
         />
       </fieldset>
 

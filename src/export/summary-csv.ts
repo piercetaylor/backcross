@@ -7,7 +7,7 @@
  * directly in R (`readr::read_csv`) without reshaping. Numeric NaN is written
  * as NA. `call_set_db_id` and `sample_db_id` follow `sample_id`
  * (sample-ids.ts); they are empty for a file-loaded dataset. After the
- * per-chromosome columns, `max_gap_bp` and `max_gap_cm` record the resolved
+ * per-chromosome columns, `max_marker_coverage_bp` and `max_marker_coverage_cm` record the resolved
  * RPP coverage caps the weighted estimators were computed with (docs/adr/0028),
  * written as given rather than to six decimals. The provenance columns
  * (provenance.ts, `token_profile`) are appended last.
@@ -47,8 +47,8 @@ export function lineSummaryCsv(
     'rpp_bp',
     'rpp_cm',
     ...chromosomeOrder.map((c) => `rpp_count_${c}`),
-    'max_gap_bp',
-    'max_gap_cm',
+    'max_marker_coverage_bp',
+    'max_marker_coverage_cm',
     ...provenanceHeader(provenance),
   ];
   const rows = lines.map((l) => {
@@ -71,8 +71,8 @@ export function lineSummaryCsv(
       num(o.rppBp),
       num(o.rppCm),
       ...perChrom,
-      String(rppParams.maxGapBp),
-      String(rppParams.maxGapCm),
+      String(rppParams.maxMarkerCoverageBp),
+      String(rppParams.maxMarkerCoverageCm),
       ...provenanceCells(provenance),
     ].join(',');
   });

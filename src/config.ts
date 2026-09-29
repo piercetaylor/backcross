@@ -28,8 +28,14 @@ function num(key: string, fallback: number): number {
 export const config: Readonly<AppConfig> = Object.freeze({
   basePath: import.meta.env.BASE_URL,
   rpp: {
-    maxGapBp: num('VITE_DEFAULT_MAX_GAP_BP', DEFAULT_RPP_PARAMS.maxGapBp),
-    maxGapCm: num('VITE_DEFAULT_MAX_GAP_CM', DEFAULT_RPP_PARAMS.maxGapCm),
+    maxMarkerCoverageBp: num(
+      'VITE_DEFAULT_MAX_MARKER_COVERAGE_BP',
+      DEFAULT_RPP_PARAMS.maxMarkerCoverageBp,
+    ),
+    maxMarkerCoverageCm: num(
+      'VITE_DEFAULT_MAX_MARKER_COVERAGE_CM',
+      DEFAULT_RPP_PARAMS.maxMarkerCoverageCm,
+    ),
   },
   segments: {
     minMarkers: num('VITE_DEFAULT_MIN_SEGMENT_MARKERS', DEFAULT_SEGMENT_PARAMS.minMarkers),

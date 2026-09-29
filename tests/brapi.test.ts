@@ -780,7 +780,7 @@ describe('review fixes', () => {
   it('writes non-empty call_set_db_id and sample_db_id into an export of a BrAPI-loaded dataset', async () => {
     const { dataset } = await loadBrapi('pos', true);
     const cls = classifyDataset(dataset);
-    const params = { maxGapBp: 2_000_000, maxGapCm: 10 };
+    const params = { maxMarkerCoverageBp: 2_000_000, maxMarkerCoverageCm: 10 };
     const rpp = computeRpp(dataset, cls, params);
     const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, params, {
       tokenProfile: 'default',

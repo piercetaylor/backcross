@@ -113,7 +113,7 @@ describe('computeRpp chromosome ends, end to end', () => {
   it('(g) cM 0.0 and 5.0, cap 10 cM: rppCm 0.5 (was 0.25); rppBp keeps the bp rule', () => {
     const dataset = oneChromDataset([500_000, 1_500_000], [0, 5], ['RP', 'DONOR']);
     const cls = classifyDataset(dataset);
-    const params = { ...DEFAULT_RPP_PARAMS, maxGapCm: 10 };
+    const params = { ...DEFAULT_RPP_PARAMS, maxMarkerCoverageCm: 10 };
     const [line] = computeRpp(dataset, cls, params);
     expect(line?.sampleId).toBe('CAND0');
     expect(line?.overall.nRpHom).toBe(1);
@@ -131,7 +131,7 @@ describe('computeRpp chromosome ends, end to end', () => {
     // cM [0, 2, 7] and bp [0, 2, 7] with both caps 10 (c/2 = 5); the marker at 0 is MISSING.
     const dataset = oneChromDataset([0, 2, 7], [0, 2, 7], ['MISSING', 'RP', 'DONOR']);
     const cls = classifyDataset(dataset);
-    const [line] = computeRpp(dataset, cls, { maxGapBp: 10, maxGapCm: 10 });
+    const [line] = computeRpp(dataset, cls, { maxMarkerCoverageBp: 10, maxMarkerCoverageCm: 10 });
     expect(line?.nMissing).toBe(1);
     expect(line?.overall.nCalled).toBe(2);
     // cM: RP at 2 weighs 5 + 2.5, DONOR at 7 weighs 2.5 + 5: 7.5 / 15.
@@ -143,7 +143,7 @@ describe('computeRpp chromosome ends, end to end', () => {
   it('(i) HET at a terminal marker: cM 0.0 and 5.0, cap 10, weights 7.5 and 7.5, rppCm 0.75', () => {
     const dataset = oneChromDataset([500_000, 1_500_000], [0, 5], ['HET', 'RP']);
     const cls = classifyDataset(dataset);
-    const [line] = computeRpp(dataset, cls, { ...DEFAULT_RPP_PARAMS, maxGapCm: 10 });
+    const [line] = computeRpp(dataset, cls, { ...DEFAULT_RPP_PARAMS, maxMarkerCoverageCm: 10 });
     expect(line?.overall.nHet).toBe(1);
     // (0.5 * 7.5 + 1 * 7.5) / 15.
     expect(line?.overall.rppCm).toBeCloseTo(0.75, 12);

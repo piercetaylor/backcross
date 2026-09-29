@@ -694,8 +694,8 @@
   }
  },
  "params": {
-  "maxGapBp": 2000000,
-  "maxGapCm": 10
+  "maxMarkerCoverageBp": 2000000,
+  "maxMarkerCoverageCm": 10
  },
  "segmentParams": {
   "minMarkers": 2,

@@ -158,8 +158,12 @@ describe('buildHtmlReport', () => {
 
   it('states the RPP coverage cap and the segment gap value and criterion', () => {
     const html = buildHtmlReport(baseInput);
-    expect(html).toContain(`<dt>RPP coverage cap (bp)</dt><dd>${expected.params.maxGapBp}</dd>`);
-    expect(html).toContain(`<dt>RPP coverage cap (cM)</dt><dd>${expected.params.maxGapCm}</dd>`);
+    expect(html).toContain(
+      `<dt>RPP maximum marker coverage (bp)</dt><dd>${expected.params.maxMarkerCoverageBp}</dd>`,
+    );
+    expect(html).toContain(
+      `<dt>RPP maximum marker coverage (cM)</dt><dd>${expected.params.maxMarkerCoverageCm}</dd>`,
+    );
     expect(html).toContain(
       `<dt>Segment maximum gap (cM)</dt><dd>${expected.segmentParams.maxSegmentGapCm}</dd>`,
     );

@@ -109,12 +109,18 @@ describe('VCF fixture end to end', () => {
     const lines = csv.trim().split('\n');
     expect(lines).toHaveLength(CANDIDATES.length + 1);
     expect(lines[0]?.startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,')).toBe(true);
-    expect(lines[0]?.endsWith('rpp_count_Gm20,max_gap_bp,max_gap_cm,token_profile')).toBe(true);
+    expect(
+      lines[0]?.endsWith(
+        'rpp_count_Gm20,max_marker_coverage_bp,max_marker_coverage_cm,token_profile',
+      ),
+    ).toBe(true);
     // The resolved coverage caps are written as given, before the provenance column.
     for (const row of lines.slice(1)) {
-      expect(row.endsWith(`,${expected.params.maxGapBp},${expected.params.maxGapCm},default`)).toBe(
-        true,
-      );
+      expect(
+        row.endsWith(
+          `,${expected.params.maxMarkerCoverageBp},${expected.params.maxMarkerCoverageCm},default`,
+        ),
+      ).toBe(true);
     }
   });
 });

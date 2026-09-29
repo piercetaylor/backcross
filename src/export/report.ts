@@ -240,8 +240,8 @@ browser and is not included in this file except as the summary figures and image
       ? 'Donor runs were broken on genetic distance because a genetic map was supplied; any step touching a marker without a cM value was tested on physical distance instead.'
       : 'Donor runs were broken on physical distance because no genetic map was supplied.';
   const paramPairs: [string, string][] = [
-    ['RPP coverage cap (bp)', String(params.rpp.maxGapBp)],
-    ['RPP coverage cap (cM)', String(params.rpp.maxGapCm)],
+    ['RPP maximum marker coverage (bp)', String(params.rpp.maxMarkerCoverageBp)],
+    ['RPP maximum marker coverage (cM)', String(params.rpp.maxMarkerCoverageCm)],
     ['Segment minimum markers', String(params.segments.minMarkers)],
     ['Segment maximum gap (bp)', String(params.segments.maxSegmentGapBp)],
     ['Segment maximum gap (cM)', String(params.segments.maxSegmentGapCm)],
