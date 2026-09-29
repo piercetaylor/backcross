@@ -52,8 +52,8 @@
  * background) is now a rule in ui/base.css rather than an inline <style>
  * block here.
  *
- * Shell (M2.5 phase 5): a two-column grid, the rail and one content column
- * (ui/shell/shell.css). `railCollapsed` is null while the rail follows the
+ * Shell (M2.5 phase 5): a two-column grid: the skip link, the masthead, the
+ * rail and the content column, which ends in the footer (ui/shell/shell.css). `railCollapsed` is null while the rail follows the
  * screen -- collapsed on the genotype view, where horizontal room is the
  * scarce resource, expanded elsewhere -- and a user toggle pins a boolean
  * that wins for the rest of the session. Nothing here carries a colour or a
@@ -113,6 +113,8 @@ import type { Density } from './ui/lines/LineActionBar.tsx';
 import { EMPTY_LINE_FILTER, lineCounts, orderLineRows } from './ui/lines/line-order.ts';
 import type { LineFilter, LineSort } from './ui/lines/line-order.ts';
 import { buildLineRows } from './ui/lines/line-rows.ts';
+import { Footer } from './ui/shell/Footer.tsx';
+import { Masthead } from './ui/shell/Masthead.tsx';
 import { Rail } from './ui/shell/Rail.tsx';
 import type { Screen } from './ui/shell/Rail.tsx';
 import './ui/shell/shell.css';
@@ -502,6 +504,7 @@ export function App() {
       >
         Skip to main content
       </a>
+      <Masthead />
       <Rail
         screen={screen}
         loaded={loaded !== null}
@@ -604,6 +607,7 @@ export function App() {
             }
           />
         )}
+        <Footer />
       </main>
     </div>
   );

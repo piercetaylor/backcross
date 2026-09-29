@@ -12,7 +12,9 @@
 .app-shell {
   display: grid;
   grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 100vh;
+  background: var(--color-bg-subtle);
   transition: grid-template-columns var(--duration-1) var(--easing-1);
 }
 
@@ -26,8 +28,92 @@
   }
 }
 
+/* ---- Masthead ---- */
+
+/*
+ * The one dark chrome surface (docs/adr/0009, amended 2026-09-29): static,
+ * never sticky, spanning both grid columns. Its focus ring is parchment
+ * because the page's leaf-900 ring is invisible on soil.
+ */
+.masthead {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  min-height: var(--masthead-height);
+  padding: var(--space-2) var(--content-padding);
+  color: var(--color-text-on-dark);
+  background: var(--color-bg-masthead);
+}
+
+.masthead-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.masthead-mark {
+  flex: none;
+  width: var(--logo-size);
+  height: var(--logo-size);
+}
+
+.brand-mark-bar {
+  fill: currentColor;
+}
+
+.brand-mark-segment {
+  fill: currentColor;
+  fill-opacity: 0.4;
+}
+
+.masthead-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  color: inherit;
+}
+
+.masthead-version {
+  margin-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: var(--numeric);
+  color: var(--color-text-on-dark-muted);
+}
+
+.masthead-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-left: auto;
+}
+
+.masthead-links a {
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-on-dark);
+  text-decoration-color: var(--color-text-on-dark-muted);
+  text-underline-offset: var(--space-1);
+  border-radius: var(--radius-1);
+}
+
+.masthead-links a:hover {
+  background: var(--color-bg-masthead-hover);
+  text-decoration-color: currentColor;
+}
+
+.masthead :focus-visible {
+  outline-color: var(--color-focus-ring-on-dark);
+}
+
 /* ---- Rail ---- */
 
+/*
+ * One masthead shorter than the viewport, so a page that fits the viewport
+ * has no scrollbar; scrolled past the masthead the rail sticks at the top and
+ * the shell's background fills the strip beneath it.
+ */
 .rail {
   position: sticky;
   top: 0;
@@ -36,7 +122,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  height: 100vh;
+  height: calc(100vh - var(--masthead-height));
   padding: var(--content-padding);
   overflow: hidden;
   background: var(--color-bg-subtle);
@@ -45,30 +131,6 @@
 
 [data-rail='collapsed'] .rail {
   padding: var(--space-2);
-}
-
-.rail-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  white-space: nowrap;
-  color: var(--color-brand);
-}
-
-/* The wordmark's seed-and-leaf mark: decorative, hidden from assistive technology. */
-.rail-logo {
-  flex: none;
-  width: var(--logo-size);
-  height: var(--logo-size);
-}
-
-.rail-logo-leaf {
-  fill: var(--color-brand);
-}
-
-.rail-logo-seed {
-  fill: var(--color-accent);
 }
 
 .rail-steps {
@@ -166,13 +228,37 @@
 /* ---- Content column ---- */
 
 .app-main {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   padding: var(--content-padding);
+  background: var(--color-bg);
 }
 
 .app-main:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
   outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/* ---- Footer ---- */
+
+/* Pushed to the foot of the content column; prints, because the citation belongs on paper. */
+.app-foot {
+  max-width: var(--measure-prose);
+  margin-top: auto;
+  padding-top: var(--space-5);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--color-text-tertiary);
+  border-top: var(--border-1) solid var(--color-border-subtle);
+}
+
+.app-foot p {
+  margin: var(--space-5) 0 0;
+}
+
+.app-foot p + p {
+  margin-top: var(--space-1);
 }
 
 /* ---- Print ---- */
@@ -187,6 +273,11 @@
   .app-shell,
   .app-shell[data-rail='collapsed'] {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .masthead {
+    display: none;
   }
 
   .rail {

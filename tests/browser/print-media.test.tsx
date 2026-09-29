@@ -47,6 +47,8 @@ describe('print media', () => {
     await printMedia();
 
     expect(display('.rail')).toBe('none');
+    expect(display('.masthead')).toBe('none');
+    expect(display('.app-foot')).not.toBe('none');
     expect(display('.skip-link')).toBe('none');
     expect(display('.line-action-bar')).toBe('none');
 
@@ -57,6 +59,7 @@ describe('print media', () => {
     expect(columns()).toBe(1);
     shell.setAttribute('data-rail', 'collapsed');
     expect(columns()).toBe(1);
+    expect(getComputedStyle(shell).gridTemplateRows.split(/\s+/).length).toBe(1);
 
     const viewport = document.querySelector('.lines-table-viewport')!;
     const viewportStyle = getComputedStyle(viewport);

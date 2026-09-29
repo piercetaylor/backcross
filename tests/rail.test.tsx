@@ -68,9 +68,12 @@ describe('rail before a dataset is loaded', () => {
     expect(html).toContain('aria-label="Steps"');
   });
 
-  it('carries the heading and the privacy sentence', () => {
-    expect(html).toContain('Backcross');
+  it('carries the privacy sentence', () => {
     expect(html).toContain('Files are processed in this browser tab and never uploaded.');
+  });
+
+  it('carries no heading; the masthead owns the h1', () => {
+    expect(html).not.toContain('<h1');
   });
 });
 
@@ -106,9 +109,12 @@ describe('collapsed rail', () => {
     expect(html).not.toContain('>4. Graphical genotypes</button>');
   });
 
-  it('hides the heading and the privacy sentence from sight but keeps them', () => {
-    expect(html).toContain('Backcross');
-    expect(count(html, 'visually-hidden')).toBeGreaterThanOrEqual(2);
+  it('hides the privacy sentence from sight but keeps it', () => {
+    expect(count(html, 'visually-hidden')).toBeGreaterThanOrEqual(1);
+  });
+
+  it('carries no heading; the masthead owns the h1', () => {
+    expect(html).not.toContain('<h1');
   });
 
   it('offers to expand, and says it is collapsed', () => {
