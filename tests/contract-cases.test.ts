@@ -256,5 +256,15 @@ describe('contract integrity', () => {
       'utf8',
     );
     expect(formats).toContain(`version ${VERSION}`);
+    const coding = readFileSync(join(import.meta.dirname, '..', 'docs', 'input-coding.md'), 'utf8');
+    expect(coding).toContain(`under contract ${VERSION}`);
+  });
+
+  it('the ADR that CLAUDE.md names as the most recent exists', () => {
+    const adr = readFileSync(
+      join(import.meta.dirname, '..', 'docs', 'adr', '0030-first-release.md'),
+      'utf8',
+    );
+    expect(adr.length).toBeGreaterThan(0);
   });
 });

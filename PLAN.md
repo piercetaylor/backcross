@@ -84,37 +84,71 @@ backcross/
 ├── README.md                    what it does, quickstart, status
 ├── CHANGELOG.md                 Keep a Changelog, 0.1.0 unreleased
 ├── CONTRIBUTING.md              conventions: Conventional Commits, SemVer, MADR
+├── CITATION.cff                 citation metadata (phase 8)
+├── CODE_OF_CONDUCT.md           community conduct
+├── SECURITY.md                  how to report a vulnerability
+├── CLAUDE.md                    working notes for the maintainer's sessions
 ├── LICENSE                      MIT
 ├── package.json / package-lock.json
 ├── tsconfig.json                strict TS, erasableSyntaxOnly (Node can run .ts directly)
 ├── vite.config.ts               base path from VITE_BASE_PATH; vitest config
 ├── eslint.config.js / .prettierrc.json / .prettierignore / .editorconfig
+├── eslint/                      ui-literal-selectors.json, the no-literal rule for src/ui
+├── .gitattributes               pins LF so regenerated fixtures match
 ├── .env.example                 twelve-factor build-time config
 ├── .gitignore                   node_modules, dist, user genotype files
 ├── index.html                   Vite entry
-├── .github/workflows/ci.yml     lint, typecheck, test, build; Pages deploy on main
+├── public/                      favicon.svg
+├── .github/workflows/ci.yml     jobs check, browser, r-reader, deploy
+├── .github/workflows/release.yml  tag-triggered release (phase 9)
+├── contract/                    the shared input data contract, mirrored into progeny-selector
+│   ├── data-contract.md, VERSION, README.md, MANIFEST.sha256
+│   └── cases/, profiles/, crops/   generated cases, token profiles, crop chromosome schemes
 ├── docs/
-│   ├── data-formats.md          input and output file contracts
+│   ├── README.md                docs index (phase 10)
+│   ├── user-guide.md            guide for breeders (phase 10)
+│   ├── data-formats.md          parameters and output file contracts
+│   ├── input-coding.md          what each genotype format accepts and rejects
+│   ├── design-brief.md, design-survey.md   interface brief and survey
 │   ├── reference-repos.md       fetched repositories, licences, what was borrowed
+│   ├── legacy-readme.md         the pre-rename README
+│   ├── m*-phases.md, contract-*.md, handoff-*.md   phase specs and handoffs
+│   ├── research/                research notes
 │   └── adr/NNNN-*.md            MADR decisions
-├── scripts/make-fixture.mjs     deterministic synthetic fixture generator
+├── scripts/
+│   ├── make-fixture.mjs         deterministic synthetic fixture generator
+│   ├── make-contract.mjs        generates contract/cases and the manifest
+│   ├── check-contract-mirror.mjs  local gate: mirror identical with progeny-selector
+│   ├── check-bundle.mjs / check-bundle.d.mts  byte limits on the build's chunks
+│   ├── lighthouse-a11y.mjs      Lighthouse accessibility audit of the built landing page
+│   ├── brapi-record.mjs         records BrAPI responses for the fixtures
+│   ├── read_exports.R           reads the CLI tables with readr under explicit types
+│   ├── build-cli.mjs            esbuild single-file CLI bundle (phase 5)
+│   ├── git-commit.mjs           tool_commit for the provenance stamp (phase 5)
+│   ├── changelog-section.mjs    extracts a CHANGELOG section for release notes (phase 3)
+│   └── smoke-dist.mjs           smoke test of the built site (phase 9)
 ├── src/
 │   ├── main.tsx / App.tsx       React entry and six-screen shell
 │   ├── config.ts                the only reader of import.meta.env
-│   ├── cli.ts                   node src/cli.ts summarize ...
-│   ├── core/                    pure: types, chromosomes, classify, rpp, segments, targets, compare, qc, palette
-│   ├── io/                      boundary: csv, decompress, vcf, hapmap, wide-csv, manifest, markers, builder, loaders
-│   ├── workers/                 protocol.ts, analysis.worker.ts
-│   ├── export/                  summary-csv, segments-csv, report
-│   └── ui/                      screens/*.tsx, canvas/GraphicalGenotypeRenderer.ts
+│   ├── cli.ts                   node src/cli.ts <summarize|segments|targets|compare|discordant|qc> ...
+│   ├── build-info.ts            build-time version and commit (phase 5)
+│   ├── contract-version.ts      the contract version the tool implements (phase 7)
+│   ├── core/                    pure: types, chromosomes, classify, rpp, segments, targets, compare, qc, palette, contrast
+│   ├── io/                      boundary: csv, decompress, stream, utf8, vcf, hapmap, wide-csv, manifest, markers, position, crops, profiles, calls, brapi, builder, loaders
+│   ├── workers/                 protocol.ts, client.ts, analysis.worker.ts
+│   ├── export/                  summary-csv, segments-csv, targets-csv, pairwise-csv, qc-csv, callsets-csv, csv-field, sample-ids, provenance, report
+│   └── ui/                      screens/, shell/, lines/, canvas/, tokens.css, demo.ts, download.ts
 └── tests/
-    ├── helpers.ts, smoke/contracts/qc/segments/targets/fixture-*.test.ts
-    └── fixtures/synthetic/      genotypes.vcf, .hmp.txt, _wide.csv, _coded.csv, samples.csv, markers.csv, expected.json
+    ├── *.test.ts, *.test.tsx    node tests (vitest, no browser)
+    ├── browser/                 browser-mode tests, Chromium and Firefox
+    ├── bench/                   the 50K x 200 load
+    ├── support/                 harnesses and helpers for the browser tests
+    └── fixtures/                synthetic/ (genotypes in four formats, samples.csv, markers.csv, expected.json) and brapi/
 ```
 
 ## Testing and CI
 
-Unit and smoke tests run under vitest in Node (no browser needed): tests/smoke.test.ts parses the synthetic fixture in all four formats (VCF, gzipped VCF, HapMap, wide nucleotide and coded CSV), classifies six planted NILs and checks class counts and count-, bp- and cM-weighted RPP against expected.json to 12 decimal places; tests/contracts.test.ts covers manifest rules, chromosome normalisation, delimited-text parsing and VCF edge cases; tests/segments.test.ts, tests/targets.test.ts and tests/qc.test.ts are hand-built edge cases; tests/fixture-segments.test.ts and tests/fixture-targets.test.ts check the fixture against expected.json, whose segments come from a second implementation of the rule inside the generator (docs/adr/0008). The fixture is regenerated by `npm run fixture` from a seeded generator whose expected values are computed with an independent, simpler implementation of the same formulas. CI (.github/workflows/ci.yml) runs `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` on Node 22 for every push and pull request, regenerates the fixture and fails if it differs from the committed files, and deploys the build to GitHub Pages on pushes to main when Pages is enabled. Later milestones add a browser-mode vitest run for the canvas renderer and a Playwright smoke run of the six screens.
+Unit and smoke tests run under vitest in Node (no browser needed): tests/smoke.test.ts parses the synthetic fixture in all four formats (VCF, gzipped VCF, HapMap, wide nucleotide and coded CSV), classifies six planted NILs and checks class counts and count-, bp- and cM-weighted RPP against expected.json to 12 decimal places; tests/contracts.test.ts covers manifest rules, chromosome normalisation, delimited-text parsing and VCF edge cases; tests/segments.test.ts, tests/targets.test.ts and tests/qc.test.ts are hand-built edge cases; tests/fixture-segments.test.ts and tests/fixture-targets.test.ts check the fixture against expected.json, whose segments come from a second implementation of the rule inside the generator (docs/adr/0008). The fixture is regenerated by `npm run fixture` from a seeded generator whose expected values are computed with an independent, simpler implementation of the same formulas. CI (.github/workflows/ci.yml) runs `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` on Node 22 for every push and pull request, regenerates the fixture and fails if it differs from the committed files, and deploys the build to GitHub Pages on pushes to main when Pages is enabled. Since M3 the `browser` job runs the browser-mode tests, the 50K x 200 bench and Lighthouse in Chromium and Firefox (docs/adr/0011); the `r-reader` job generates the six CLI tables from the fixture and reads them back with readr under explicit column types (`scripts/read_exports.R`); `npm run contract` regenerates the shared contract cases and CI fails on any diff (docs/adr/0013).
 
 ## Deployment and cost
 
@@ -133,6 +167,8 @@ M2.5 interface (complete, 2026-09-11): replace the inline-styled screens with a 
 M3 hardened (complete, 2026-09-15): streaming parse of bgzipped VCF in the worker to keep memory under twice the file size; BrAPI allele-matrix loader; browser-mode tests for the renderer; accessibility review (focus order, contrast, non-colour cues); versioned data-contract document shared with progeny-selector. Acceptance: 50K × 200 lines load and draw correctly within the memory bound, in under 30 s on the maintainer's laptop (reframed 2026-09-12 as a scale test; CI records the time against a hang guard, see docs/m3-phases.md Q5); Lighthouse accessibility score above 90; contract tests shared with the sibling repository pass on both.
 
 M4 scale and reach (complete, 2026-09-22): the five items the M3 block deferred, taken as six phases in docs/m4-phases.md. The graphical genotype view is virtualised, so the canvas, the label gutter and the overview draw the rows in view rather than all of them; the gutter buttons meet WCAG 2.2 SC 2.5.8 target size; the build splits vendor chunks behind a byte-limit check inside `npm run build` (docs/adr/0016); and the shared contract went to 1.3.0 (blank lines and `#` rows, docs/adr/0018), 1.4.0 (named token profiles, docs/adr/0019) and 1.5.0 (crop chromosome schemes for soybean and eight other crops, docs/adr/0020), each mirrored into progeny-selector. Acceptance as measured, in the M4 verification block below: first draw of 50,000 markers by 200 lines falls from M3's 10.5 s to 4.9 s in Chromium and from 8.5 s to 6.2 s in Firefox, both far inside the 30 s budget, while the Chromium memory delta falls from 1.67 x to 1.33 x of the inflated file and the accounting figure holds at 1.57 x, which is what virtualisation predicts since the worker still owns the matrix; `npm run contract` generates 68 cases at 1.5.0 and `scripts/check-contract-mirror.mjs` finds 245 files identical with progeny-selector; Lighthouse scores accessibility 100 and the axe suite is green in both browsers with `KNOWN_A11Y_EXCEPTIONS` empty. Not measured: any genotype file from a real breeding programme in any of the nine crops, so the crop schemes are verified against their published nomenclature and not against a programme's spelling of it.
+
+M5 first public release (in progress, docs/m5-phases.md): the documentation brought to the truth of the code; the cM chromosome-end rule (docs/adr/0028, amended); CHANGELOG in Keep a Changelog form; community and hygiene files; a single-file CLI bundle built by esbuild and attached to every release; the RPP coverage cap renamed `max_marker_coverage`; a provenance stamp (`tool`, `tool_version`, `tool_commit`) in every analysis CSV and the report; CITATION.cff; a tag-triggered release workflow producing a site zip that serves from any static folder; a user guide and docs index; and CI hardening. Every decision is in docs/adr/0030. Acceptance: `v0.1.0` tagged by the maintainer after review, the release workflow green, the zip's site loading the demo from a nested static path, the CLI bundle reproducing `node src/cli.ts` byte for byte on the fixture, `cffconvert --validate` passing, readr reading all six tables with the three provenance columns, and the M5 verification block recording the bench, Lighthouse and CI figures.
 
 ## Risks and open questions
 
@@ -350,7 +386,7 @@ Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://
 
 **Test mechanics worth knowing.** The browser project now runs its files one at a time (`fileParallelism: false`): `focus-order`, `focus-not-obscured` and `lines-grid-keyboard` each take Firefox window focus back with `bringToFront`, and side by side they failed every full run by taking it from each other. `commands.emulateMedia(null)` throws in vitest 5.0.0, whose command layer treats any object argument as a locator, so the print test restores with `'screen'`. In Firefox, tabbing off the end of a screen with no controls drops `document.hasFocus()` for good, so the walk-through re-enters each screen with a real click on the rail toggle. At 40 rows the Lines scroll container becomes a tab stop of its own before the grid. On Windows, chrome-launcher 1.2.1 fails with EPERM removing its profile directory after every audit; the Lighthouse script catches that cleanup error so the exit code reflects the score.
 
-**Not verified.** Screen readers (no assistive technology in the environment; in particular whether a browse-mode user can reach the canvas keys); paper output (print media is emulated, not printed); Lighthouse on any screen that needs a dataset (it cannot load files; axe covers those); Safari; a real SoySNP50K or BARCSoySNP6K file; `readr` on the browser-only CSVs; the Lighthouse script's exit code on CI's Linux runner, which has not run yet.
+**Not verified.** Screen readers (no assistive technology in the environment; in particular whether a browse-mode user can reach the canvas keys); paper output (print media is emulated, not printed); Lighthouse on any screen that needs a dataset (it cannot load files; axe covers those); Safari; a real SoySNP50K or BARCSoySNP6K file; `readr` on the browser-only CSVs (closed 2026-09-27 for the pairwise, discordant and QC tables, which the CLI now writes and the r-reader job reads; `brapi-callsets.csv` remains browser-only and unread by readr); the Lighthouse script's exit code on CI's Linux runner, which has not run yet.
 
 ### M4 run, 2026-09-22
 
@@ -398,7 +434,7 @@ Lighthouse 13.4.1 accessibility: 100 / 100 (HeadlessChrome 153.0.0.0) on http://
 
 **Test mechanics worth knowing.** `npm run test:bench` prints nothing under vitest 5.0.0's default reporter: the figures this block quotes need `npx vitest run --project bench --silent=false --reporter=verbose`. The test passes either way, so a run that reports "2 passed" and no numbers has not failed. Phase 6 reached review with five loaders and the worker untested, because every test used soybean, which is the default: under the fallback and under a correctly threaded scheme a soybean dataset behaves identically, so only a non-soybean end-to-end case discriminates (docs/m4-phases.md 8.7b). `68eed50` fixed a geometry assertion in `tests/browser/genotype-view.test.tsx` that measured before the rail had finished collapsing. M3's mechanics still hold: `fileParallelism: false` in the browser project, `CI=true` for headed Firefox focus, and chrome-launcher's EPERM on profile cleanup after every Lighthouse audit, which the script catches so the exit code reflects the score.
 
-**Not verified.** A real SoySNP50K, SoyBase, DArT, Axiom or KASP export read against the profile that claims it (the token profiles are asserted against synthetic files only); any genotype file from a real breeding programme in any of the nine crops, so the crop schemes are verified against their published nomenclature and not against a programme's spelling of it; paper output (print media is emulated, not printed); screen readers (no assistive technology in this environment); Safari; `readr` on the browser-only CSVs; Lighthouse on any screen that needs a dataset, which it cannot load (axe covers those).
+**Not verified.** A real SoySNP50K, SoyBase, DArT, Axiom or KASP export read against the profile that claims it (the token profiles are asserted against synthetic files only); any genotype file from a real breeding programme in any of the nine crops, so the crop schemes are verified against their published nomenclature and not against a programme's spelling of it; paper output (print media is emulated, not printed); screen readers (no assistive technology in this environment); Safari; `readr` on the browser-only CSVs (closed 2026-09-27 for the pairwise, discordant and QC tables, which the CLI now writes and the r-reader job reads; `brapi-callsets.csv` remains browser-only and unread by readr); Lighthouse on any screen that needs a dataset, which it cannot load (axe covers those).
 
 Deferred past M4, in rough order of value: sunflower, whose chromosome nomenclature the phase 6 research found ambiguous (docs/m4-phases.md D6.3), shipped as contract 1.9.0 once its two assemblies' numberings were shown to agree (docs/adr/0024; cowpea, pea and peanut, deferred with it, shipped as contract 1.7.0, docs/adr/0022); the pair of two missing characters left open by contract 1.6.0, shipped as contract 1.8.0 (docs/adr/0023); and the maintainer's question on the crop palette's leaf green and wheat gold against two Okabe-Ito colours, closed on 2026-09-26 with no change because neither colour is a class colour (docs/adr/0017, dated amendment).
 
@@ -406,6 +442,39 @@ Deferred past M4, in rough order of value: sunflower, whose chromosome nomenclat
 
 The backcross CLI was run on the real SoySNP50K Clark x PI86024 NILs that progeny-selector's M2 verification used: its gitignored `data/nils/Clark_x_PI86024/` holds 41,358 markers x 10 samples, with recurrent parent PI548533 and 8 NILs. The CLI output went to a scratch directory, and nothing from the dataset is committed here. `summarize` took 0.73 s.
 
-The two tools agree where they share a definition. Both count 14,538 informative markers, and each NIL's `rpp_count` equals progeny-selector's `frac_a` to six decimals for all eight lines (for example PI547472, 0.948961 in both); the donor fraction agrees to the sixth decimal's rounding. The bp-weighted estimate differs, as the two definitions predict: backcross's `rpp_bp` at its default 2 Mb coverage cap is up to 0.0027 away from progeny-selector's `rpp_total`, and at `--max-gap-bp 4000000`, progeny-selector's default cap, the largest difference falls to 0.0016 (PI547461), with signs in both directions. The rest is the chromosome ends. progeny-selector weights the last marker of each chromosome to the chromosome's length on the chosen assembly, while backcross's `computeRpp` is called without lengths by both the worker and the CLI, so the last marker reaches a half-cap past its position (src/core/rpp.ts, "the last marker reaches to the chromosome end when a length is known, else the cap"). The two tools are each consistent and differ by design at the chromosome ends, not by a defect; the different coverage-cap defaults are a separate difference that both cite Flapjack for.
+The two tools agree where they share a definition. Both count 14,538 informative markers, and each NIL's `rpp_count` equals progeny-selector's `frac_a` to six decimals for all eight lines (for example PI547472, 0.948961 in both); the donor fraction agrees to the sixth decimal's rounding. The bp-weighted estimate differs, as the two definitions predict: backcross's `rpp_bp` at its default 2 Mb coverage cap is up to 0.0027 away from progeny-selector's `rpp_total`, and at `--max-gap-bp 4000000`, progeny-selector's default cap, the largest difference falls to 0.0016 (PI547461), with signs in both directions. The rest is the chromosome ends. progeny-selector weights the last marker of each chromosome to the chromosome's length on the chosen assembly, while backcross's `computeRpp` is called without lengths by both the worker and the CLI, so the last marker reaches a half-cap past its position (src/core/rpp.ts, "the last marker reaches to the chromosome end when a length is known, else the cap"). The two tools are each consistent and differ by design at the chromosome ends, not by a defect; the different coverage-cap defaults are a separate difference that both cite Flapjack for. (Resolved 2026-09-27, docs/adr/0028: both tools use the symmetric end rule and a 2 Mb bp default, so the remaining difference is the length source; the cM end rule was changed again in M5 phase 2, see the amendment.)
 
 This verifies the marker-count background estimate on a real programme export for one soybean population. It does not verify the token profiles against real exports, any other crop, or a segregating population.
+
+### 2026-09-27 work, recorded 2026-09-29
+
+Between the M4 block and the M5 audit the shared contract went to 1.10.0 (the VCF GT grammar, docs/adr/0025), 1.11.0 (UTF-8 text, 0026) and 1.12.0 (SoyBase / LIS Data Store names for soybean, 0027), each mirrored into progeny-selector. The CLI gained `compare`, `discordant` and `qc`; `qc.csv` is a documented output (0029). The per-line summary CSV records the resolved RPP coverage caps, and docs/adr/0028 fixes the chromosome-end rule and the 2 Mb bp default. The `r-reader` CI job reads all six CLI tables back with readr. Two questions were closed as no-ops: the palette question (ADR 0017's dated amendment records the measured distances) and the HapMap allele-table order divergence with progeny-selector, which changes no output. This block records the gates as run on 2026-09-29 on the same laptop (Node v24.13.1, npm 11.8.0, vitest 5.0.0), browser tests headless (`CI=true`).
+
+```
+$ npm test
+ Test Files  40 passed | 1 skipped (41)
+      Tests  925 passed | 2 skipped (927)
+
+$ CI=true npm run test:browser
+ Test Files  28 passed (28)
+      Tests  118 passed | 2 skipped (120)
+   Duration  175.07s
+
+$ npm run build
+dist/assets/index-yi1ICMBT.js                     98.05 kB │ gzip: 32.51 kB │ map:   450.71 kB
+dist/assets/vendor-react-BicOiEU0.js             189.65 kB │ gzip: 59.65 kB │ map:   841.29 kB
+dist/assets/vendor-CxYgM5os.js                   277.46 kB │ gzip: 84.27 kB │ map: 1,527.48 kB
+bundle: ok
+
+$ npm run fixture && npm run contract && git diff --exit-code -- tests/fixtures contract
+contract 1.12.0: 102 cases, 360 files, 141641 bytes
+(exit 0; no diff)
+
+$ node scripts/check-contract-mirror.mjs ../progeny-selector
+contract mirror: 361 files identical
+
+$ npm audit
+found 0 vulnerabilities
+```
+
+**Not verified.** A real SoySNP50K, SoyBase, DArT, Axiom or KASP export read against the profile that claims it (the token profiles are asserted against synthetic files only); any genotype file from a real breeding programme in any of the twelve non-soybean crops, so the crop schemes are verified against their published nomenclature and not against a programme's spelling of it; paper output (print media is emulated, not printed); screen readers (no assistive technology in this environment); Safari; `readr` on `brapi-callsets.csv`.

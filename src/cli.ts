@@ -1,5 +1,5 @@
 /**
- * Command-line entry point (Node >= 22.18, run as `node src/cli.ts`).
+ * Command-line entry point (Node >= 22.19, run as `node src/cli.ts`).
  *
  * Responsibility: run the same compute core outside the browser so results
  * can be scripted, regression-tested, or fed to Shiny dashboards without a

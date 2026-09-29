@@ -65,3 +65,7 @@ Amends ADR 0006 (its dated amendment of 2026-09-27 corrects the two sentences ab
 ## Flapjack's code, as fetched on 2026-09-27
 
 From https://raw.githubusercontent.com/cropgeeks/flapjack/master/src/jhi/flapjack/analysis/MabcAnalysis.java: the first marker takes `gap = Math.min(pos, maxMarkerCoverage)`, an interior marker `gap = Math.min(pos1 - prevPos, maxMarkerCoverage)` split between the two neighbours, and the last marker `gapEnd = Math.min(chrLength - marker.position(), maxMarkerCoverage)` with `chrLength = as.mapLength(viewIndex)`. From https://raw.githubusercontent.com/cropgeeks/flapjack/master/src/jhi/flapjack/data/ChromosomeMap.java, `sort()`: "If the length hasn't been set at import time, then we'll use the position of the last marker as the map's length" (`if (length == 0f && markers.size() > 0) length = markers.get(markers.size()-1).getPosition();`). From https://raw.githubusercontent.com/cropgeeks/flapjack/master/src/jhi/flapjack/gui/Prefs.java: `public static double mabcMaxMrkrCoverage = 10.0d;`. So Flapjack credits the first marker the full cap-bounded distance to position 0, and the last marker nothing unless the map declares a length: an asymmetry this project does not copy.
+
+## Amendment, 2026-09-29
+
+M5 is the first public release milestone (PLAN.md, docs/m5-phases.md). The assembly-length table that this record defers "to M5" (Decision Outcome, Revisit when) is deferred to a later milestone; the two mentions read accordingly.

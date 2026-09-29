@@ -25,10 +25,12 @@ Open the local address printed by Vite. For batch output, the synthetic fixture 
 node src/cli.ts summarize --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out summary.csv
 ```
 
-The `segments` and `targets` commands produce separate CSV files; `compare` and `discordant` write the pairwise comparison and discordant-marker CSVs for one pair of sample ids given as `--a` and `--b` (`--mode informative`, the default, or `all`); run `node src/cli.ts` for their options. `npm run build` creates a static site in `dist/`.
+The `segments`, `targets` and `qc` commands produce separate CSV files; `compare` and `discordant` write the pairwise comparison and discordant-marker CSVs for one pair of sample ids given as `--a` and `--b` (`--mode informative`, the default, or `all`). Every command takes `--crop ID` (one of the thirteen chromosome schemes, default `soybean`) and `--profile ID|FILE` (a token profile for HapMap and wide CSV, or a JSON file of the same shape); run `node src/cli.ts` for the full option list. `npm run build` creates a static site in `dist/`.
 
 ## Verification and documentation
 
 `npm test`, `npm run typecheck`, `npm run lint`, and `npm run test:browser` check the analysis and interface. The synthetic fixture has independently generated expected values; [the plan](PLAN.md) records measured performance and remaining verification limits. [Data formats and exports](docs/data-formats.md), [design decisions](docs/adr/), and the [archived README](docs/legacy-readme.md) provide detail.
 
 The software is available under the [MIT license](LICENSE). There is no associated paper; cite this repository with the commit or version used.
+
+Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md); vulnerabilities go through [SECURITY.md](SECURITY.md).
