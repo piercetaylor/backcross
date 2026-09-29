@@ -29,18 +29,18 @@ Typed in the UI or passed to the CLI as `name=Gm13:28,500,000-29,100,000` or `na
 
 ## Analysis parameters
 
-| parameter         | default    | source                                                                                                                                  |
-| ----------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| maxGapBp          | 2,000,000  | VITE_DEFAULT_MAX_GAP_BP; RPP coverage cap, the interval one marker represents (bp); used for bp-weighted RPP only                       |
-| maxGapCm          | 10         | VITE_DEFAULT_MAX_GAP_CM; the RPP coverage cap in cM                                                                                     |
-| maxSegmentGapBp   | 10,000,000 | VITE_DEFAULT_MAX_SEGMENT_GAP_BP; break a donor run when consecutive informative markers are farther apart than this; used without a map |
-| maxSegmentGapCm   | 10         | VITE_DEFAULT_MAX_SEGMENT_GAP_CM; the same test in cM, used whenever markers.csv supplies cM (docs/adr/0008)                             |
-| minSegmentMarkers | 2          | VITE_DEFAULT_MIN_SEGMENT_MARKERS                                                                                                        |
-| maxMissingSpan    | 3          | VITE_DEFAULT_MAX_MISSING_SPAN; skipped (missing or nonparental) informative markers allowed between two non-RP calls of one run         |
-| lineMissingMax    | 0.10       | VITE_QC_LINE_MISSING_MAX                                                                                                                |
-| lineHetMax        | 0.05       | VITE_QC_LINE_HET_MAX                                                                                                                    |
-| markerCallRateMin | 0.80       | VITE_QC_MARKER_CALLRATE_MIN                                                                                                             |
-| parentHetMax      | 0.02       | VITE_QC_PARENT_HET_MAX                                                                                                                  |
+| parameter         | default    | source                                                                                                                                                         |
+| ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| maxGapBp          | 2,000,000  | VITE_DEFAULT_MAX_GAP_BP; RPP coverage cap, the interval one marker represents (bp); used for bp-weighted RPP only                                              |
+| maxGapCm          | 10         | VITE_DEFAULT_MAX_GAP_CM; the RPP coverage cap in cM; at both ends of a chromosome a terminal marker is credited half the cap on its outer side (docs/adr/0028) |
+| maxSegmentGapBp   | 10,000,000 | VITE_DEFAULT_MAX_SEGMENT_GAP_BP; break a donor run when consecutive informative markers are farther apart than this; used without a map                        |
+| maxSegmentGapCm   | 10         | VITE_DEFAULT_MAX_SEGMENT_GAP_CM; the same test in cM, used whenever markers.csv supplies cM (docs/adr/0008)                                                    |
+| minSegmentMarkers | 2          | VITE_DEFAULT_MIN_SEGMENT_MARKERS                                                                                                                               |
+| maxMissingSpan    | 3          | VITE_DEFAULT_MAX_MISSING_SPAN; skipped (missing or nonparental) informative markers allowed between two non-RP calls of one run                                |
+| lineMissingMax    | 0.10       | VITE_QC_LINE_MISSING_MAX                                                                                                                                       |
+| lineHetMax        | 0.05       | VITE_QC_LINE_HET_MAX                                                                                                                                           |
+| markerCallRateMin | 0.80       | VITE_QC_MARKER_CALLRATE_MIN                                                                                                                                    |
+| parentHetMax      | 0.02       | VITE_QC_PARENT_HET_MAX                                                                                                                                         |
 
 ## Outputs
 

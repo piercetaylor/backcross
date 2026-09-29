@@ -15,8 +15,12 @@
  *
  * Weights follow the Flapjack MABC convention: each marker represents, on
  * each side, min(half the distance to the adjacent called marker, half the
- * maximum coverage). At a chromosome end the outer side is the distance to
- * the chromosome end when a length is supplied, otherwise the cap.
+ * maximum coverage c/2). At a chromosome end (docs/adr/0028, amended
+ * 2026-09-29): in bp the first marker's outer side is min(p, c/2), since the
+ * assembly origin is a chromosome end, and the last marker's is
+ * min(max(L - p, 0), c/2) when a length L is supplied, else c/2; in cM both
+ * terminal markers get c/2, since a linkage map's 0 cM is its first marker,
+ * not the telomere.
  *
  * Interface: computeRpp(dataset, classification, params, chromLengthsBp?)
  * -> LineRpp[] (one per candidate, same order as classification.candidateCols).
@@ -34,12 +38,17 @@ const SCORE: Record<number, number> = {
 
 /**
  * Distance-weighted mean of `scores` at sorted `positions`.
- * `cap` is half the maximum coverage. Returns [weightedSum, totalWeight].
+ * `cap` is half the maximum coverage. `originIsEnd` says whether coordinate 0
+ * is a chromosome end: true for bp (the first marker reaches back min(p, cap)),
+ * false for cM (a map's 0 cM is its first marker, so the first marker gets cap).
+ * The last marker reaches min(max(chromLength - p, 0), cap) when a length is
+ * given, else cap. Returns [weightedSum, totalWeight].
  */
 export function weightedSums(
   positions: number[],
   scores: number[],
   cap: number,
+  originIsEnd: boolean,
   chromLength?: number,
 ): [number, number] {
   const n = positions.length;
@@ -48,9 +57,15 @@ export function weightedSums(
   for (let i = 0; i < n; i++) {
     const p = positions[i] as number;
     // Left side: half the gap to the previous marker; the first marker reaches back to
-    // the chromosome start (coordinate 0). Right side: half the gap to the next marker;
-    // the last marker reaches to the chromosome end when a length is known, else the cap.
-    const left = i === 0 ? Math.min(p, cap) : Math.min((p - (positions[i - 1] as number)) / 2, cap);
+    // the chromosome start (coordinate 0) when that is a chromosome end (bp), else the cap
+    // (cM). Right side: half the gap to the next marker; the last marker reaches to the
+    // chromosome end when a length is known, else the cap.
+    const left =
+      i === 0
+        ? originIsEnd
+          ? Math.min(p, cap)
+          : cap
+        : Math.min((p - (positions[i - 1] as number)) / 2, cap);
     let right: number;
     if (i < n - 1) right = Math.min(((positions[i + 1] as number) - p) / 2, cap);
     else if (chromLength === undefined) right = cap;
@@ -148,12 +163,12 @@ export function computeRpp(
       }
       if (row.nCalled > 0) {
         row.rppCount = (row.nRpHom + 0.5 * row.nHet) / row.nCalled;
-        const [nb, db] = weightedSums(posBp, scores, capBp, chromLengthsBp?.get(chrom));
+        const [nb, db] = weightedSums(posBp, scores, capBp, true, chromLengthsBp?.get(chrom));
         row.rppBp = db > 0 ? nb / db : NaN;
         numBp += nb;
         denBp += db;
         if (hasCm) {
-          const [nc, dc] = weightedSums(posCm, scores, capCm);
+          const [nc, dc] = weightedSums(posCm, scores, capCm, false);
           row.rppCm = dc > 0 ? nc / dc : NaN;
           numCm += nc;
           denCm += dc;

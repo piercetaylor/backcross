@@ -136,13 +136,15 @@ plant('NIL_06', 'Gm12', 12, 25, 3);
 // ---- expected values --------------------------------------------------------
 const MAX_GAP_BP = 2_000_000;
 const MAX_GAP_CM = 10;
-function weighted(positions, scores, cap) {
+function weighted(positions, scores, cap, originIsEnd) {
   let num = 0;
   let den = 0;
   const n = positions.length;
   for (let i = 0; i < n; i++) {
     const p = positions[i];
-    const left = i === 0 ? Math.min(p, cap) : Math.min((p - positions[i - 1]) / 2, cap);
+    // Under cM (originIsEnd false) 0 cM is the first marker, not the telomere: cap.
+    const left =
+      i === 0 ? (originIsEnd ? Math.min(p, cap) : cap) : Math.min((p - positions[i - 1]) / 2, cap);
     const right = i === n - 1 ? cap : Math.min((positions[i + 1] - p) / 2, cap);
     const w = left + right;
     num += w * scores[i];
@@ -189,8 +191,8 @@ for (const s of candidates) {
         scores.push(SCORE[k]);
       }
     }
-    const [nb, db] = weighted(posBp, scores, MAX_GAP_BP / 2);
-    const [nc, dc] = weighted(posCm, scores, MAX_GAP_CM / 2);
+    const [nb, db] = weighted(posBp, scores, MAX_GAP_BP / 2, true);
+    const [nc, dc] = weighted(posCm, scores, MAX_GAP_CM / 2, false);
     numBp += nb;
     denBp += db;
     numCm += nc;

@@ -28,3 +28,5 @@ Two sentences above are wrong about Flapjack and are corrected here; the origina
 - Consequences: "comparable with Flapjack output on the same data" should read: interior weighting follows Flapjack; totals differ at chromosome ends by design.
 
 The 2 Mb default stands, as a soybean euchromatic translation of Flapjack's 10 cM and not a Flapjack value; users of other crops should set the cap (docs/adr/0028). The summary CSV now records the cap in `max_gap_bp` and `max_gap_cm`.
+
+Amendment, 2026-09-29: the cM end rule is restated in docs/adr/0028's amendment of the same date (both terminal markers get c/2 under cM).
