@@ -24,6 +24,7 @@ import { join, relative, sep } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { CONTRACT_VERSION } from '../src/contract-version.ts';
 import { assembleDataset, parseGenotypesBytes, parseGenotypesSource } from '../src/io/loaders.ts';
 import type { ParsedGenotypes } from '../src/io/builder.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
@@ -249,6 +250,7 @@ describe('contract integrity', () => {
 
   it('VERSION appears verbatim in data-contract.md and docs/data-formats.md', () => {
     expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(CONTRACT_VERSION).toBe(VERSION);
     const contractDoc = readFileSync(join(CONTRACT, 'data-contract.md'), 'utf8');
     expect(contractDoc).toContain(`Contract version: ${VERSION}\n`);
     const formats = readFileSync(

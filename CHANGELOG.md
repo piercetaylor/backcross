@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Every analysis CSV (summary, QC, segments, targets, pairwise, discordant markers) gains three trailing columns after `crop`: `tool` (`backcross`), `tool_version` and `tool_commit` (`g` + seven hex, `-dirty` when built from an uncommitted tree, `NA` when git was unavailable), and the HTML report a Software row and a `generator` meta tag, so a result names the release that produced it (docs/adr/0030). `brapi-callsets.csv` is unchanged.
 - A single-file CLI bundle, `dist-cli/backcross-cli.mjs`, built by `npm run build:cli` with esbuild and attached to every GitHub Release; it needs only Node 22.19 and takes the same subcommands and options as `node src/cli.ts` (docs/adr/0030).
 - A code of conduct (Contributor Covenant 2.1), a security policy, issue and pull-request templates and Dependabot configuration.
 - `qc.csv`: one row per sample in manifest order, parents included, with missing, heterozygosity and nonparental rates and `|`-joined `qc_flags`, from the new CLI `qc` subcommand and an Export screen button (docs/adr/0029).

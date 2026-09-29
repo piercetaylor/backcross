@@ -10,10 +10,10 @@ import { computeQc } from '../src/core/qc.ts';
 import { computeRpp } from '../src/core/rpp.ts';
 import type { LineQc, SampleRecord } from '../src/core/types.ts';
 import { QC_CSV_HEADER, qcCsv } from '../src/export/qc-csv.ts';
-import { loadDataset, loadExpected, readFixture } from './helpers.ts';
+import { loadDataset, loadExpected, readFixture, TEST_TOOL } from './helpers.ts';
 
 const HEADER =
-  'sample_id,call_set_db_id,sample_db_id,role,missing_rate,het_rate,nonparental_rate,qc_flags,token_profile,crop';
+  'sample_id,call_set_db_id,sample_db_id,role,missing_rate,het_rate,nonparental_rate,qc_flags,token_profile,crop,tool,tool_version,tool_commit';
 
 function line(over: Partial<LineQc>): LineQc {
   return {
@@ -43,9 +43,11 @@ const SAMPLES: SampleRecord[] = [sample({})];
 
 describe('qcCsv on hand-built rows', () => {
   it('writes the documented header, token_profile and crop last', () => {
-    const csv = qcCsv([], [], { tokenProfile: 'default', crop: 'soybean' });
+    const csv = qcCsv([], [], { tokenProfile: 'default', crop: 'soybean', ...TEST_TOOL });
     expect(csv).toBe(`${HEADER}\n`);
-    expect(QC_CSV_HEADER.join(',')).toBe(HEADER.replace(',token_profile,crop', ''));
+    expect(QC_CSV_HEADER.join(',')).toBe(
+      HEADER.replace(',token_profile,crop,tool,tool_version,tool_commit', ''),
+    );
   });
 
   it('joins several flags with | and writes an empty cell when there is none', () => {
@@ -55,13 +57,15 @@ describe('qcCsv on hand-built rows', () => {
         line({ sampleId: 'L2', flags: [] }),
       ],
       SAMPLES,
-      { tokenProfile: 'default', crop: 'soybean' },
+      { tokenProfile: 'default', crop: 'soybean', ...TEST_TOOL },
     );
     const [, a, b] = csv.trimEnd().split('\n');
     expect(a).toBe(
-      'L1,,,candidate,0.000000,0.000000,0.000000,high_missing|high_het|closer_to_donor,default,soybean',
+      'L1,,,candidate,0.000000,0.000000,0.000000,high_missing|high_het|closer_to_donor,default,soybean,backcross,0.0.0-test,g0000000',
     );
-    expect(b).toBe('L2,,,candidate,0.000000,0.000000,0.000000,,default,soybean');
+    expect(b).toBe(
+      'L2,,,candidate,0.000000,0.000000,0.000000,,default,soybean,backcross,0.0.0-test,g0000000',
+    );
   });
 
   it('writes rates to six decimals and NaN as NA', () => {
@@ -76,19 +80,24 @@ describe('qcCsv on hand-built rows', () => {
         }),
       ],
       [],
-      { tokenProfile: 'default', crop: 'soybean' },
+      { tokenProfile: 'default', crop: 'soybean', ...TEST_TOOL },
     );
     expect(csv.trimEnd().split('\n')[1]).toBe(
-      'RP,,,recurrent_parent,0.333333,NA,NA,,default,soybean',
+      'RP,,,recurrent_parent,0.333333,NA,NA,,default,soybean,backcross,0.0.0-test,g0000000',
     );
   });
 
   it('writes the BrAPI ids after sample_id and quotes a sample id that needs it', () => {
     const samples = [sample({ sampleId: 'a,b', callSetDbId: 'cs1', sampleDbId: 'sm1' })];
-    const csv = qcCsv([line({ sampleId: 'a,b' })], samples, { tokenProfile: 'tassel' });
+    const csv = qcCsv([line({ sampleId: 'a,b' })], samples, {
+      tokenProfile: 'tassel',
+      ...TEST_TOOL,
+    });
     const [header, row] = csv.trimEnd().split('\n');
-    expect(header?.endsWith(',qc_flags,token_profile')).toBe(true);
-    expect(row).toBe('"a,b",cs1,sm1,candidate,0.000000,0.000000,0.000000,,tassel');
+    expect(header?.endsWith(',qc_flags,token_profile,tool,tool_version,tool_commit')).toBe(true);
+    expect(row).toBe(
+      '"a,b",cs1,sm1,candidate,0.000000,0.000000,0.000000,,tassel,backcross,0.0.0-test,g0000000',
+    );
   });
 });
 
@@ -97,7 +106,11 @@ describe('qcCsv on the synthetic fixture', () => {
   const dataset = loadDataset('genotypes.vcf', 'vcf');
   const cls = classifyDataset(dataset);
   const qc = computeQc(dataset, cls, computeRpp(dataset, cls, expected.params));
-  const csv = qcCsv(qc.lines, dataset.samples, { tokenProfile: 'default', crop: 'soybean' });
+  const csv = qcCsv(qc.lines, dataset.samples, {
+    tokenProfile: 'default',
+    crop: 'soybean',
+    ...TEST_TOOL,
+  });
   const rows = csv.trimEnd().split('\n').slice(1);
 
   // Manifest order read straight from samples.csv, independently of the loader.

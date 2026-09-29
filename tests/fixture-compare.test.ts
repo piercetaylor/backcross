@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { classifyDataset, countInformative } from '../src/core/classify.ts';
 import { compareLines } from '../src/core/compare.ts';
 import { discordantMarkersCsv, pairwiseCsv } from '../src/export/pairwise-csv.ts';
-import { loadDataset, loadExpected } from './helpers.ts';
+import { loadDataset, loadExpected, TEST_TOOL } from './helpers.ts';
 
 interface ExpectedByChromosome {
   nCompared: number;
@@ -97,18 +97,22 @@ describe('compareLines against the fixture generator', () => {
 
     const summary = pairwiseCsv(diffs, dataset.chromosomeOrder, dataset.samples, {
       tokenProfile: 'default',
+      ...TEST_TOOL,
     });
     const summaryLines = summary.trimEnd().split('\n');
     expect(summaryLines[0]).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile,tool,tool_version,tool_commit',
     );
     const expectedSummaryRows = diffs.length * (dataset.chromosomeOrder.length + 1);
     expect(summaryLines).toHaveLength(expectedSummaryRows + 1);
 
-    const markersCsv = discordantMarkersCsv(diffs, dataset, cls, { tokenProfile: 'default' });
+    const markersCsv = discordantMarkersCsv(diffs, dataset, cls, {
+      tokenProfile: 'default',
+      ...TEST_TOOL,
+    });
     const markerLines = markersCsv.trimEnd().split('\n');
     expect(markerLines[0]).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile,tool,tool_version,tool_commit',
     );
     const expectedMarkerRows = diffs.reduce((n, d) => n + d.discordantMarkers.length, 0);
     expect(markerLines).toHaveLength(expectedMarkerRows + 1);

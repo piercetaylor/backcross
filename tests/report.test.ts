@@ -11,9 +11,10 @@ import { computeRpp } from '../src/core/rpp.ts';
 import { callSegments, segmentGapCriterion } from '../src/core/segments.ts';
 import { checkTargets, parseTargetSpec } from '../src/core/targets.ts';
 import type { LineRpp } from '../src/core/types.ts';
+import { CONTRACT_VERSION } from '../src/contract-version.ts';
 import { buildHtmlReport } from '../src/export/report.ts';
 import type { ReportDataset, ReportInput } from '../src/export/report.ts';
-import { loadDataset, loadExpected } from './helpers.ts';
+import { loadDataset, loadExpected, TEST_TOOL } from './helpers.ts';
 
 const expected = loadExpected();
 const CANDIDATES = Object.keys(expected.lines);
@@ -61,7 +62,7 @@ const baseInput: ReportInput = {
   gapCriterion,
   nInformative: countInformative(cls),
   warnings: ['3 marker positions overridden by markers.csv.'],
-  provenance: { tokenProfile: 'soybase-report' },
+  provenance: { tokenProfile: 'soybase-report', ...TEST_TOOL },
 };
 
 describe('buildHtmlReport', () => {
@@ -125,7 +126,7 @@ describe('buildHtmlReport', () => {
     const html = buildHtmlReport({
       ...baseInput,
       dataset: { ...reportDataset, source: 'Genotype file x.csv' },
-      provenance: { tokenProfile: 'custom:<lab>' },
+      provenance: { tokenProfile: 'custom:<lab>', ...TEST_TOOL },
     });
     expect(html).toContain('<dt>Token profile</dt><dd>custom:&lt;lab&gt;</dd>');
     expect(html.indexOf('<dt>Source</dt>')).toBeLessThan(html.indexOf('<dt>Token profile</dt>'));
@@ -135,12 +136,40 @@ describe('buildHtmlReport', () => {
   it('records the crop in the dataset summary, after the Token profile row', () => {
     const html = buildHtmlReport({
       ...baseInput,
-      provenance: { tokenProfile: 'default', crop: 'maize' },
+      provenance: { tokenProfile: 'default', crop: 'maize', ...TEST_TOOL },
     });
     expect(html).toContain('<dt>Crop</dt><dd>maize</dd>');
     expect(html.indexOf('<dt>Token profile</dt>')).toBeLessThan(html.indexOf('<dt>Crop</dt>'));
     // A provenance with no crop still names the default, never an empty cell.
     expect(buildHtmlReport(baseInput)).toContain('<dt>Crop</dt><dd>soybean</dd>');
+  });
+
+  it('names the software in a Software row and the generator meta (docs/adr/0030)', () => {
+    const html = buildHtmlReport(baseInput);
+    expect(html).toContain(
+      '<dt>Software</dt><dd>backcross 0.0.0-test (g0000000), input data contract ' +
+        CONTRACT_VERSION +
+        '</dd>',
+    );
+    expect(html).toContain('<meta name="generator" content="backcross 0.0.0-test g0000000">');
+    expect(html.indexOf('<dt>Crop</dt>')).toBeLessThan(html.indexOf('<dt>Software</dt>'));
+    expect(html).not.toContain('http://');
+  });
+
+  it('escapes the tool stamp in the Software row and the generator meta', () => {
+    const html = buildHtmlReport({
+      ...baseInput,
+      provenance: { ...baseInput.provenance, toolCommit: 'g0000000"><script>' },
+    });
+    expect(html).toContain(
+      '<meta name="generator" content="backcross 0.0.0-test g0000000&quot;&gt;&lt;script&gt;">',
+    );
+    expect(html).toContain(
+      '<dt>Software</dt><dd>backcross 0.0.0-test (g0000000&quot;&gt;&lt;script&gt;), input data contract ' +
+        CONTRACT_VERSION +
+        '</dd>',
+    );
+    expect(html).not.toContain('<script>');
   });
 
   it('escapes an untrusted line name instead of emitting it raw', () => {

@@ -7,14 +7,21 @@
  * discordant marker whose class_a reads nonparental.
  */
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { PAIRWISE_CSV_HEADER } from '../src/export/pairwise-csv.ts';
 import { provenanceHeader } from '../src/export/provenance.ts';
-import { FIXTURE_DIR } from './helpers.ts';
+import { FIXTURE_DIR, TEST_TOOL } from './helpers.ts';
 
 const CLI = join(import.meta.dirname, '..', 'src', 'cli.ts');
+
+const PKG_VERSION = (
+  JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8')) as {
+    version: string;
+  }
+).version;
 
 function runCli(args: string[]) {
   return spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
@@ -43,9 +50,14 @@ describe('cli compare', () => {
     expect(header).toBe(
       [
         ...PAIRWISE_CSV_HEADER,
-        ...provenanceHeader({ tokenProfile: 'default', crop: 'soybean' }),
+        ...provenanceHeader({ tokenProfile: 'default', crop: 'soybean', ...TEST_TOOL }),
       ].join(','),
     );
+    const row = res.stdout.trim().split('\n')[1]?.split(',') ?? [];
+    const [tool, toolVersion, toolCommit] = row.slice(-3);
+    expect(tool).toBe('backcross');
+    expect(toolVersion).toBe(PKG_VERSION);
+    expect(toolCommit).toMatch(/^(g[0-9a-f]{7}(-dirty)?|NA)$/);
   });
 
   it('reports 459 compared and 1 discordant for NIL_03 against the recurrent parent (PLAN.md)', () => {

@@ -18,7 +18,7 @@ import { qcCsv } from '../src/export/qc-csv.ts';
 import { segmentsCsv } from '../src/export/segments-csv.ts';
 import { lineSummaryCsv } from '../src/export/summary-csv.ts';
 import { targetsCsv } from '../src/export/targets-csv.ts';
-import { loadDataset, loadExpected } from './helpers.ts';
+import { loadDataset, loadExpected, TEST_TOOL } from './helpers.ts';
 
 const expected = loadExpected();
 const CANDIDATES = Object.keys(expected.lines);
@@ -39,7 +39,7 @@ const withIds: SampleRecord[] = dataset.samples.map((s, i) => ({
   sampleDbId: `smp${i}`,
 }));
 const plain = dataset.samples;
-const DEFAULT_PROVENANCE: ExportProvenance = { tokenProfile: 'default' };
+const DEFAULT_PROVENANCE: ExportProvenance = { tokenProfile: 'default', ...TEST_TOOL };
 
 const header = (csv: string): string => csv.split('\n')[0] as string;
 const rowFor = (csv: string, prefix: string): string | undefined =>
@@ -64,23 +64,23 @@ describe('external id columns', () => {
     ).toBe(true);
     expect(
       header(csv.summary).endsWith(
-        'rpp_count_Gm20,max_marker_coverage_bp,max_marker_coverage_cm,token_profile',
+        'rpp_count_Gm20,max_marker_coverage_bp,max_marker_coverage_cm,token_profile,tool,tool_version,tool_commit',
       ),
     ).toBe(true);
     expect(header(csv.segments)).toBe(
-      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion,token_profile',
+      'sample_id,call_set_db_id,sample_db_id,chrom,start_bp,end_bp,left_flank_bp,right_flank_bp,n_markers,n_donor_hom,n_het,class,start_cm,end_cm,length_bp,length_cm,gap_criterion,token_profile,tool,tool_version,tool_commit',
     );
     expect(header(csv.targets)).toBe(
-      'sample_id,call_set_db_id,sample_db_id,target,chrom,start_bp,end_bp,status,n_informative_in_region,segment_start_bp,segment_end_bp,drag_min_bp,drag_max_bp,token_profile',
+      'sample_id,call_set_db_id,sample_db_id,target,chrom,start_bp,end_bp,status,n_informative_in_region,segment_start_bp,segment_end_bp,drag_min_bp,drag_max_bp,token_profile,tool,tool_version,tool_commit',
     );
     expect(header(csv.pairwise)).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,mode,chrom,n_compared,n_discordant,token_profile,tool,tool_version,tool_commit',
     );
     expect(header(csv.qc)).toBe(
-      'sample_id,call_set_db_id,sample_db_id,role,missing_rate,het_rate,nonparental_rate,qc_flags,token_profile',
+      'sample_id,call_set_db_id,sample_db_id,role,missing_rate,het_rate,nonparental_rate,qc_flags,token_profile,tool,tool_version,tool_commit',
     );
     expect(header(csv.discordant)).toBe(
-      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile',
+      'sample_a,sample_b,call_set_db_id_a,sample_db_id_a,call_set_db_id_b,sample_db_id_b,marker_id,chrom,pos_bp,class_a,class_b,token_profile,tool,tool_version,tool_commit',
     );
   });
 
@@ -124,24 +124,52 @@ describe('external id columns', () => {
 
 describe('crop column (contract 1.5.0)', () => {
   it('ends every CSV header with crop, after token_profile, and every row with the id', () => {
-    const csv = allCsvs(plain, { tokenProfile: 'default', crop: 'maize' });
+    const csv = allCsvs(plain, { tokenProfile: 'default', crop: 'maize', ...TEST_TOOL });
     for (const [name, text] of Object.entries(csv)) {
       const lines = text.trimEnd().split('\n');
-      expect(lines[0]?.endsWith(',token_profile,crop'), name).toBe(true);
+      expect(lines[0]?.endsWith(',token_profile,crop,tool,tool_version,tool_commit'), name).toBe(
+        true,
+      );
       expect(lines.length, name).toBeGreaterThan(1);
-      for (const row of lines.slice(1)) expect(row.endsWith(',default,maize'), name).toBe(true);
+      for (const row of lines.slice(1))
+        expect(row.endsWith(',default,maize,backcross,0.0.0-test,g0000000'), name).toBe(true);
     }
   });
 });
 
 describe('token_profile column', () => {
   it('ends every CSV header with token_profile and every row with the given profile', () => {
-    const csv = allCsvs(plain, { tokenProfile: 'custom:mylab' });
+    const csv = allCsvs(plain, { tokenProfile: 'custom:mylab', ...TEST_TOOL });
     for (const [name, text] of Object.entries(csv)) {
       const lines = text.trimEnd().split('\n');
-      expect(lines[0]?.endsWith(',token_profile'), name).toBe(true);
+      expect(lines[0]?.endsWith(',token_profile,tool,tool_version,tool_commit'), name).toBe(true);
       expect(lines.length, name).toBeGreaterThan(1);
-      for (const row of lines.slice(1)) expect(row.endsWith(',custom:mylab'), name).toBe(true);
+      for (const row of lines.slice(1))
+        expect(row.endsWith(',custom:mylab,backcross,0.0.0-test,g0000000'), name).toBe(true);
+    }
+  });
+});
+
+describe('tool columns (docs/adr/0030)', () => {
+  it('ends every CSV header with tool,tool_version,tool_commit and every row with the stamp', () => {
+    for (const provenance of [DEFAULT_PROVENANCE, { ...DEFAULT_PROVENANCE, crop: 'soybean' }]) {
+      for (const [name, text] of Object.entries(allCsvs(plain, provenance))) {
+        const lines = text.trimEnd().split('\n');
+        expect(lines[0]?.endsWith(',tool,tool_version,tool_commit'), name).toBe(true);
+        expect(lines.length, name).toBeGreaterThan(1);
+        for (const row of lines.slice(1)) {
+          expect(row.endsWith(',backcross,0.0.0-test,g0000000'), name).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('quotes a tool_commit that needs it', () => {
+    const csv = allCsvs(plain, { ...DEFAULT_PROVENANCE, toolCommit: 'g0000000,x' });
+    for (const [name, text] of Object.entries(csv)) {
+      for (const row of text.trimEnd().split('\n').slice(1)) {
+        expect(row.endsWith(',backcross,0.0.0-test,"g0000000,x"'), name).toBe(true);
+      }
     }
   });
 });

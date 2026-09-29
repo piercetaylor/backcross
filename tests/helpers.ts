@@ -3,10 +3,23 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { Dataset, SegmentParams } from '../src/core/types.ts';
+import type { ExportProvenance } from '../src/export/provenance.ts';
 import { assembleDataset, parseGenotypesText } from '../src/io/loaders.ts';
 import type { GenotypeFormat } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
 import { parseMarkerMap } from '../src/io/markers.ts';
+
+/** A fixed tool stamp for exporter tests; the real one comes from src/build-info.ts. */
+export const TEST_TOOL = {
+  tool: 'backcross',
+  toolVersion: '0.0.0-test',
+  toolCommit: 'g0000000',
+} as const;
+export const TEST_PROVENANCE: ExportProvenance = {
+  tokenProfile: 'default',
+  crop: 'soybean',
+  ...TEST_TOOL,
+};
 
 export const FIXTURE_DIR = join(import.meta.dirname, 'fixtures', 'synthetic');
 

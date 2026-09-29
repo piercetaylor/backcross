@@ -25,8 +25,10 @@
  * here. Its optional `source` is `describeSource(loaded.source)`: the genotype
  * file name, or the BrAPI variant set and server with the URL scheme dropped.
  * Every CSV gets `loaded.samples`, which carries the BrAPI call-set ids, and
- * the provenance `{ tokenProfile: loaded.tokenProfile, crop: loaded.crop }` (its trailing
- * token_profile column); the report gets the same provenance.
+ * the provenance `{ tokenProfile: loaded.tokenProfile, crop: loaded.crop,
+ * ...toolProvenance() }` (its trailing token_profile, crop and tool columns;
+ * the tool stamp is a build-time constant from build-info.ts, not a
+ * computation); the report gets the same provenance.
  *
  * Graphical genotype figures for the report are rendered here, offscreen,
  * from `classesData` -- the same class data the genotype view screen draws,
@@ -65,6 +67,7 @@ import type {
 } from '../../core/types.ts';
 import { pairwiseCsv } from '../../export/pairwise-csv.ts';
 import { qcCsv } from '../../export/qc-csv.ts';
+import { toolProvenance } from '../../build-info.ts';
 import { buildHtmlReport } from '../../export/report.ts';
 import { lineSummaryCsv } from '../../export/summary-csv.ts';
 import { segmentsCsv } from '../../export/segments-csv.ts';
@@ -196,7 +199,7 @@ export function ExportScreen({
       gapCriterion: effectiveGapCriterion,
       warnings: loaded.warnings,
       nInformative: loaded.nInformative,
-      provenance: { tokenProfile: loaded.tokenProfile, crop: loaded.crop },
+      provenance: { tokenProfile: loaded.tokenProfile, crop: loaded.crop, ...toolProvenance() },
     });
   }
 
@@ -217,6 +220,7 @@ export function ExportScreen({
                 lineSummaryCsv(rpp, loaded.chromosomeOrder, loaded.samples, params.rpp, {
                   tokenProfile: loaded.tokenProfile,
                   crop: loaded.crop,
+                  ...toolProvenance(),
                 }),
                 'text/csv',
               );
@@ -238,6 +242,7 @@ export function ExportScreen({
                 qcCsv(qc.lines, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                   crop: loaded.crop,
+                  ...toolProvenance(),
                 }),
                 'text/csv',
               );
@@ -259,6 +264,7 @@ export function ExportScreen({
                 segmentsCsv(segmentsByCandidate.flat(), effectiveGapCriterion, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                   crop: loaded.crop,
+                  ...toolProvenance(),
                 }),
                 'text/csv',
               );
@@ -280,6 +286,7 @@ export function ExportScreen({
                 targetsCsv(targets.checks, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                   crop: loaded.crop,
+                  ...toolProvenance(),
                 }),
                 'text/csv',
               );
@@ -300,6 +307,7 @@ export function ExportScreen({
                 pairwiseCsv(diffs, loaded.chromosomeOrder, loaded.samples, {
                   tokenProfile: loaded.tokenProfile,
                   crop: loaded.crop,
+                  ...toolProvenance(),
                 }),
                 'text/csv',
               );

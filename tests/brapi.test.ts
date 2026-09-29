@@ -35,7 +35,7 @@ import {
 } from './support/brapi-fixture.ts';
 import { normaliseDataset } from './support/normalise.ts';
 import type { ContractExpect } from './support/normalise.ts';
-import { loadDataset, readFixture } from './helpers.ts';
+import { loadDataset, readFixture, TEST_TOOL } from './helpers.ts';
 
 const BASE = 'https://brapi.test/brapi/v2';
 const source: BrapiSource = {
@@ -784,6 +784,7 @@ describe('review fixes', () => {
     const rpp = computeRpp(dataset, cls, params);
     const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, params, {
       tokenProfile: 'default',
+      ...TEST_TOOL,
     });
     const row = csv.split('\n').find((l) => l.startsWith('NIL_01,'));
     expect(row?.startsWith('NIL_01,callset3,sample3,')).toBe(true);

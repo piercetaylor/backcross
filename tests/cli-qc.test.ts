@@ -5,14 +5,21 @@
  * since it takes none of its own.
  */
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { provenanceHeader } from '../src/export/provenance.ts';
 import { QC_CSV_HEADER } from '../src/export/qc-csv.ts';
-import { FIXTURE_DIR } from './helpers.ts';
+import { FIXTURE_DIR, TEST_TOOL } from './helpers.ts';
 
 const CLI = join(import.meta.dirname, '..', 'src', 'cli.ts');
+
+const PKG_VERSION = (
+  JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8')) as {
+    version: string;
+  }
+).version;
 
 function runQc(extra: string[] = []) {
   return spawnSync(
@@ -36,9 +43,10 @@ describe('cli qc', () => {
     expect(res.status).toBe(0);
     const [header, ...rows] = res.stdout.trim().split('\n');
     expect(header).toBe(
-      [...QC_CSV_HEADER, ...provenanceHeader({ tokenProfile: 'default', crop: 'soybean' })].join(
-        ',',
-      ),
+      [
+        ...QC_CSV_HEADER,
+        ...provenanceHeader({ tokenProfile: 'default', crop: 'soybean', ...TEST_TOOL }),
+      ].join(','),
     );
     expect(rows.map((r) => r.split(',')[0])).toEqual([
       'RP_Williams',
@@ -52,6 +60,10 @@ describe('cli qc', () => {
     ]);
     const nil06 = rows.find((r) => r.startsWith('NIL_06,'))?.split(',');
     expect(nil06?.[7]).toBe('high_missing');
+    const [tool, toolVersion, toolCommit] = nil06?.slice(-3) ?? [];
+    expect(tool).toBe('backcross');
+    expect(toolVersion).toBe(PKG_VERSION);
+    expect(toolCommit).toMatch(/^(g[0-9a-f]{7}(-dirty)?|NA)$/);
   });
 
   it('exits 2 when a foreign option is given', () => {

@@ -22,6 +22,9 @@
  * The dataset summary always carries a Token profile row (contract 1.4.0,
  * `input.provenance`), after the Source row when there is one, and a Crop row
  * after it (contract 1.5.0; `soybean` when the provenance names none).
+ * After the Crop row a Software row names the tool, its version and commit and
+ * the input data contract this build implements (docs/adr/0030), and the
+ * page's `<meta name="generator">` carries the same tool stamp.
  *
  * Every value in the report was computed with the parameters carried in
  * `input.params`; ADR 0006 requires the RPP coverage cap to be stated because
@@ -30,6 +33,7 @@
  * Interface: buildHtmlReport(input: ReportInput) -> string.
  */
 import { CallClass } from '../core/types.ts';
+import { CONTRACT_VERSION } from '../contract-version.ts';
 import type { ExportProvenance } from './provenance.ts';
 import type {
   CallClassValue,
@@ -216,6 +220,12 @@ browser and is not included in this file except as the summary figures and image
       : ([['Source', escapeHtml(dataset.source)]] as [string, string][])),
     ['Token profile', escapeHtml(input.provenance.tokenProfile)],
     ['Crop', escapeHtml(input.provenance.crop ?? 'soybean')],
+    [
+      'Software',
+      escapeHtml(
+        `${input.provenance.tool} ${input.provenance.toolVersion} (${input.provenance.toolCommit}), input data contract ${CONTRACT_VERSION}`,
+      ),
+    ],
     ['Marker count', String(dataset.nMarkers)],
     ['Informative markers', int(nInformative)],
     ['Recurrent parent samples', String(roleCounts.recurrent_parent)],
@@ -454,6 +464,7 @@ figure is embedded as a data URI and the file depends on no external resource.</
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="${escapeHtml(`${input.provenance.tool} ${input.provenance.toolVersion} ${input.provenance.toolCommit}`)}">
 <title>${escapeHtml(title)}</title>
 <style>${STYLE}</style>
 </head>

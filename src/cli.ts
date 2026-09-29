@@ -147,7 +147,6 @@ function allSegments(
 }
 
 /** The bundle's stamp, or, unbundled, package.json's version and git's HEAD. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by phase 7 (docs/m5-phases.md)
 function toolStamp(): { tool: string; toolVersion: string; toolCommit: string } {
   const b = buildInfo();
   if (b !== null) return { tool: TOOL_NAME, toolVersion: b.version, toolCommit: b.commit };
@@ -258,7 +257,7 @@ ${USAGE}`);
     readProfile(values.profile),
     crop,
   );
-  const provenance = { tokenProfile: dataset.tokenProfile, crop: dataset.crop };
+  const provenance = { tokenProfile: dataset.tokenProfile, crop: dataset.crop, ...toolStamp() };
   const cls = classifyDataset(dataset);
 
   let csv: string;

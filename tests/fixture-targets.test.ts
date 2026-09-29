@@ -9,7 +9,7 @@ import { callSegments } from '../src/core/segments.ts';
 import { checkTargets, parseTargetSpec } from '../src/core/targets.ts';
 import type { TargetCheck } from '../src/core/types.ts';
 import { targetsCsv } from '../src/export/targets-csv.ts';
-import { loadDataset, loadExpected } from './helpers.ts';
+import { loadDataset, loadExpected, TEST_TOOL } from './helpers.ts';
 
 const expected = loadExpected();
 const CANDIDATES = Object.keys(expected.lines);
@@ -99,16 +99,18 @@ describe('checkTargets on the VCF fixture', () => {
   });
 
   it('writes the target check CSV with the documented columns', () => {
-    const csv = targetsCsv(checks, dataset.samples, { tokenProfile: 'default' });
+    const csv = targetsCsv(checks, dataset.samples, { tokenProfile: 'default', ...TEST_TOOL });
     const lines = csv.trim().split('\n');
     expect(lines[0]).toBe(
-      'sample_id,call_set_db_id,sample_db_id,target,chrom,start_bp,end_bp,status,n_informative_in_region,segment_start_bp,segment_end_bp,drag_min_bp,drag_max_bp,token_profile',
+      'sample_id,call_set_db_id,sample_db_id,target,chrom,start_bp,end_bp,status,n_informative_in_region,segment_start_bp,segment_end_bp,drag_min_bp,drag_max_bp,token_profile,tool,tool_version,tool_commit',
     );
     expect(lines).toHaveLength(checks.length + 1);
     expect(lines[1]).toBe(
-      'NIL_01,,,gm13core,Gm13,21000000,25000000,donor,3,21000000,27000000,2000000,8000000,default',
+      'NIL_01,,,gm13core,Gm13,21000000,25000000,donor,3,21000000,27000000,2000000,8000000,default,backcross,0.0.0-test,g0000000',
     );
     const rp = lines.find((l) => l.startsWith('NIL_03,,,gm13core,'));
-    expect(rp).toBe('NIL_03,,,gm13core,Gm13,21000000,25000000,rp,3,NA,NA,NA,NA,default');
+    expect(rp).toBe(
+      'NIL_03,,,gm13core,Gm13,21000000,25000000,rp,3,NA,NA,NA,NA,default,backcross,0.0.0-test,g0000000',
+    );
   });
 });

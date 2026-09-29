@@ -10,7 +10,9 @@
 # Each file is read, checked for readr parse problems (readr::problems()) and
 # for any column documented as numeric coming back as character; the script
 # then prints a one-line row count per table and stops (nonzero exit) on the
-# first failure.
+# first failure. Every table must carry the five provenance columns
+# token_profile, crop, tool, tool_version and tool_commit, and its tool column
+# must read backcross.
 suppressPackageStartupMessages(library(readr))
 
 # NA is missing; readr's default na = c("", "NA") would also treat an empty
@@ -28,6 +30,21 @@ stop_on_problems <- function(df, path) {
     print(probs)
     stop(sprintf("%s: readr reported %d parsing problem(s)", path, nrow(probs)))
   }
+}
+
+# The five provenance columns every analysis table ends with
+# (docs/data-formats.md, "Outputs"; docs/adr/0030): token_profile, crop, and
+# the tool stamp tool, tool_version, tool_commit.
+PROVENANCE_COLS <- c("token_profile", "crop", "tool", "tool_version", "tool_commit")
+
+# Stops when any of `cols` is absent: a cols() entry for an absent column
+# only warns. Also stops when the tool column names anything but backcross.
+stop_on_missing_columns <- function(df, path, cols) {
+  missing <- setdiff(cols, names(df))
+  if (length(missing) > 0) {
+    stop(sprintf("%s: missing column(s) %s", path, paste(missing, collapse = ", ")))
+  }
+  if (any(df$tool != "backcross", na.rm = TRUE) || anyNA(df$tool)) stop(sprintf("%s: tool column is not backcross", path))
 }
 
 # Stops when any of `numeric_cols` was not parsed as numeric (integer or
@@ -61,6 +78,9 @@ read_summary <- function(path) {
     max_marker_coverage_cm = col_double(),
     token_profile = col_character(),
     crop = col_character(),
+    tool = col_character(),
+    tool_version = col_character(),
+    tool_commit = col_character(),
     # Per-chromosome rpp_count_<chrom> columns fall between rpp_cm and
     # max_marker_coverage_bp (docs/data-formats.md, "Per-line summary CSV"); read by
     # guess, then checked below.
@@ -68,6 +88,7 @@ read_summary <- function(path) {
   )
   df <- readr::read_csv(path, col_types = fixed, na = NA_STRING, show_col_types = FALSE)
   stop_on_problems(df, path)
+  stop_on_missing_columns(df, path, PROVENANCE_COLS)
   dynamic_cols <- grep("^rpp_count_", names(df), value = TRUE)
   stop_on_character_numerics(df, path, c(
     "n_informative", "n_called", "n_rp_hom", "n_donor_hom", "n_het",
@@ -99,12 +120,16 @@ read_segments <- function(path) {
       length_cm = col_double(),
       gap_criterion = col_character(),
       token_profile = col_character(),
-      crop = col_character()
+      crop = col_character(),
+      tool = col_character(),
+      tool_version = col_character(),
+      tool_commit = col_character()
     ),
     na = NA_STRING,
     show_col_types = FALSE
   )
   stop_on_problems(df, path)
+  stop_on_missing_columns(df, path, PROVENANCE_COLS)
   stop_on_character_numerics(df, path, c(
     "start_bp", "end_bp", "left_flank_bp", "right_flank_bp", "n_markers",
     "n_donor_hom", "n_het", "start_cm", "end_cm", "length_bp", "length_cm"
@@ -130,12 +155,16 @@ read_targets <- function(path) {
       drag_min_bp = col_integer(),
       drag_max_bp = col_integer(),
       token_profile = col_character(),
-      crop = col_character()
+      crop = col_character(),
+      tool = col_character(),
+      tool_version = col_character(),
+      tool_commit = col_character()
     ),
     na = NA_STRING,
     show_col_types = FALSE
   )
   stop_on_problems(df, path)
+  stop_on_missing_columns(df, path, PROVENANCE_COLS)
   stop_on_character_numerics(df, path, c(
     "start_bp", "end_bp", "n_informative_in_region", "segment_start_bp",
     "segment_end_bp", "drag_min_bp", "drag_max_bp"
@@ -158,12 +187,16 @@ read_pairwise <- function(path) {
       n_compared = col_integer(),
       n_discordant = col_integer(),
       token_profile = col_character(),
-      crop = col_character()
+      crop = col_character(),
+      tool = col_character(),
+      tool_version = col_character(),
+      tool_commit = col_character()
     ),
     na = NA_STRING,
     show_col_types = FALSE
   )
   stop_on_problems(df, path)
+  stop_on_missing_columns(df, path, PROVENANCE_COLS)
   stop_on_character_numerics(df, path, c("n_compared", "n_discordant"))
   df
 }
@@ -184,12 +217,16 @@ read_discordant <- function(path) {
       class_a = col_character(),
       class_b = col_character(),
       token_profile = col_character(),
-      crop = col_character()
+      crop = col_character(),
+      tool = col_character(),
+      tool_version = col_character(),
+      tool_commit = col_character()
     ),
     na = NA_STRING,
     show_col_types = FALSE
   )
   stop_on_problems(df, path)
+  stop_on_missing_columns(df, path, PROVENANCE_COLS)
   stop_on_character_numerics(df, path, "pos_bp")
   df
 }
@@ -207,12 +244,16 @@ read_qc <- function(path) {
       nonparental_rate = col_double(),
       qc_flags = col_character(),
       token_profile = col_character(),
-      crop = col_character()
+      crop = col_character(),
+      tool = col_character(),
+      tool_version = col_character(),
+      tool_commit = col_character()
     ),
     na = NA_STRING,
     show_col_types = FALSE
   )
   stop_on_problems(df, path)
+  stop_on_missing_columns(df, path, PROVENANCE_COLS)
   stop_on_character_numerics(df, path, c("missing_rate", "het_rate", "nonparental_rate"))
   df
 }

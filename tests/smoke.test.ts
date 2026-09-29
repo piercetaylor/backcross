@@ -12,7 +12,7 @@ import { CallClass } from '../src/core/types.ts';
 import { lineSummaryCsv } from '../src/export/summary-csv.ts';
 import { assembleDataset, parseGenotypesBytes } from '../src/io/loaders.ts';
 import { parseSampleManifest } from '../src/io/manifest.ts';
-import { loadDataset, loadExpected, readFixture } from './helpers.ts';
+import { loadDataset, loadExpected, readFixture, TEST_TOOL } from './helpers.ts';
 
 const expected = loadExpected();
 const CANDIDATES = Object.keys(expected.lines);
@@ -105,20 +105,21 @@ describe('VCF fixture end to end', () => {
   it('writes a per-line summary CSV with one row per candidate', () => {
     const csv = lineSummaryCsv(rpp, dataset.chromosomeOrder, dataset.samples, expected.params, {
       tokenProfile: 'default',
+      ...TEST_TOOL,
     });
     const lines = csv.trim().split('\n');
     expect(lines).toHaveLength(CANDIDATES.length + 1);
     expect(lines[0]?.startsWith('sample_id,call_set_db_id,sample_db_id,n_informative,')).toBe(true);
     expect(
       lines[0]?.endsWith(
-        'rpp_count_Gm20,max_marker_coverage_bp,max_marker_coverage_cm,token_profile',
+        'rpp_count_Gm20,max_marker_coverage_bp,max_marker_coverage_cm,token_profile,tool,tool_version,tool_commit',
       ),
     ).toBe(true);
-    // The resolved coverage caps are written as given, before the provenance column.
+    // The resolved coverage caps are written as given, before the provenance columns.
     for (const row of lines.slice(1)) {
       expect(
         row.endsWith(
-          `,${expected.params.maxMarkerCoverageBp},${expected.params.maxMarkerCoverageCm},default`,
+          `,${expected.params.maxMarkerCoverageBp},${expected.params.maxMarkerCoverageCm},default,backcross,0.0.0-test,g0000000`,
         ),
       ).toBe(true);
     }

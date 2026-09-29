@@ -75,6 +75,7 @@ import { parseSampleManifest } from '../io/manifest.ts';
 import { parseMarkerMap } from '../io/markers.ts';
 import { decodeUtf8 } from '../io/utf8.ts';
 import { discordantMarkersCsv } from '../export/pairwise-csv.ts';
+import { toolProvenance } from '../build-info.ts';
 import type { DatasetSource, WorkerRequest, WorkerResponse, WorkerResult } from './protocol.ts';
 
 let dataset: Dataset | null = null;
@@ -426,6 +427,7 @@ async function handle(req: WorkerRequest): Promise<WorkerResponse> {
           csv: discordantMarkersCsv([diff], ds, cls, {
             tokenProfile: ds.tokenProfile,
             crop: ds.crop,
+            ...toolProvenance(),
           }),
         },
       };
