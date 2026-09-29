@@ -24,6 +24,7 @@
     "contract": "node scripts/make-contract.mjs",
     "brapi:record": "node scripts/brapi-record.mjs",
     "a11y:lighthouse": "node scripts/lighthouse-a11y.mjs",
+    "smoke:dist": "node scripts/smoke-dist.mjs dist",
     "cli": "node src/cli.ts"
   },
   "dependencies": {

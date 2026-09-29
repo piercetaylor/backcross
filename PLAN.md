@@ -84,7 +84,7 @@ backcross/
 ├── README.md                    what it does, quickstart, status
 ├── CHANGELOG.md                 Keep a Changelog, 0.1.0 unreleased
 ├── CONTRIBUTING.md              conventions: Conventional Commits, SemVer, MADR
-├── CITATION.cff                 citation metadata (phase 8)
+├── CITATION.cff                 citation metadata
 ├── CODE_OF_CONDUCT.md           community conduct
 ├── SECURITY.md                  how to report a vulnerability
 ├── CLAUDE.md                    working notes for the maintainer's sessions
@@ -105,8 +105,8 @@ backcross/
 │   ├── data-contract.md, VERSION, README.md, MANIFEST.sha256
 │   └── cases/, profiles/, crops/   generated cases, token profiles, crop chromosome schemes
 ├── docs/
-│   ├── README.md                docs index (phase 10)
-│   ├── user-guide.md            guide for breeders (phase 10)
+│   ├── README.md                docs index
+│   ├── user-guide.md            guide for breeders
 │   ├── data-formats.md          parameters and output file contracts
 │   ├── input-coding.md          what each genotype format accepts and rejects
 │   ├── design-brief.md, design-survey.md   interface brief and survey
@@ -152,7 +152,7 @@ Unit and smoke tests run under vitest in Node (no browser needed): tests/smoke.t
 
 ## Deployment and cost
 
-Static files only. `npm run build` with `VITE_BASE_PATH=/backcross/` produces dist/ for a GitHub Pages project site at zero cost; the same dist/ can be copied to any static web server inside the university network or opened from a USB stick with `npm run preview`. No server process, no database, no telemetry; files are read with the File API and processed in a Web Worker in the tab. The only recurring cost is CI minutes on a public repository, which GitHub provides free.
+Static files only. `npm run build` with `VITE_BASE_PATH=/backcross/` produces dist/ for a GitHub Pages project site at zero cost; the same dist/ can be copied to any static web server inside the university network or carried on a USB stick as the release zip (`backcross-<version>-site.zip`, built with a relative base) and served from any static server (`python3 -m http.server`); Chrome and Edge will not run the module scripts from a `file://` address (Firefox did in a headless check on 2026-09-29). No server process, no database, no telemetry; files are read with the File API and processed in a Web Worker in the tab. The only recurring cost is CI minutes on a public repository, which GitHub provides free.
 
 ## Milestones
 

@@ -1,0 +1,95 @@
+# Builds and publishes a GitHub Release when a version tag is pushed. Runs
+# the gates itself: ci.yml is keyed on branches and pull requests and does
+# not see a tag push. Never runs on a push to main. The maintainer tags
+# after review (docs/m5-phases.md, section 16).
+# workflow_dispatch is deliberately absent: a manual run without a tag has no
+# version to release.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  # A duplicate of ci.yml's check job through the fixture/contract diff, plus
+  # build:cli (a reusable workflow is deliberately not introduced). Keep the
+  # two in step.
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: CITATION.cff is valid CFF 1.2.0
+        run: pipx install cffconvert==2.0.0 && cffconvert --validate
+      - run: sudo apt-get update && sudo apt-get install -y tabix
+      - run: npm test
+        env: { BGZIP_BIN: bgzip }
+      - run: npm run build
+      - run: npm run build:cli
+      - run: |
+          npm run fixture
+          npm run contract
+          git diff --exit-code -- tests/fixtures contract
+  release:
+    needs: gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: tag, package.json, CHANGELOG and CITATION.cff agree
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          test "$(node -p 'require("./package.json").version')" = "$VERSION"
+          node scripts/changelog-section.mjs "$VERSION" > notes.md
+          DATE="$(grep -m1 "^## \[$VERSION\] - " CHANGELOG.md | sed 's/.* - //')"
+          grep -q "^version: $VERSION$" CITATION.cff
+          grep -Eq "^date-released: ['\"]$DATE['\"]$" CITATION.cff
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      # A relative base, so the zip serves from any folder of any static server.
+      - run: npm run build
+        env: { VITE_BASE_PATH: ./ }
+      - run: npm run build:cli
+      - uses: r-lib/actions/setup-r@v2
+        with: { use-public-rspm: true }
+      # readr install as ci.yml's r-reader job, including its fallback step.
+      - id: r-deps
+        uses: r-lib/actions/setup-r-dependencies@v2
+        continue-on-error: true
+        with: { packages: any::readr }
+      - if: steps.r-deps.outcome == 'failure'
+        run: Rscript -e 'install.packages("readr", repos = "https://cloud.r-project.org")'
+      # The six ci.yml r-reader commands with the bundle in place of src/cli.ts.
+      - name: the bundle reproduces the fixture tables and readr reads them
+        run: |
+          node dist-cli/backcross-cli.mjs summarize --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out summary.csv
+          node dist-cli/backcross-cli.mjs segments --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out segments.csv
+          node dist-cli/backcross-cli.mjs targets --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --target name=Gm13:28,500,000-29,100,000 --out targets.csv
+          node dist-cli/backcross-cli.mjs compare --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --a NIL_03 --b RP_Williams --out pairwise.csv
+          node dist-cli/backcross-cli.mjs discordant --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --a NIL_03 --b RP_Williams --mode all --out discordant.csv
+          node dist-cli/backcross-cli.mjs qc --genotypes tests/fixtures/synthetic/genotypes.vcf --samples tests/fixtures/synthetic/samples.csv --markers tests/fixtures/synthetic/markers.csv --out qc.csv
+          Rscript scripts/read_exports.R summary.csv segments.csv targets.csv pairwise.csv discordant.csv qc.csv
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/smoke-dist.mjs dist
+      - name: assemble the zip
+        run: |
+          STAGE="backcross-$VERSION"
+          mkdir -p "$STAGE/cli"
+          cp -r dist/. "$STAGE/"
+          cp dist-cli/backcross-cli.mjs "$STAGE/cli/backcross-cli.mjs"
+          cp LICENSE CITATION.cff "$STAGE/"
+          cp docs/release-readme.txt "$STAGE/README.txt"
+          zip -qr "backcross-$VERSION-site.zip" "$STAGE"
+          cp dist-cli/backcross-cli.mjs "backcross-cli-$VERSION.mjs"
+          printf '\nImplements input data contract %s.\n' "$(cat contract/VERSION)" >> notes.md
+      # gh is preinstalled on ubuntu-latest; no third-party release action.
+      - name: create the GitHub Release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh release create "$GITHUB_REF_NAME" --title "Backcross $VERSION" --notes-file notes.md "backcross-$VERSION-site.zip" "backcross-cli-$VERSION.mjs"

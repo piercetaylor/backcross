@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Each GitHub Release carries `backcross-<version>-site.zip`, the built site with a relative base that serves from any static folder (with a one-line server instruction, since Chrome and Edge do not run module scripts from `file://`), the CLI bundle, LICENSE and CITATION.cff; and the CLI bundle on its own. The release body is that version's CHANGELOG section plus the contract version it implements.
+- A user guide for breeders (docs/user-guide.md) with a validation-status section, and a docs index (docs/README.md).
+- `CITATION.cff` (validated in CI with cffconvert), a README citation section, and a sibling-tool section cross-linking progeny-selector.
 - Every analysis CSV (summary, QC, segments, targets, pairwise, discordant markers) gains three trailing columns after `crop`: `tool` (`backcross`), `tool_version` and `tool_commit` (`g` + seven hex, `-dirty` when built from an uncommitted tree, `NA` when git was unavailable), and the HTML report a Software row and a `generator` meta tag, so a result names the release that produced it (docs/adr/0030). `brapi-callsets.csv` is unchanged.
 - A single-file CLI bundle, `dist-cli/backcross-cli.mjs`, built by `npm run build:cli` with esbuild and attached to every GitHub Release; it needs only Node 22.19 and takes the same subcommands and options as `node src/cli.ts` (docs/adr/0030).
 - A code of conduct (Contributor Covenant 2.1), a security policy, issue and pull-request templates and Dependabot configuration.

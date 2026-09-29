@@ -29,6 +29,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - name: CITATION.cff is valid CFF 1.2.0
+        run: pipx install cffconvert==2.0.0 && cffconvert --validate
       - name: Install bgzip (htslib, via tabix)
         run: sudo apt-get update && sudo apt-get install -y tabix
       - run: npm test

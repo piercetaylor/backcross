@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: 'If you use this software, please cite it as below.'
+type: software
+title: 'Backcross: near-isogenic line characterisation from SNP genotypes'
+authors:
+  - family-names: Taylor
+    given-names: Pierce
+license: MIT
+repository-code: 'https://github.com/piercetaylor/backcross'
+url: 'https://piercetaylor.github.io/backcross/'
+version: 0.1.0
+date-released: '2026-09-29'
+keywords:
+  - plant breeding
+  - near-isogenic lines
+  - marker-assisted backcrossing
+  - recurrent parent genome
+  - soybean
+  - SNP genotyping
+references:
+  - type: software
+    title: progeny-selector
+    authors:
+      - family-names: Taylor
+        given-names: Pierce
+    repository-code: 'https://github.com/piercetaylor/progeny-selector'
+    url: 'https://piercetaylor.github.io/progeny-selector/'
+    notes: 'Sibling tool; both read input data contract 1.12.0'

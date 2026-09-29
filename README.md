@@ -31,8 +31,14 @@ The `segments`, `targets` and `qc` commands produce separate CSV files; `compare
 
 ## Verification and documentation
 
-`npm test`, `npm run typecheck`, `npm run lint`, and `npm run test:browser` check the analysis and interface. The synthetic fixture has independently generated expected values; [the plan](PLAN.md) records measured performance and remaining verification limits. [Data formats and exports](docs/data-formats.md), [design decisions](docs/adr/), and the [archived README](docs/legacy-readme.md) provide detail.
+`npm test`, `npm run typecheck`, `npm run lint`, and `npm run test:browser` check the analysis and interface. The synthetic fixture has independently generated expected values; [the plan](PLAN.md) records measured performance and remaining verification limits. [The user guide](docs/user-guide.md), the [docs index](docs/README.md), [data formats and exports](docs/data-formats.md), [design decisions](docs/adr/), and the [archived README](docs/legacy-readme.md) provide detail.
 
-The software is available under the [MIT license](LICENSE). There is no associated paper; cite this repository with the commit or version used.
+## Cite
+
+Cite the version you used: `CITATION.cff` carries the metadata GitHub's "Cite this repository" button and Zenodo read, and every CSV export and HTML report record the release and commit that produced them (`tool_version`, `tool_commit`; docs/data-formats.md). The software is available under the [MIT license](LICENSE).
+
+## Sibling tool
+
+Backcross characterises finished near-isogenic lines; [progeny-selector](https://github.com/piercetaylor/progeny-selector) ranks progeny during the programme, generation by generation. Both read input data contract 1.12.0 (`contract/data-contract.md`), so genotype, `samples.csv` and `markers.csv` files move between them unchanged.
 
 Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md); vulnerabilities go through [SECURITY.md](SECURITY.md).
