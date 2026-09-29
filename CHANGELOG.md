@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-29
+
 ### Added
 
+- Released together with progeny-selector (https://github.com/piercetaylor/progeny-selector/releases/tag/v0.1.0); both implement input data contract 1.12.0.
 - Each GitHub Release carries `backcross-<version>-site.zip`, the built site with a relative base that serves from any static folder (with a one-line server instruction, since Chrome and Edge do not run module scripts from `file://`), the CLI bundle, LICENSE and CITATION.cff; and the CLI bundle on its own. The release body is that version's CHANGELOG section plus the contract version it implements.
 - A user guide for breeders (docs/user-guide.md) with a validation-status section, and a docs index (docs/README.md).
 - `CITATION.cff` (validated in CI with cffconvert), a README citation section, and a sibling-tool section cross-linking progeny-selector.
@@ -83,4 +86,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Try the demo dataset" loads under the crop chosen in the Crop select. It always loaded as soybean before, whatever the select showed.
 - The genotype view's browser geometry tests wait for the rail-collapse animation before reading an absolute x. Entering that screen collapses the rail and the shell animates its grid track, so a measurement taken while the track was still moving was a transient, and the gutter case failed intermittently in CI against a settled scroller.
 
-[Unreleased]: https://github.com/piercetaylor/backcross/commits/main
+[Unreleased]: https://github.com/piercetaylor/backcross/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/piercetaylor/backcross/releases/tag/v0.1.0

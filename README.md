@@ -2,7 +2,7 @@
 
 Backcross characterizes near-isogenic lines from SNP genotype calls. It compares each line with its recurrent and donor parents, estimates recurrent-parent genome recovery, locates donor segments, checks target regions, and flags genotype quality concerns. The browser app displays graphical genotypes and exports CSV tables and an HTML report. A Node command-line interface uses the same analysis core.
 
-**Status:** Pre-release software (version 0.1.0 is untagged). [Open the app](https://piercetaylor.github.io/backcross/) or [load the synthetic demo](https://piercetaylor.github.io/backcross/?demo=synthetic). The demo contains six generated lines and 500 markers; it does not represent a breeding program.
+**Status:** version 0.1.0 (see [Releases](https://github.com/piercetaylor/backcross/releases)). [Open the app](https://piercetaylor.github.io/backcross/) or [load the synthetic demo](https://piercetaylor.github.io/backcross/?demo=synthetic). The demo contains six generated lines and 500 markers; it does not represent a breeding program.
 
 ## Data and interpretation
 
