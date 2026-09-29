@@ -172,11 +172,14 @@ describe('trackLayouts', () => {
     // over the canvas without the caller re-deriving the label column.
     expect(tracks[0]?.x).toBe(120);
     expect(tracks[1]?.widthPx).toBeGreaterThan(tracks[0]?.widthPx as number);
+    expect(tracks[1]?.endBp).toBe(CHROM_B_LENGTH_BP);
   });
 
   it('reports the single track spanning the plot in a one-chromosome viewport', () => {
     const renderer = fabricatedRenderer(920);
     renderer.setViewport({ chrom: 'Gm01' });
-    expect(renderer.trackLayouts()).toEqual([{ chrom: 'Gm01', x: 120, widthPx: 800 }]);
+    expect(renderer.trackLayouts()).toEqual([
+      { chrom: 'Gm01', x: 120, widthPx: 800, startBp: 0, endBp: CHROM_A_LENGTH_BP },
+    ]);
   });
 });

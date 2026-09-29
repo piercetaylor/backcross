@@ -27,6 +27,7 @@
  *   readRendererTheme(el) -> RendererTheme
  *   readRendererLayout(el) -> RendererLayout
  *   readOverviewHeight(el) -> number
+ *   readRulerTickMinGap(el) -> number
  */
 import { DEFAULT_LAYOUT, DEFAULT_THEME } from './GraphicalGenotypeRenderer.ts';
 import type { RendererLayout, RendererTheme } from './GraphicalGenotypeRenderer.ts';
@@ -89,4 +90,11 @@ const DEFAULT_OVERVIEW_HEIGHT = 48;
 
 export function readOverviewHeight(el: Element): number {
   return readPx(getComputedStyle(el), '--overview-height', DEFAULT_OVERVIEW_HEIGHT, true);
+}
+
+/** The ruler's smallest tick spacing in CSS pixels, from --ruler-tick-min-gap (src/ui/canvas/ruler.ts). */
+const DEFAULT_RULER_TICK_MIN_GAP = 56;
+
+export function readRulerTickMinGap(el: Element): number {
+  return readPx(getComputedStyle(el), '--ruler-tick-min-gap', DEFAULT_RULER_TICK_MIN_GAP, true);
 }

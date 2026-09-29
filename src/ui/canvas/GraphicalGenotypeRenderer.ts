@@ -52,7 +52,7 @@
  *   bpOnChrom(chrom, x) — bp position of a CSS-pixel x on one chromosome's
  *     track, clamped to that track; the drag-to-zoom math
  *   xForBp(chrom, bp) — the inverse of bpOnChrom, for the overview's window
- *   trackLayouts() — { chrom, x, widthPx }[] for the chromosome strip
+ *   trackLayouts() — TrackLayout[]: { chrom, x, widthPx, startBp, endBp } for the chromosome header
  *   nearestMarkerIndex(positions, markerIndices, targetBp) — module-level export
  */
 import { CLASS_COLORS } from '../../core/index.ts';
@@ -110,6 +110,15 @@ export interface Viewport {
   /** With chrom set, a bp window on it; ignored (whole chromosome) unless both are a valid, non-empty range. */
   startBp?: number;
   endBp?: number;
+}
+
+/** One chromosome track as the screen's header sees it: x includes the label column; startBp and endBp are the window drawn. */
+export interface TrackLayout {
+  chrom: string;
+  x: number;
+  widthPx: number;
+  startBp: number;
+  endBp: number;
 }
 
 interface ChromLayout {
@@ -493,13 +502,15 @@ export class GraphicalGenotypeRenderer {
    * chromosome strip reads this after every draw, so the strip and the
    * pixels underneath it cannot disagree.
    */
-  trackLayouts(): { chrom: string; x: number; widthPx: number }[] {
+  trackLayouts(): TrackLayout[] {
     const { labelWidth } = this.layout;
     const plotWidth = Math.max(1, this.cssWidth - labelWidth);
     return this.chromLayouts(plotWidth).map((c) => ({
       chrom: c.chrom,
       x: labelWidth + c.x,
       widthPx: c.widthPx,
+      startBp: c.startBp,
+      endBp: c.endBp,
     }));
   }
 

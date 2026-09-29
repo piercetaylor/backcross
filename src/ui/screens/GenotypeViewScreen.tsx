@@ -53,9 +53,11 @@
  * names become an HTML gutter beside it -- an <ol> of buttons, sticky
  * against the horizontal scroll, each one row period tall by the same two
  * tokens the renderer bins rows with (screens.css), and each a toggle for
- * that line's membership of the shared selection. Above the canvas a
- * chromosome strip labels each track from renderer.trackLayouts(), plus the
- * window's edges in Mb on a single chromosome; below it, on a single
+ * that line's membership of the shared selection. The chromosome header
+ * labels each track from renderer.trackLayouts(): its name, the drawn
+ * window's edges when zoomed, an ideogram bar and a Mb ruler whose 1-2-5
+ * step is chosen by ui/canvas/ruler.ts to clear --ruler-tick-min-gap. Below
+ * the canvas, on a single
  * chromosome, a whole-chromosome overview canvas marks the current window,
  * and a click on it recentres that window (the keyboard equivalent is the
  * main canvas's own arrow keys, which pan the same window). The overview is
@@ -103,10 +105,17 @@ import { DEFAULT_LAYOUT, GraphicalGenotypeRenderer } from '../canvas/GraphicalGe
 import type {
   RendererLayout,
   RendererTheme,
+  TrackLayout,
   Viewport,
 } from '../canvas/GraphicalGenotypeRenderer.ts';
 import { binLinesIntoRows } from '../canvas/line-binning.ts';
-import { readOverviewHeight, readRendererLayout, readRendererTheme } from '../canvas/read-theme.ts';
+import {
+  readOverviewHeight,
+  readRendererLayout,
+  readRendererTheme,
+  readRulerTickMinGap,
+} from '../canvas/read-theme.ts';
+import { rulerTicks } from '../canvas/ruler.ts';
 import { visibleRowWindow } from '../canvas/row-window.ts';
 import type { RowWindow } from '../canvas/row-window.ts';
 import '../canvas/legend.css';
@@ -258,7 +267,9 @@ export function GenotypeViewScreen({
   /** CSS width of the canvas host, from the ResizeObserver; 0 until it first reports. */
   const [plotWidth, setPlotWidth] = useState(0);
   /** Where each chromosome track sits, for the strip; refreshed after every draw. */
-  const [tracks, setTracks] = useState<{ chrom: string; x: number; widthPx: number }[]>([]);
+  const [tracks, setTracks] = useState<TrackLayout[]>([]);
+  /** The ruler's smallest tick spacing from --ruler-tick-min-gap; null (no ticks) until read. */
+  const [tickMinGap, setTickMinGap] = useState<number | null>(null);
   const [regionText, setRegionText] = useState('');
   const [regionError, setRegionError] = useState<string | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
@@ -327,6 +338,7 @@ export function GenotypeViewScreen({
     themeRef.current = theme;
     layoutRef.current = readRendererLayout(host);
     overviewHeightRef.current = readOverviewHeight(host);
+    setTickMinGap(readRulerTickMinGap(host));
     rendererRef.current = new GraphicalGenotypeRenderer(
       canvas,
       { ...readRendererLayout(host), labelWidth: 0 },
@@ -824,6 +836,10 @@ export function GenotypeViewScreen({
   return (
     <section>
       <h2>Graphical genotypes</h2>
+      <p className="lede">
+        One row per line in the Lines table's order, one track per chromosome. Drag on the canvas or
+        type a region to zoom; hover a column for the marker under it.
+      </p>
 
       {/* The same sort and filter the Lines table reads: changing either
           here reorders or re-filters both screens. */}
@@ -840,11 +856,11 @@ export function GenotypeViewScreen({
       />
 
       {loaded === null ? (
-        <p>Load a dataset first.</p>
+        <p className="empty-state">Load a dataset first.</p>
       ) : (
         <div className="geno-toolbar">
-          <label>
-            View{' '}
+          <label className="geno-field">
+            <span className="geno-field-label">View</span>
             <select
               value={viewport.chrom ?? WHOLE_GENOME}
               onChange={(e) => {
@@ -863,13 +879,14 @@ export function GenotypeViewScreen({
           </label>
 
           <form
+            className="geno-region-form"
             onSubmit={(e) => {
               e.preventDefault();
               applyRegion();
             }}
           >
-            <label>
-              Region{' '}
+            <label className="geno-field">
+              <span className="geno-field-label">Region</span>
               <input
                 type="text"
                 value={regionText}
@@ -896,94 +913,124 @@ export function GenotypeViewScreen({
       {/* Persistently mounted so a screen reader announces the text change,
           rather than mounting/unmounting the whole live region. */}
       <p aria-live="polite">{loading ? 'Loading class data...' : ''}</p>
-      {!loading && loaded !== null && classesData === null && <p>No lines to draw.</p>}
+      {!loading && loaded !== null && classesData === null && (
+        <p className="empty-state">No lines to draw.</p>
+      )}
 
       <div className="geno-layout">
         <div className="geno-plot">
-          {/* One track per chromosome, placed from the renderer's own layout
-              in CSS pixels, so a name sits over the pixels it names. The
-              offsets are measurements, not design values, and stay inline. */}
-          <div className="geno-strip">
-            {tracks.map((track) => (
-              <div
-                key={track.chrom}
-                className="geno-strip-track"
-                style={{ left: track.x, width: track.widthPx }}
-              >
-                <span>{track.chrom}</span>
-                {windowEdges !== null && (
-                  <span className="geno-strip-window">
-                    <span>{mbLabel(windowEdges.startBp)}</span>
-                    <span>{mbLabel(windowEdges.endBp)}</span>
-                  </span>
-                )}
+          <div className="geno-frame">
+            {/* Chromosome header: a corner over the gutter, then one track per
+                chromosome placed from the renderer's own layout in CSS pixels
+                (measurements, not design values, so they stay inline). Each
+                track is its name, an ideogram bar and a Mb ruler
+                (ui/canvas/ruler.ts). */}
+            <div className="geno-header">
+              <div className="geno-corner">{nRows} lines</div>
+              <div className="geno-strip">
+                {tracks.map((track) => {
+                  const ticks =
+                    tickMinGap === null
+                      ? []
+                      : rulerTicks(track.startBp, track.endBp, track.widthPx, tickMinGap);
+                  return (
+                    <div
+                      key={track.chrom}
+                      className="geno-strip-track"
+                      style={{ left: track.x, width: track.widthPx }}
+                    >
+                      <div className="geno-strip-head">
+                        <span className="geno-strip-name">{track.chrom}</span>
+                        {windowEdges !== null && (
+                          <span className="geno-strip-window">
+                            <span>{mbLabel(windowEdges.startBp)}</span>
+                            <span>{mbLabel(windowEdges.endBp)}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="geno-ideogram" aria-hidden="true" />
+                      <div className="geno-ruler" aria-hidden="true">
+                        {ticks.map((tick) => (
+                          <span
+                            key={tick.bp}
+                            className="geno-tick"
+                            data-align={tick.align}
+                            style={{ left: tick.x }}
+                          >
+                            {tick.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div ref={scrollerRef} className="geno-scroll" onScroll={handleScroll}>
-            {/* The line names, one per drawn canvas row. Each <li> is one row
+            <div ref={scrollerRef} className="geno-scroll" onScroll={handleScroll}>
+              {/* The line names, one per drawn canvas row. Each <li> is one row
                 period tall by the same tokens the canvas bins rows with, so
                 the two stay in step at any density or zoom. The <ol> is the
                 full height of every row and the drawn rows are offset inside
                 it by the row window; both are measurements from the tokens. */}
-            <ol
-              className="geno-gutter"
-              aria-label="Lines"
-              data-rows={nRows}
-              data-first-row={rowWindow.first}
-              style={{ height: nRows * rowPeriod, paddingTop: rowWindow.first * rowPeriod }}
-            >
-              {windowLines.map((line) => (
-                <li key={line.sampleId}>
-                  <button
-                    type="button"
-                    aria-pressed={selected.has(line.sampleId)}
-                    title={line.sampleId}
-                    onClick={() => toggleSelected(line.sampleId)}
-                  >
-                    {line.sampleId}
-                  </button>
-                </li>
-              ))}
-            </ol>
-
-            <div
-              ref={containerRef}
-              className="geno-canvas-host"
-              style={{ height: Math.max(rowPeriod, nRows * rowPeriod) }}
-            >
-              <canvas
-                ref={canvasRef}
-                className="geno-canvas"
-                style={{ marginTop: rowWindow.first * rowPeriod }}
-                role="img"
-                tabIndex={0}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                onKeyDown={handleCanvasKeyDown}
-                aria-label="Graphical genotypes: one row per line, one track per chromosome; colours as in the legend. Drag to zoom; arrow keys pan; plus and minus zoom; 0 resets; escape cancels or resets."
+              <ol
+                className="geno-gutter"
+                aria-label="Lines"
+                data-rows={nRows}
+                data-first-row={rowWindow.first}
+                style={{ height: nRows * rowPeriod, paddingTop: rowWindow.first * rowPeriod }}
               >
-                Graphical genotype rendering is not supported in this browser.
-              </canvas>
-            </div>
-          </div>
+                {windowLines.map((line) => (
+                  <li key={line.sampleId}>
+                    <button
+                      type="button"
+                      aria-pressed={selected.has(line.sampleId)}
+                      title={line.sampleId}
+                      onClick={() => toggleSelected(line.sampleId)}
+                    >
+                      {line.sampleId}
+                    </button>
+                  </li>
+                ))}
+              </ol>
 
-          {/* The whole chromosome at a glance, with the current window
+              <div
+                ref={containerRef}
+                className="geno-canvas-host"
+                style={{ height: Math.max(rowPeriod, nRows * rowPeriod) }}
+              >
+                <canvas
+                  ref={canvasRef}
+                  className="geno-canvas"
+                  style={{ marginTop: rowWindow.first * rowPeriod }}
+                  role="img"
+                  tabIndex={0}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseLeave}
+                  onKeyDown={handleCanvasKeyDown}
+                  aria-label="Graphical genotypes: one row per line, one track per chromosome; colours as in the legend. Drag to zoom; arrow keys pan; plus and minus zoom; 0 resets; escape cancels or resets."
+                >
+                  Graphical genotype rendering is not supported in this browser.
+                </canvas>
+              </div>
+            </div>
+
+            {/* The whole chromosome at a glance, with the current window
               marked; clicking recentres it. Panning by keyboard is the
               main canvas's arrow keys, which move the same window. Outside
               the scroller, so it stays visible while the rows scroll. */}
-          {viewport.chrom !== undefined && (
-            <canvas
-              ref={overviewRef}
-              className="geno-overview"
-              role="img"
-              onClick={handleOverviewClick}
-              aria-label={`Overview of the whole of ${viewport.chrom}, with the shown window marked. Click to recentre the window.`}
-            />
-          )}
+            {viewport.chrom !== undefined && (
+              <canvas
+                ref={overviewRef}
+                className="geno-overview"
+                role="img"
+                onClick={handleOverviewClick}
+                aria-label={`Overview of the whole of ${viewport.chrom}, with the shown window marked. Click to recentre the window.`}
+              />
+            )}
+          </div>
         </div>
 
         <div className="marker-detail">
@@ -1003,6 +1050,22 @@ export function GenotypeViewScreen({
         </div>
       </div>
 
+      <div className="geno-key">
+        <span className="geno-key-title">Key</span>
+        <ul className="legend" aria-label="Class legend">
+          {LEGEND_CLASSES.map((cls) => (
+            <li key={cls}>
+              <span
+                aria-hidden="true"
+                className="class-swatch"
+                style={{ background: classSwatchCss(cls) }}
+              />
+              {CALL_CLASS_LABEL[cls]}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <p className="keyboard-help">
         Keyboard, with the canvas focused: Left/Right pan; +/- zoom in and out; 0 resets to whole
         genome; Escape cancels a drag in progress, or otherwise resets to whole genome.
@@ -1012,18 +1075,6 @@ export function GenotypeViewScreen({
         A column drawn in one class and overlaid with another class&apos;s pattern holds calls of
         both; the fill is the majority.
       </p>
-      <ul className="legend" aria-label="Class legend">
-        {LEGEND_CLASSES.map((cls) => (
-          <li key={cls}>
-            <span
-              aria-hidden="true"
-              className="class-swatch"
-              style={{ background: classSwatchCss(cls) }}
-            />
-            {CALL_CLASS_LABEL[cls]}
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }
