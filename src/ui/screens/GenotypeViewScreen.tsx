@@ -609,7 +609,7 @@ export function GenotypeViewScreen({
       return;
     }
     if (parsed === null) {
-      setRegionError('not a region');
+      setRegionError(`"${text}" is not a region: write chromosome:start-end, e.g. ${regionHint}`);
       return;
     }
     // parseLocus reads the name under the crop scheme but knows nothing of
@@ -825,13 +825,21 @@ export function GenotypeViewScreen({
       ? []
       : classesData.lines.slice(rowWindow.first, rowWindow.first + rowWindow.count);
 
-  // The strip's window edges: only meaningful on a single chromosome.
+  // The strip's window edges: only meaningful on a single chromosome, and
+  // only when zoomed into part of it. Over the whole chromosome the ruler's
+  // first and last ticks already name both ends.
   const windowChrom = viewport.chrom;
   const windowLength = windowChrom === undefined ? null : chromLengthBp(classesData, windowChrom);
-  const windowEdges =
+  const fullWindow =
     windowChrom === undefined || windowLength === null || windowLength <= 0
       ? null
       : currentWindow(viewport, windowLength);
+  const windowEdges =
+    fullWindow !== null &&
+    windowLength !== null &&
+    (fullWindow.startBp > 0 || fullWindow.endBp < windowLength)
+      ? fullWindow
+      : null;
 
   return (
     <section>

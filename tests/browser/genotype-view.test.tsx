@@ -302,6 +302,27 @@ describe('graphical genotype view geometry', () => {
     expect(text.textContent ?? '').toContain(expected);
   });
 
+  it('names the window edges only when zoomed into part of a chromosome, and says how to write a region', async () => {
+    await loadSynthetic();
+    // The whole chromosome: the ruler's end ticks already name both ends.
+    // By role: a bare label match on 'View' also finds the overview canvas.
+    await userEvent.selectOptions(page.getByRole('combobox', { name: /^View/ }), CHROM);
+    await waitFor(() =>
+      [...document.querySelectorAll('.geno-strip-name')].some((n) => n.textContent === CHROM),
+    );
+    expect(document.querySelector('.geno-strip-window')).toBeNull();
+
+    await userEvent.fill(page.getByLabelText('Region'), 'nonsense');
+    await userEvent.keyboard('{Enter}');
+    const alert = await waitFor(() => document.querySelector('#genotype-region-error'));
+    expect(alert.textContent ?? '').toContain('write chromosome:start-end, e.g.');
+
+    await userEvent.fill(page.getByLabelText('Region'), `${CHROM}:1-2000000`);
+    await userEvent.keyboard('{Enter}');
+    const edges = await waitFor(() => document.querySelector('.geno-strip-window'));
+    expect(edges.textContent ?? '').toContain('2.0 Mb');
+  });
+
   it('the overview draws every line when there are more lines than overview pixels', async () => {
     const spec = { ...SPEC, nCandidates: 60 };
     await loadSynthetic(spec);

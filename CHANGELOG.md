@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The interface was reworked for the public release (docs/adr/0009, amended 2026-09-29): a masthead with a chromosome-pair mark, the version and commit, and links to the user guide, data formats, citation and source; a footer with the citation on every screen; a landing band on the Upload screen with four numbered steps and a public-domain USDA ARS photograph; per-chromosome ideograms and Mb rulers over the graphical genotypes, with the plot framed and the legend set as a key; and consistent tables, panels, fieldsets and file pickers. Class colours, textures, keyboard behaviour, the data contract and every export are unchanged.
 
+### Fixed
+
+- The genotype view names the window's start and end in Mb only when zoomed into part of a chromosome; over the whole chromosome the ruler's first and last ticks already name both ends.
+- A region the view cannot read now says how to write one (`chromosome:start-end`, with an example) instead of "not a region".
+
 ## [0.1.0] - 2026-09-29
 
 ### Added
