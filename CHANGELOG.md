@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The genotype view names the window's start and end in Mb only when zoomed into part of a chromosome; over the whole chromosome the ruler's first and last ticks already name both ends.
-- A region the view cannot read now says how to write one (`chromosome:start-end`, with an example) instead of "not a region".
+- A region the view cannot read now says how to write one (`chromosome:start-end`, with an example on the chromosome in view) instead of "not a region".
 
 ## [0.1.0] - 2026-09-29
 

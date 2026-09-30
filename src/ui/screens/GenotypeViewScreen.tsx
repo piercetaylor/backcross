@@ -592,8 +592,8 @@ export function GenotypeViewScreen({
     setViewport({});
   }
 
-  /** Example region, in the loaded crop's own chromosome names. */
-  const regionHint = `${loaded?.chromosomeOrder[0] ?? 'Gm13'}:28.5-29.1Mb`;
+  /** Example region, on the chromosome in view or else the first loaded one. */
+  const regionHint = `${viewport.chrom ?? loaded?.chromosomeOrder[0] ?? 'Gm13'}:28.5-29.1Mb`;
 
   function applyRegion() {
     const text = regionText.trim();
