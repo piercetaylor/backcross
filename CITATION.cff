@@ -10,6 +10,13 @@ repository-code: 'https://github.com/piercetaylor/backcross'
 url: 'https://piercetaylor.github.io/backcross/'
 version: 0.1.0
 date-released: '2026-09-29'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23051345
+    description: All versions (Zenodo concept DOI)
+  - type: doi
+    value: 10.5281/zenodo.23051346
+    description: Version 0.1.0
 keywords:
   - plant breeding
   - near-isogenic lines

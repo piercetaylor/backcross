@@ -35,6 +35,8 @@ The `segments`, `targets` and `qc` commands produce separate CSV files; `compare
 
 ## Cite
 
+DOI for all versions: [10.5281/zenodo.23051345](https://doi.org/10.5281/zenodo.23051345) (version 0.1.0: [10.5281/zenodo.23051346](https://doi.org/10.5281/zenodo.23051346)).
+
 Cite the version you used: `CITATION.cff` carries the metadata GitHub's "Cite this repository" button and Zenodo read, and every CSV export and HTML report record the release and commit that produced them (`tool_version`, `tool_commit`; docs/data-formats.md). The software is available under the [MIT license](LICENSE).
 
 ## Sibling tool
