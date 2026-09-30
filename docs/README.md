@@ -13,6 +13,7 @@
 
 - [adr/](adr/): MADR decisions, 0001 to 0030.
 - [m2.5-phases.md](m2.5-phases.md), [m3-phases.md](m3-phases.md), [m3-phase4-brapi.md](m3-phase4-brapi.md), [m3-phase5-a11y.md](m3-phase5-a11y.md), [m4-phases.md](m4-phases.md), [m5-phases.md](m5-phases.md): phase specs.
+- [ui-rework-phases.md](ui-rework-phases.md): the 2026-09-29 interface rework: survey, tokens, mark, imagery and six phases.
 - [handoff-contract-1.7.md](handoff-contract-1.7.md), [handoff-m3-phases-4-5.md](handoff-m3-phases-4-5.md), [handoff-m4-phase6.md](handoff-m4-phase6.md): handoffs.
 - [contract-1.1-phases.md](contract-1.1-phases.md), [contract-1.2.0-positions.md](contract-1.2.0-positions.md): contract change specs.
 - [design-brief.md](design-brief.md), [design-survey.md](design-survey.md): interface brief and survey.

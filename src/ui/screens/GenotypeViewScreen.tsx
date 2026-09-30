@@ -52,7 +52,7 @@
  * drawn inside the canvas. The renderer is given `labelWidth: 0` and the
  * names become an HTML gutter beside it -- an <ol> of buttons, sticky
  * against the horizontal scroll, each one row period tall by the same two
- * tokens the renderer bins rows with (screens.css), and each a toggle for
+ * tokens the renderer bins rows with (rules in genotype.css, values in tokens.css), and each a toggle for
  * that line's membership of the shared selection. The chromosome header
  * labels each track from renderer.trackLayouts(): its name, the drawn
  * window's edges when zoomed, an ideogram bar and a Mb ruler whose 1-2-5

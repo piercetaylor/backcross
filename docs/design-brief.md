@@ -114,3 +114,78 @@ When markers are sparser than pixels, we extend each marker across the interval 
 ## The test that beats all of the above
 
 None of this has been in front of a breeder. Five users, asked to find the line with the largest donor segment and export a report, will say more about this design than every source cited here.
+
+## Addendum, 2026-09-29: the public-release rework
+
+Read 2026-09-29: page text by fetch, and pixel values by computed style in a browser pane at 800 to 1280 px wide. Where a page could not be read it is named as such; nothing is inferred from memory of a site.
+
+**Genome browsers and portals**
+
+- JBrowse 2, application (https://jbrowse.org/code/jb2/main/?config=test_data%2Fvolvox%2Fconfig.json): 48 px app bar in #0d233f navy, 13.7 px Roboto, menus left, session title centred, logo right. The linear view is a 1 px bordered card. The overview bar is a flat rectangle with comma-formatted bp ticks and a shaded wedge down to the zoomed window; track labels sit at the left of each track; a ruler of coordinates runs across the top (https://jbrowse.org/jb2/docs/user_guides/basic_usage/). Site (https://jbrowse.org/jb2/): white nav, one-line 28 px H1, two buttons, a large screenshot of the product; footer in #303846 with the Diesh et al. 2023 citation, funders and the Apache 2.0 licence.
+- Ensembl (https://www.ensembl.org/): 32 px top bar in #1b2c39 slate with wordmark, a release badge ("Release 2026-07") and the EMBL-EBI mark, over a 60 px white icon toolbar; body Lato 13 px in #1b2c39 on #fefefe. A species page (https://www.ensembl.org/genome/GCA_000001735.1) states facts as a table of 12 px labels and 18 px values.
+- Galaxy (https://usegalaxy.org/): 40 px masthead in #2c3143, Atkinson Hyperlegible 13.6 px on white; a narrow left activity rail of icon plus label; a right history panel; empty state is one sentence in a pale info box ("This history is empty."); footer is one small mono line, "Galaxy version 26.1.2.dev0, commit <hash>".
+- UCSC (https://genome.ucsc.edu/, fetch only): dark menu bar with "Cite Us" in header and footer; footer copyright and donate. The ideogram lives inside hgTracks, which sat behind a bot check and was not read.
+- SoyBase (https://www.soybase.org/) and LIS (https://www.legumeinfo.org/): the same UIkit/Tripal template, an 80 px masthead in dark green and #87a96b sage respectively with logo, tagline ("Integrating Genetics and Genomics to Advance Soybean Research") and social icons; a one-sentence mission line, quick searches, a tool grid, no photography; ProximaNova 16 px, H1 38 px weight 300; peach and cream button clusters that read as noise. Footer: "funded by the USDA-ARS", developer credit, USDA and NCGR logos.
+- Gramene (https://www.gramene.org/): 99 px #f8f9fa navbar with the search inside it; a pale-green "Welcome to Gramene release 69" banner; a two-column icon grid in mixed illustration styles; a slim sticky footer strip "Cite · Privacy · Funding · Links".
+- Phytozome (https://phytozome-next.jgi.doe.gov/): white bar with the JGI logo and a green "Phytozome 14" ribbon; no hero; a zebra-striped recent-releases table; Roboto 15 px, green #629c2e headings and links.
+- MaizeGDB: not read (403 and a Cloudflare challenge).
+
+**Breeding and analysis tools**
+
+- Germinate demo (https://germinate.hutton.ac.uk/demo): 300 px #2a2a2e charcoal sidebar with icons and count badges; stat tiles in saturated orange, olive, teal and purple; a wheat-photo carousel with a translucent caption box; Source Sans Pro. Its marketing site (https://germinateplatform.github.io/get-germinate/) has a cyan-to-teal diagonal gradient hero and a footer reading "This template is made with by Colorlib".
+- Flapjack-bytes (https://raw.githubusercontent.com/cropgeeks/flapjack-bytes/master/docs/images/flapjack-bytes.png; the live demo did not load): flat teal Bootstrap bar; marker-name leader lines fan out above the columns; pastel nucleotide cells; plain fieldsets ("Controls", "Color Schemes"). The brief already records its geometry from source: 100 px gutter, 60 px map track, 17 px cells.
+- Breedbase / CassavaBase (https://cassavabase.org/): 51 px #f8f8f8 Bootstrap 3 navbar, Helvetica 14 px, olive #a2ad00 headings, a full-bleed root-photo carousel with translucent white text that is hard to read, two stacked modals on load. SGN (https://solgenomics.net/) adds a footer citation directive, "Cite SGN using Fernandez-Pozo et al, 2014", with GMOD and BrAPI logos.
+- Nextstrain (https://nextstrain.org/): no masthead bar; a wordmark, a five-word tagline, a 3 by 2 grid of icon plus title plus two lines, then cards with thumbnails of real analyses; Lato, H1 32 px weight 300; footer with the Bioinformatics 2018 citation, AGPL and CC-BY-4.0 statements, six funder logos. Auspice (https://nextstrain.org/zika): a 160 px left control panel, an 18 px title and a provenance line ("Built with... Data updated 2026-09-25").
+- BlobToolKit (https://blobtoolkit.genomehubs.org/): 68 px #00102e navy masthead; the hero is a hexbin plot of real data under a 57 px Comfortaa headline; footer with BBSRC funding and people.
+
+**Craft references**
+
+- Linear (https://linear.app/ ; https://linear.app/now/how-we-redesigned-the-linear-ui): 73 px header with a 1 px rgba(255,255,255,.08) hairline, secondary text #8a8f98, Inter Variable; the product UI is the hero. The redesign note: text and neutral icons made darker, less chrome colour, denser and quieter sidebar, tabs, headers and panels, "a more neutral and timeless appearance".
+- Stripe docs (https://docs.stripe.com/): white, body #3c4257 at 14 px, three columns of short link lists, 13 px Menlo code, one primary button. Vercel docs (https://vercel.com/docs): 64 px sticky header, 1 px #1f1f1f hairlines, 14 px sidebar text, Geist. Observable (https://observablehq.com/): centred wordmark, dark navy hero, Source Serif 4 body against Inter UI.
+
+**What transfers**
+
+1. Every serious genome application has a slim dark masthead over a light data surface: Ensembl 32 px #1b2c39, Galaxy 40 px #2c3143, JBrowse 48 px #0d233f, BlobToolKit 68 px #00102e, SoyBase and LIS 80 px in green. Backcross's masthead is 48 px in soil-900, the warm counterpart of that navy range.
+2. Interface type is 13 to 15 px (Ensembl 13, Galaxy 13.6, JBrowse 13.7) in a humanist or neutral sans; only marketing heroes exceed 40 px. Backcross keeps 13 px Plex and caps the landing at 24 px.
+3. A version and cite line is always present and quiet: Galaxy's mono "version, commit" footer line, Gramene's sticky Cite strip, Auspice's provenance line, UCSC's "Cite Us". Backcross puts version and commit in the masthead and the citation in the footer.
+4. Landings are a one-line value statement, a launch action and real entry points; the strongest heroes show the product or real data (JBrowse's screenshot, BlobToolKit's plot, Nextstrain's thumbnails). Photography appears in the weaker sites and fails where text is laid over it (CassavaBase, Germinate). Backcross therefore keeps copy off the photograph, duotones it into the chrome's own tokens, and leads with the demo button; decision 23 records the product-image follow-up.
+5. Inside the browsers: a coordinate ruler above the tracks, an overview bar with a window marker, labels in a left gutter, and a 1 px frame around the view. JBrowse's overview is a flat rectangle with comma bp labels; Backcross draws a rounded bar because it is an ideogram of a whole chromosome and labels in Mb, the unit its hover panel and breeders use.
+6. Empty states are one sentence in a pale box (Galaxy). Rails are icon-or-number plus short label on a neutral ground.
+7. Template tells seen in this field, all avoided here: gradient and diagonal-cut heroes, a visible theme credit, Bootstrap 3 navbars and pill tabs, saturated multicolour stat tiles, stacked consent modals, mixed illustration styles, translucent overlays on photographs, and display faces at weight 200.
+
+Backcross should read as an instrument built by the people who use it: a static, self-hosted scientific webserver in the tradition of SoyBase, Ensembl Plants and JBrowse, not a SaaS landing page. The chrome stays warm and quiet (parchment page, soil text, one leaf green for the primary action, one crimson for alerts) so that the only saturated colour on any screen is genotype data. What changes is the frame around the data: a slim dark masthead that names the tool, its version and its documentation, the way every credible genome browser does; a footer that tells a reader how to cite it; a landing band that says in one sentence what the tool answers, with four numbered steps and one restrained duotone photograph of soybean research plots; a chromosome header that draws each chromosome as an ideogram with a Mb ruler, so the graphical genotype sits under a coordinate system the way it does in Flapjack or a genome browser rather than under a row of labels; and tables, panels and forms that share one vocabulary of rules, weights and spacing. Nothing is added that a breeder would have to learn.
+
+Do:
+
+- Keep IBM Plex Sans for the interface and Plex Mono for identifiers, coordinates and versions; use weight and a single 13 px interface size for hierarchy, with 24 px reserved for the landing lede alone.
+- Use 1 px rules (`--color-border-subtle` inside a component, `--color-border` around one) and background steps for structure; radii stay 2 px and 4 px.
+- Put the tool's name, version and commit in the masthead and the citation in the footer, on every screen.
+- Give every panel a header with a small medium-weight title and a bottom rule (marker detail, key, facts).
+- Right-align numbers in every table, tabular figures throughout.
+- Draw the chromosome ideogram and ruler in neutral greys only; class colours and the crop palette never appear in the chromosome header.
+- Let the photograph be one duotone image built from the chrome's own tokens, beside the copy, never under it.
+
+Do not (the default-AI tells the brief already rules out, restated so an implementer does not reintroduce one):
+
+- No indigo, violet or blue accent; no gradient anywhere, including on headings and photo overlays.
+- No three-across card grid; no cards at all for things that are not cards (the four steps are a list, the facts are a list).
+- No uniform large radius; no drop shadows on static surfaces.
+- No emoji or icon fonts; the only icons are the brand mark, the rail's tick and chevrons already there, and the checkbox glyphs.
+- No Inter, no system-ui fallback promoted to first choice.
+- No hero copy of the "Unlock insights" register; every sentence names a file, a statistic or an action.
+- No text over a photograph; no stock-photo colour; no decorative illustration.
+- No sticky masthead: WCAG 2.4.11 is asserted by tests and a sticky header would re-open it.
+
+|                                 |                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Subject                         | Soybean field plots under low-cost camera monitoring for drought response, USDA ARS                                                                                                                                                                                                                                                                                                                      |
+| Photo page                      | https://www.ars.usda.gov/oc/images/photos/apr21/d4630-1/ (image id D4630-1)                                                                                                                                                                                                                                                                                                                              |
+| Direct download of the original | https://www.ars.usda.gov/ARSUserFiles/oc/images/photos/300dpi/kesa/D4630-1.jpg (verified 2026-09-29: HTTP 200, `image/jpeg`, 3,026,640 bytes, 2700 x 2025 px)                                                                                                                                                                                                                                            |
+| Photographer                    | Anna Locke                                                                                                                                                                                                                                                                                                                                                                                               |
+| Licence                         | Public domain. The gallery's terms at https://www.ars.usda.gov/oc/images/copyright/ state: "Photos in our Image Gallery are available free of charge and are copyright-free, public domain, images unless otherwise indicated." The photo's page indicates nothing otherwise. The same page asks that ARS be credited, in the form "Photo by (photographer's name), USDA Agricultural Research Service". |
+| Credit line displayed           | Photo: Anna Locke, USDA Agricultural Research Service (public domain).                                                                                                                                                                                                                                                                                                                                   |
+| Where the credit is displayed   | As the `<figcaption>` directly under the photograph on the Upload screen (phase c), and in docs/design-brief.md's addendum (phase f).                                                                                                                                                                                                                                                                    |
+| Processed file                  | `src/ui/assets/hero-soybean-plots.webp`, 1200 x 600 px, WebP quality 78, 105,310 bytes; imported as a module by `UploadScreen.tsx`, so Vite fingerprints it and the relative-base release zip resolves it                                                                                                                                                                                                |
+| Processing                      | `py -3 scripts/process-hero.py <D4630-1.jpg> src/ui/assets/hero-soybean-plots.webp`; the script is below and is deterministic (two runs produce byte-identical output; verified). Pillow 12.1.1 is already installed for `py -3` on the maintainer's machine; `sharp` is not installed and is not added.                                                                                                 |
+
+The five-user test the brief asked for is still owed.

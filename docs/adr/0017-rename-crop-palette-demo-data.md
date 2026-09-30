@@ -63,3 +63,7 @@ The distances were measured rather than argued, as CIEDE2000 (Sharma, Wu and Dal
 Against the class colours actually drawn, the smallest distances are wheat gold and donor vermilion, 8.5 under deuteranopia; wheat gold and non-parental reddish purple, 8.8 under tritanopia; leaf-700 and vermilion, 11.4 under protanopia; and leaf-700 and recurrent blue, 11.7 under tritanopia. Wheat gold is the only crop colour under 10 against a decoded class colour. It remains decorative only, as the intro band's edge and the seed in the mark, and never appears beside the canvas. The light tokens (leaf-100 `#e3eedc`, parchment `#fbf8f1` and `#f3ecdc`) sit 6.2 to 10.6 from the uninformative grey. They are separated from it by role, since they tint the rail and the page while the grey is a canvas fill, and the legend swatch border stays on neutral tokens. No change to the palette follows.
 
 Should orange or bluish green ever join `CLASS_COLORS`, this question reopens for wheat gold first.
+
+## Amendment, 2026-09-29
+
+The seed-and-leaf mark this record introduced is retired for a chromosome-pair mark (docs/adr/0009, amendment of this date), and the intro band's wheat-gold edge went with the band. Wheat gold therefore appears nowhere on screen. `--crop-wheat-500` is kept so that the enumeration above, the 2026-09-26 distance measurements and tests/tokens.test.ts stay true; removing it is a separate, trivial decision. Two soil steps were added for the masthead; neither is an Okabe-Ito member and both are measured in that amendment.
