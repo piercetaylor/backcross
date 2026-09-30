@@ -48,11 +48,10 @@ jobs:
         with:
           path: dist
 
-  # Browser-mode tests and the bench. Interim CI budget of 60 s (about ten
-  # times the M4 laptop Firefox first draw of 6.2 s, half the former 120 s hang
-  # guard; docs/m5-phases.md 15.1). Once one green run has printed its figures,
-  # set this to four times the slower browser's first-draw figure, rounded up
-  # to the next 5 s, and record both in PLAN.md's M5 block. Then Lighthouse's
+  # Browser-mode tests and the bench. The bench budget is 30 s: four times the
+  # slower browser's first draw in a green CI run (Firefox, 7,101 ms, run
+  # 36730833289 at c8e5904, 2026-09-30), rounded up to the next 5 s
+  # (docs/m5-phases.md 15.1; PLAN.md, M5 block). Then Lighthouse's
   # accessibility category on the built landing page
   # (scripts/lighthouse-a11y.mjs, PLAN.md M3).
   browser:
@@ -69,7 +68,7 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:bench
         env:
-          VITE_BENCH_BUDGET_MS: '60000'
+          VITE_BENCH_BUDGET_MS: '30000'
       - run: npm run a11y:lighthouse
 
   # Byte-compares contract/ with progeny-selector's mirror (docs/adr/0013).
